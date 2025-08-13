@@ -1,0 +1,69 @@
+# Workflow details
+workflow_details:
+  name: "Collared Lions Workflow"
+  description: "Analyzes the movement patterns and home ranges of GPS-collared lions over a specified time period."
+
+# Desired time-range
+time_range:
+  since: "2025-01-01T00:00:00Z"
+  until: "2025-07-21T23:59:59Z"
+
+# Connect to EarthRanger
+er_client_name:
+  data_source:
+    name: "lg"
+
+# Subject group name
+subject_obs:
+    subject_group_name: "Collared Lions"
+
+# specific to the subject group at hand 
+subject_traj:
+  trajectory_segment_filter:
+    min_length_meters: 0.001
+    max_length_meters: 10000.0
+    max_time_secs: 21600.0
+    min_time_secs: 1.0
+    max_speed_kmhr: 10.0
+    min_speed_kmhr: 0.01
+
+# Any desired groupers
+groupers:
+  groupers: []
+
+# Desired basemap layers
+base_map_defs:
+  base_maps:
+    - url: "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
+      opacity: 0.7
+    - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+      opacity: 0.2
+      max_zoom: 8.5
+      min_zoom: null
+
+# Time density configuration      
+td:
+  auto_scale_or_custom_cell_size:
+     auto_scale_or_custom: "Customize" # you could swap this to Auto
+     grid_cell_size: 500
+
+# Local shapefiles to load 
+load_local_shapefiles:
+  config:
+    path: "/home/ttemu/ecoscope-workflows/shp_files"
+
+
+create_custom_map_layers:
+  style_config:
+    styles:
+      GroupRanchBoundary:
+        get_fill_color: [189, 183, 107]
+        get_line_color: [0, 0, 0]
+        opacity: 0.10
+        get_line_width: 1
+        stroked: true
+
+    legend:
+      labels: ["Group Ranch Boundaries"]
+      colors: ["#bdb76b"]
+      
