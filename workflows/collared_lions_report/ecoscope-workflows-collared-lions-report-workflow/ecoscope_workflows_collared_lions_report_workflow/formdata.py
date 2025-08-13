@@ -208,24 +208,6 @@ class SubjectObs(BaseModel):
     )
 
 
-class TdWordFig(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    caption: Optional[str] = Field(
-        None, description="The figure caption", title="Caption"
-    )
-
-
-class CollaredReport(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    logo_path: Optional[str] = Field(
-        None, description="The logo file path", title="Logo Path"
-    )
-
-
 class TemporalGrouper(RootModel[str]):
     root: str = Field(..., title="Time")
 
@@ -381,7 +363,6 @@ class Td(BaseModel):
 
 class TimeDensityMap(BaseModel):
     td: Optional[Td] = Field(None, title="")
-    td_word_fig: Optional[TdWordFig] = Field(None, title="Word Image figure")
 
 
 class FormData(BaseModel):
@@ -415,7 +396,4 @@ class FormData(BaseModel):
         None,
         alias="Time Density Map",
         description="These settings show a grid-based heatmap showing where subjects spent the most time.",
-    )
-    collared_report: Optional[CollaredReport] = Field(
-        None, title="Create Word Doc Report"
     )

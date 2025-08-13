@@ -13,7 +13,7 @@ import warnings  # 🧪
 from ecoscope_workflows_core.testing import create_task_magicmock  # 🧪
 
 
-from ecoscope_workflows_core.graph import DependsOn, DependsOnSequence, Graph, Node
+from ecoscope_workflows_core.graph import DependsOn, Graph, Node
 
 from ecoscope_workflows_core.tasks.config import set_workflow_details
 from ecoscope_workflows_core.tasks.filter import set_time_range
@@ -41,16 +41,14 @@ from ecoscope_workflows_ext_ecoscope.tasks.results import create_polygon_layer
 from ecoscope_workflows_core.tasks.skip import any_is_empty_df
 from ecoscope_workflows_core.tasks.skip import any_dependency_skipped
 from ecoscope_workflows_ext_lion_guardians.tasks import combine_map_layers
+from ecoscope_workflows_ext_lion_guardians.tasks import create_view_state_from_gdf
+from ecoscope_workflows_ext_lion_guardians.tasks import zip_grouped_by_key
 from ecoscope_workflows_ext_ecoscope.tasks.results import draw_ecomap
 from ecoscope_workflows_core.tasks.io import persist_text
-from ecoscope_workflows_ext_custom.tasks import html_to_png
-from ecoscope_workflows_ext_custom.tasks import create_doc_figure
 from ecoscope_workflows_core.tasks.results import create_map_widget_single_view
 from ecoscope_workflows_core.tasks.skip import never
 from ecoscope_workflows_core.tasks.results import merge_widget_views
 from ecoscope_workflows_core.tasks.results import gather_dashboard
-from ecoscope_workflows_ext_custom.tasks import gather_doc
-from ecoscope_workflows_core.tasks.results import gather_output_files
 
 from ..params import Params
 
@@ -77,10 +75,10 @@ def main(params: Params):
         "td_colormap": ["td"],
         "td_map_layer": ["td_colormap"],
         "combine_custom_map_layers": ["create_custom_map_layers", "td_map_layer"],
-        "td_ecomap": ["base_map_defs", "combine_custom_map_layers"],
+        "zoom_view_state": ["td_colormap"],
+        "zip_layers_view": ["combine_custom_map_layers", "zoom_view_state"],
+        "td_ecomap": ["base_map_defs", "zip_layers_view"],
         "td_ecomap_html_url": ["td_ecomap"],
-        "td_ecomap_png": ["td_ecomap_html_url"],
-        "td_word_fig": ["td_ecomap_png"],
         "td_map_widget": ["td_ecomap_html_url"],
         "td_grouped_map_widget": ["td_map_widget"],
         "lg_dashboard": [
@@ -89,8 +87,6 @@ def main(params: Params):
             "time_range",
             "groupers",
         ],
-        "collared_report": ["time_range"],
-        "output_files": ["collared_report", "td_ecomap_png", "td_ecomap_html_url"],
     }
 
     nodes = {
@@ -269,7 +265,7 @@ def main(params: Params):
             partial={
                 "layer_style": {
                     "fill_color_column": "percentile_colormap",
-                    "opacity": 0.65,
+                    "opacity": 0.45,
                 },
                 "legend": {
                     "label_column": "percentile",
@@ -298,6 +294,32 @@ def main(params: Params):
                 "argvalues": DependsOn("td_map_layer"),
             },
         ),
+        "zoom_view_state": Node(
+            async_task=create_view_state_from_gdf.validate()
+            .handle_errors(task_instance_id="zoom_view_state")
+            .set_executor("lithops"),
+            partial={
+                "pitch": 0,
+                "bearing": 0,
+            }
+            | (params_dict.get("zoom_view_state") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["gdf"],
+                "argvalues": DependsOn("td_colormap"),
+            },
+        ),
+        "zip_layers_view": Node(
+            async_task=zip_grouped_by_key.validate()
+            .handle_errors(task_instance_id="zip_layers_view")
+            .set_executor("lithops"),
+            partial={
+                "left": DependsOn("combine_custom_map_layers"),
+                "right": DependsOn("zoom_view_state"),
+            }
+            | (params_dict.get("zip_layers_view") or {}),
+            method="call",
+        ),
         "td_ecomap": Node(
             async_task=draw_ecomap.validate()
             .handle_errors(task_instance_id="td_ecomap")
@@ -305,7 +327,10 @@ def main(params: Params):
             partial={
                 "tile_layers": DependsOn("base_map_defs"),
                 "north_arrow_style": {"placement": "top-left"},
-                "legend_style": {"placement": "bottom-right"},
+                "legend_style": {
+                    "placement": "bottom-right",
+                    "title": "Home Range Metrics",
+                },
                 "static": False,
                 "title": None,
                 "max_zoom": 20,
@@ -313,8 +338,8 @@ def main(params: Params):
             | (params_dict.get("td_ecomap") or {}),
             method="mapvalues",
             kwargs={
-                "argnames": ["geo_layers"],
-                "argvalues": DependsOn("combine_custom_map_layers"),
+                "argnames": ["geo_layers", "view_state"],
+                "argvalues": DependsOn("zip_layers_view"),
             },
         ),
         "td_ecomap_html_url": Node(
@@ -331,36 +356,6 @@ def main(params: Params):
                 "argvalues": DependsOn("td_ecomap"),
             },
         ),
-        "td_ecomap_png": Node(
-            async_task=html_to_png.validate()
-            .handle_errors(task_instance_id="td_ecomap_png")
-            .set_executor("lithops"),
-            partial={
-                "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "config": {"wait_for_timeout": 50000},
-            }
-            | (params_dict.get("td_ecomap_png") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["html_path"],
-                "argvalues": DependsOn("td_ecomap_html_url"),
-            },
-        ),
-        "td_word_fig": Node(
-            async_task=create_doc_figure.validate()
-            .handle_errors(task_instance_id="td_word_fig")
-            .set_executor("lithops"),
-            partial={
-                "heading": "Collared Lions",
-                "level": 4,
-            }
-            | (params_dict.get("td_word_fig") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["filepath"],
-                "argvalues": DependsOn("td_ecomap_png"),
-            },
-        ),
         "td_map_widget": Node(
             async_task=create_map_widget_single_view.validate()
             .handle_errors(task_instance_id="td_map_widget")
@@ -372,7 +367,7 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "title": "Home Range Map",
+                "title": "Collared Lions Home Range Ecomap",
             }
             | (params_dict.get("td_map_widget") or {}),
             method="map",
@@ -402,36 +397,6 @@ def main(params: Params):
                 "groupers": DependsOn("groupers"),
             }
             | (params_dict.get("lg_dashboard") or {}),
-            method="call",
-        ),
-        "collared_report": Node(
-            async_task=gather_doc.validate()
-            .handle_errors(task_instance_id="collared_report")
-            .set_executor("lithops"),
-            partial={
-                "title": "Lion Guardians Collared Elephants Report",
-                "time_range": DependsOn("time_range"),
-                "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "filename": "report",
-                "doc_widgets": ["$ {{ workflow.td_word_fig.return }}"],
-            }
-            | (params_dict.get("collared_report") or {}),
-            method="call",
-        ),
-        "output_files": Node(
-            async_task=gather_output_files.validate()
-            .handle_errors(task_instance_id="output_files")
-            .set_executor("lithops"),
-            partial={
-                "files": DependsOnSequence(
-                    [
-                        DependsOn("collared_report"),
-                        DependsOn("td_ecomap_png"),
-                        DependsOn("td_ecomap_html_url"),
-                    ],
-                ),
-            }
-            | (params_dict.get("output_files") or {}),
             method="call",
         ),
     }

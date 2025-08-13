@@ -180,7 +180,8 @@ def create_map_layers(file_dict: Dict[str, AnyGeoDataFrame], style_config: MapSt
     for filename, gdf in cleaned_files.items():
         try:
             geom_analysis = check_shapefile_geometry_type(gdf)
-            primary_type = geom_analysis["primary_type"]
+            print(f"{filename} geometry type: {geom_analysis}")
+            primary_type = geom_analysis
             layer = create_layer_from_gdf(filename, gdf, style_config, primary_type)
 
             if layer is not None:
@@ -228,14 +229,15 @@ def create_view_state_from_gdf(gdf: AnyGeoDataFrame, pitch: int = 0, bearing: in
     elif max_span <= 0.1:
         zoom = 13
     elif max_span <= 1:
-        zoom = 10
+        zoom = 9
     elif max_span <= 5:
         zoom = 7
     elif max_span <= 20:
         zoom = 5
     else:
         zoom = 2
-
+    
+    print(f"View State zoom:{zoom}")
     return ViewState(longitude=center_lon, latitude=center_lat, zoom=zoom, pitch=pitch, bearing=bearing)
 
 

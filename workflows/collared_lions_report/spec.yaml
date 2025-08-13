@@ -100,7 +100,7 @@ workflow:
       df: ${{ workflow.traj_add_temporal_index.return }}
       groupers: ${{ workflow.groupers.return }}
   
-  #Load custom shapefiles:
+  #Load custom shapefiles
   - name : Load local map files
     id: load_local_shapefiles 
     task: load_map_files
@@ -149,7 +149,6 @@ workflow:
           argvalues: ${{ workflow.td.return }}
       
       # create polygon layer
-      # time density layer to be added on the ecomap
       - name: Create map layer from Time Density
         id: td_map_layer
         task: create_polygon_layer
@@ -160,7 +159,7 @@ workflow:
         partial:
           layer_style:
             fill_color_column: percentile_colormap
-            opacity: 0.650000
+            opacity: 0.45
           legend:
             label_column: percentile
             color_column: percentile_colormap
@@ -170,7 +169,7 @@ workflow:
           argnames: geodataframe
           argvalues: ${{ workflow.td_colormap.return }}
       
-        # Combine layers
+        # Combine layers ie static and grouped
       - name: Combine Map Layers
         id: combine_custom_map_layers
         task: combine_map_layers
@@ -180,27 +179,45 @@ workflow:
           argnames: grouped_layers
           argvalues: ${{ workflow.td_map_layer.return }}
 
+      # Dynamically zoom map to layer of interest
+      - name: zoom by view state
+        id: zoom_view_state
+        task: create_view_state_from_gdf
+        partial:
+          pitch: 0
+          bearing: 0
+        mapvalues:
+          argnames: gdf
+          argvalues: ${{ workflow.td_colormap.return }}
 
-      # draw time density ecomap
+        # Zip up tasks to pass them on the same mapvalues
+      - name: Zip layers and viewstate
+        id: zip_layers_view
+        task: zip_grouped_by_key
+        partial:
+          left:  ${{ workflow.combine_custom_map_layers.return }}
+          right: ${{ workflow.zoom_view_state.return }}
+
       - name: Draw Ecomap from Time Density
         id: td_ecomap
         task: draw_ecomap
         partial:
           tile_layers: ${{ workflow.base_map_defs.return }}
           north_arrow_style:
-            placement: top-left
-          legend_style:
-            placement: bottom-right
+            placement: top-left 
+          legend_style:  
+            placement: bottom-right 
+            title: Home Range Metrics
           static: false
           title: null
           max_zoom: 20
-
         mapvalues:
-          argnames: geo_layers
-          argvalues: 
-            - ${{ workflow.combine_custom_map_layers.return }}
+          argnames:
+            - geo_layers
+            - view_state
+          argvalues: ${{ workflow.zip_layers_view.return }}
 
-      #Persist ecomap to local directory    
+      #Persist ecomaps   
       - name: Persist Ecomap as Text
         id: td_ecomap_html_url
         task: persist_text
@@ -210,32 +227,6 @@ workflow:
           argnames: text
           argvalues: ${{ workflow.td_ecomap.return }}
 
-      #Convert persisted map to png 
-      - name: Convert Persisted Ecomap to png
-        id: td_ecomap_png
-        task: html_to_png
-        partial: 
-          #html_path : ${{ workflow.td_ecomap_html_url.return }}
-          output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-          config: 
-            wait_for_timeout: 50000
-        mapvalues:
-          argnames: html_path
-          argvalues: ${{ workflow.td_ecomap_html_url.return }}
-
-      
-      #Create doc figure
-      - name: Word Image figure
-        id: td_word_fig
-        task: create_doc_figure
-        partial:
-          heading: "Collared Lions"
-          level: 4
-        mapvalues:
-          argnames: filepath
-          argvalues: ${{ workflow.td_ecomap_png.return }}
-
-
       - name: Create Time Density Map Widget
         id: td_map_widget
         task: create_map_widget_single_view
@@ -243,7 +234,7 @@ workflow:
           conditions:
             - never
         partial:
-          title: Home Range Map
+          title: Collared Lions Home Range Ecomap
         map:
           argnames:
             - view
@@ -265,26 +256,5 @@ workflow:
         - ${{ workflow.td_grouped_map_widget.return }}
       time_range: ${{ workflow.time_range.return}}
       groupers: ${{ workflow.groupers.return }}
-
-  - name: Create Word Doc Report
-    id: collared_report
-    task: gather_doc
-    partial: 
-      title: "Lion Guardians Collared Elephants Report"
-      time_range: ${{ workflow.time_range.return }}
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      filename: "report"
-      doc_widgets:
-        - $ {{ workflow.td_word_fig.return }}
-      
-
-  - name: Gather output files
-    id: output_files
-    task: gather_output_files
-    partial:
-      files:
-        - ${{ workflow.collared_report.return }}
-        - ${{ workflow.td_ecomap_png.return }}
-        - ${{ workflow.td_ecomap_html_url.return }}
 
       

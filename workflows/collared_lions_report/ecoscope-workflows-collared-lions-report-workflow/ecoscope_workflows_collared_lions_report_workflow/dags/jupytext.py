@@ -33,16 +33,14 @@ from ecoscope_workflows_ext_ecoscope.tasks.results import create_polygon_layer
 from ecoscope_workflows_core.tasks.skip import any_is_empty_df
 from ecoscope_workflows_core.tasks.skip import any_dependency_skipped
 from ecoscope_workflows_ext_lion_guardians.tasks import combine_map_layers
+from ecoscope_workflows_ext_lion_guardians.tasks import create_view_state_from_gdf
+from ecoscope_workflows_ext_lion_guardians.tasks import zip_grouped_by_key
 from ecoscope_workflows_ext_ecoscope.tasks.results import draw_ecomap
 from ecoscope_workflows_core.tasks.io import persist_text
-from ecoscope_workflows_ext_custom.tasks import html_to_png
-from ecoscope_workflows_ext_custom.tasks import create_doc_figure
 from ecoscope_workflows_core.tasks.results import create_map_widget_single_view
 from ecoscope_workflows_core.tasks.skip import never
 from ecoscope_workflows_core.tasks.results import merge_widget_views
 from ecoscope_workflows_core.tasks.results import gather_dashboard
-from ecoscope_workflows_ext_custom.tasks import gather_doc
-from ecoscope_workflows_core.tasks.results import gather_output_files
 
 # %% [markdown]
 # ## Set Workflow Details
@@ -405,7 +403,7 @@ td_map_layer = (
         unpack_depth=1,
     )
     .partial(
-        layer_style={"fill_color_column": "percentile_colormap", "opacity": 0.65},
+        layer_style={"fill_color_column": "percentile_colormap", "opacity": 0.45},
         legend={"label_column": "percentile", "color_column": "percentile_colormap"},
         tooltip_columns=["percentile"],
         **td_map_layer_params,
@@ -434,14 +432,52 @@ combine_custom_map_layers = (
 
 
 # %% [markdown]
+# ## zoom by view state
+
+# %%
+# parameters
+
+zoom_view_state_params = dict()
+
+# %%
+# call the task
+
+
+zoom_view_state = (
+    create_view_state_from_gdf.handle_errors(task_instance_id="zoom_view_state")
+    .partial(pitch=0, bearing=0, **zoom_view_state_params)
+    .mapvalues(argnames=["gdf"], argvalues=td_colormap)
+)
+
+
+# %% [markdown]
+# ## Zip layers and viewstate
+
+# %%
+# parameters
+
+zip_layers_view_params = dict()
+
+# %%
+# call the task
+
+
+zip_layers_view = (
+    zip_grouped_by_key.handle_errors(task_instance_id="zip_layers_view")
+    .partial(
+        left=combine_custom_map_layers, right=zoom_view_state, **zip_layers_view_params
+    )
+    .call()
+)
+
+
+# %% [markdown]
 # ## Draw Ecomap from Time Density
 
 # %%
 # parameters
 
-td_ecomap_params = dict(
-    view_state=...,
-)
+td_ecomap_params = dict()
 
 # %%
 # call the task
@@ -452,13 +488,13 @@ td_ecomap = (
     .partial(
         tile_layers=base_map_defs,
         north_arrow_style={"placement": "top-left"},
-        legend_style={"placement": "bottom-right"},
+        legend_style={"placement": "bottom-right", "title": "Home Range Metrics"},
         static=False,
         title=None,
         max_zoom=20,
         **td_ecomap_params,
     )
-    .mapvalues(argnames=["geo_layers"], argvalues=combine_custom_map_layers)
+    .mapvalues(argnames=["geo_layers", "view_state"], argvalues=zip_layers_view)
 )
 
 
@@ -486,50 +522,6 @@ td_ecomap_html_url = (
 
 
 # %% [markdown]
-# ## Convert Persisted Ecomap to png
-
-# %%
-# parameters
-
-td_ecomap_png_params = dict()
-
-# %%
-# call the task
-
-
-td_ecomap_png = (
-    html_to_png.handle_errors(task_instance_id="td_ecomap_png")
-    .partial(
-        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        config={"wait_for_timeout": 50000},
-        **td_ecomap_png_params,
-    )
-    .mapvalues(argnames=["html_path"], argvalues=td_ecomap_html_url)
-)
-
-
-# %% [markdown]
-# ## Word Image figure
-
-# %%
-# parameters
-
-td_word_fig_params = dict(
-    caption=...,
-)
-
-# %%
-# call the task
-
-
-td_word_fig = (
-    create_doc_figure.handle_errors(task_instance_id="td_word_fig")
-    .partial(heading="Collared Lions", level=4, **td_word_fig_params)
-    .mapvalues(argnames=["filepath"], argvalues=td_ecomap_png)
-)
-
-
-# %% [markdown]
 # ## Create Time Density Map Widget
 
 # %%
@@ -549,7 +541,7 @@ td_map_widget = (
         ],
         unpack_depth=1,
     )
-    .partial(title="Home Range Map", **td_map_widget_params)
+    .partial(title="Collared Lions Home Range Ecomap", **td_map_widget_params)
     .map(argnames=["view", "data"], argvalues=td_ecomap_html_url)
 )
 
@@ -593,56 +585,6 @@ lg_dashboard = (
         time_range=time_range,
         groupers=groupers,
         **lg_dashboard_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Create Word Doc Report
-
-# %%
-# parameters
-
-collared_report_params = dict(
-    logo_path=...,
-)
-
-# %%
-# call the task
-
-
-collared_report = (
-    gather_doc.handle_errors(task_instance_id="collared_report")
-    .partial(
-        title="Lion Guardians Collared Elephants Report",
-        time_range=time_range,
-        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        filename="report",
-        doc_widgets=["$ {{ workflow.td_word_fig.return }}"],
-        **collared_report_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Gather output files
-
-# %%
-# parameters
-
-output_files_params = dict()
-
-# %%
-# call the task
-
-
-output_files = (
-    gather_output_files.handle_errors(task_instance_id="output_files")
-    .partial(
-        files=[collared_report, td_ecomap_png, td_ecomap_html_url],
-        **output_files_params,
     )
     .call()
 )

@@ -14,9 +14,13 @@ from ._map_utils import (
     create_layer_from_gdf,
 )
 
-
+from ._common_utils import html_to_img
+from ._inspect import view_data
+from ._zip import zip_grouped_by_key
 __all__ = [
+    "view_data",
     "load_landdx_aoi",
+    "zip_grouped_by_key",
     "download_land_dx",
     "create_map_layers",
     "clean_geodataframe",
@@ -29,4 +33,5 @@ __all__ = [
     "create_map_layers_from_annotated_dict",
     "load_map_files",
     "create_layer_from_gdf",
+    "html_to_img"
 ]

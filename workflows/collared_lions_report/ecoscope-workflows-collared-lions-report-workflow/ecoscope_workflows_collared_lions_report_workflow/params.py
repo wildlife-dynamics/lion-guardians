@@ -208,24 +208,6 @@ class SubjectObs(BaseModel):
     )
 
 
-class TdWordFig(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    caption: Optional[str] = Field(
-        None, description="The figure caption", title="Caption"
-    )
-
-
-class CollaredReport(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    logo_path: Optional[str] = Field(
-        None, description="The logo file path", title="Logo Path"
-    )
-
-
 class TemporalGrouper(RootModel[str]):
     root: str = Field(..., title="Time")
 
@@ -407,7 +389,3 @@ class Params(BaseModel):
         None, title="Create Map Layers"
     )
     td: Optional[Td] = Field(None, title="")
-    td_word_fig: Optional[TdWordFig] = Field(None, title="Word Image figure")
-    collared_report: Optional[CollaredReport] = Field(
-        None, title="Create Word Doc Report"
-    )

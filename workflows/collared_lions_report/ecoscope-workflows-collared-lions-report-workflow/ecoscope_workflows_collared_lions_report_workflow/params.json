@@ -389,41 +389,6 @@
       "required": [],
       "type": "object",
       "title": ""
-    },
-    "td_word_fig": {
-      "additionalProperties": false,
-      "properties": {
-        "caption": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Caption",
-          "description": "The figure caption"
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Word Image figure"
-    },
-    "collared_report": {
-      "additionalProperties": false,
-      "properties": {
-        "logo_path": {
-          "default": null,
-          "title": "Logo Path",
-          "type": "string",
-          "description": "The logo file path"
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Create Word Doc Report"
     }
   },
   "$defs": {
@@ -659,9 +624,7 @@
       "subject_traj",
       "load_local_shapefiles",
       "create_custom_map_layers",
-      "td",
-      "td_word_fig",
-      "collared_report"
+      "td"
     ]
   },
   "additionalProperties": false
