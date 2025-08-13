@@ -61,10 +61,16 @@ create_custom_map_layers:
         get_fill_color: [189, 183, 107]
         get_line_color: [0, 0, 0]
         opacity: 0.1
-        get_line_width: 1
+        get_line_width: 1.2
         stroked: true
 
+      national_parks_and_reserves:
+        get_fill_color: [77, 102, 0]
+        get_line_color: [0, 0, 0]
+        opacity: 0.15
+        get_line_width: 1
+        stroked: true
     legend:
-      labels: ["Group Ranch Boundaries"]
-      colors: ["#bdb76b"]
+      labels: ["Group Ranch Boundaries","National Parks and Reserves"]
+      colors: ["#bdb76b","#4d6600"]
       
