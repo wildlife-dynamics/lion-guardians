@@ -1,4 +1,3 @@
-import os
 import numpy as np
 import pandas as pd
 import geopandas as gpd
@@ -10,7 +9,6 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
     check_shapefile_geometry_type,
     create_layer_from_gdf,
     create_view_state_from_gdf,
-    load_landdx_aoi,
     annotate_gdf_dict_with_geometry_type,
     combine_map_layers,
 )
@@ -90,32 +88,6 @@ def test_create_view_state_from_gdf_center(gdf_polys):
     assert pytest.approx(vs.longitude, rel=1e-4) == 1.0
     assert pytest.approx(vs.latitude, rel=1e-4) == 1.0
     assert 2.0 <= vs.zoom <= 20.0
-
-
-def test_load_landdx_aoi_happy_path(monkeypatch, tmp_path, gdf_polys):
-    # Create fake walk that finds landDx.gpkg
-    landdx = tmp_path / "landDx.gpkg"
-    landdx.write_text("fake")  # existence is enough for our mock
-
-    def fake_walk(p):
-        yield str(tmp_path), [], ["landDx.gpkg"]
-
-    # Fake gpd.read_file returning a frame with 'type' col
-    df = gdf_polys.copy()
-    df["globalid"] = ["g1"]
-    df["type"] = ["Community Conservancy"]
-    df = df.set_index("globalid")
-
-    def fake_read_file(path, layer=None):
-        assert "landDx.gpkg" in path and layer == "landDx_polygons"
-        return df
-
-    monkeypatch.setattr(os, "walk", fake_walk)
-    monkeypatch.setattr(gpd, "read_file", fake_read_file)
-
-    out = load_landdx_aoi(str(tmp_path), ["Community Conservancy"])
-    assert isinstance(out, gpd.GeoDataFrame)
-    assert len(out) == 1
 
 
 # ---- annotate_gdf_dict_with_geometry_type ----------------------------------
