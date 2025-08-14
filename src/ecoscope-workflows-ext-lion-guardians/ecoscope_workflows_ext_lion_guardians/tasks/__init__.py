@@ -17,6 +17,7 @@ from ._map_utils import (
 from ._common_utils import html_to_img
 from ._inspect import view_data
 from ._zip import zip_grouped_by_key
+from ._example import add_one_thousand
 
 __all__ = [
     "view_data",
@@ -35,4 +36,5 @@ __all__ = [
     "load_map_files",
     "create_layer_from_gdf",
     "html_to_img",
+    "add_one_thousand",
 ]
