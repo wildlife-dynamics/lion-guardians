@@ -1,53 +1,178 @@
-all-grouper:
-  name: All Grouper
-  description: A demonstration of a workflow with no grouping.
+collared-lions-all-grouper:
+  name: Collared Lions – All Grouper
+  description: Test case for Collared Lions Workflow with no grouping applied.
   params:
     workflow_details:
-      name: "Example Workflow"
-      description: "An example workflow for testing purposes."
+      name: "Collared Lions Workflow"
+      description: "Analyzes the movement patterns and home ranges of GPS-collared lions over a specified time period."
     time_range:
-      since: "2015-01-01T00:00:00Z"
-      until: "2015-02-28T23:59:59Z"
+      since: "2024-01-01T00:00:00Z"
+      until: "2025-07-21T23:59:59Z"
+    er_client_name:
+      data_source:
+        name: "lg"
+    subject_obs:
+      subject_group_name: "Collared Lions"
+    subject_traj:
+      trajectory_segment_filter:
+        min_length_meters: 0.001
+        max_length_meters: 10000.0
+        max_time_secs: 21600.0
+        min_time_secs: 1.0
+        max_speed_kmhr: 10.0
+        min_speed_kmhr: 0.01
     groupers:
       groupers: []
-    calculator:
-      a: 1
-      b: 1
-      operation: "add"
+    base_map_defs:
+      base_maps:
+        - url: "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.7
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.2
+          max_zoom: 9
+          min_zoom: null
+    td:
+      auto_scale_or_custom_cell_size:
+        auto_scale_or_custom: "Customize"
+        grid_cell_size: 500
+    load_local_shapefiles:
+      config:
+        path: "/home/ttemu/ecoscope-workflows/shp_files"
+    create_custom_map_layers:
+      style_config:
+        styles:
+          GroupRanchBoundary:
+            get_fill_color: [189, 183, 107]
+            get_line_color: [0, 0, 0]
+            opacity: 0.1
+            get_line_width: 1.2
+            stroked: true
+          national_parks_and_reserves:
+            get_fill_color: [77, 102, 0]
+            get_line_color: [0, 0, 0]
+            opacity: 0.15
+            get_line_width: 1
+            stroked: true
+        legend:
+          labels: ["Group Ranch Boundaries","National Parks and Reserves"]
+          colors: ["#bdb76b","#4d6600"]
 
-month-grouper:
-  name: Month Grouper
-  description: A demonstration of a workflow with monthly grouping.
+collared-lions-month-grouper:
+  name: Collared Lions – Month Grouper
+  description: Test case for Collared Lions Workflow grouped by month.
   params:
     workflow_details:
-      name: "Example Workflow"
-      description: "An example workflow for testing purposes."
+      name: "Collared Lions Workflow"
+      description: "Analyzes the movement patterns and home ranges of GPS-collared lions over a specified time period."
     time_range:
-      since: "2015-01-01T00:00:00Z"
-      until: "2015-02-28T23:59:59Z"
+      since: "2024-01-01T00:00:00Z"
+      until: "2025-07-21T23:59:59Z"
+    er_client_name:
+      data_source:
+        name: "lg"
+    subject_obs:
+      subject_group_name: "Collared Lions"
+    subject_traj:
+      trajectory_segment_filter:
+        min_length_meters: 0.001
+        max_length_meters: 10000.0
+        max_time_secs: 21600.0
+        min_time_secs: 1.0
+        max_speed_kmhr: 10.0
+        min_speed_kmhr: 0.01
     groupers:
       groupers:
         - "%B"
-    calculator:
-      a: 1
-      b: 1
-      operation: "add"
+    base_map_defs:
+      base_maps:
+        - url: "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.7
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.2
+          max_zoom: 9
+          min_zoom: null
+    td:
+      auto_scale_or_custom_cell_size:
+        auto_scale_or_custom: "Customize"
+        grid_cell_size: 500
+    load_local_shapefiles:
+      config:
+        path: "/home/ttemu/ecoscope-workflows/shp_files"
+    create_custom_map_layers:
+      style_config:
+        styles:
+          GroupRanchBoundary:
+            get_fill_color: [189, 183, 107]
+            get_line_color: [0, 0, 0]
+            opacity: 0.1
+            get_line_width: 1.2
+            stroked: true
+          national_parks_and_reserves:
+            get_fill_color: [77, 102, 0]
+            get_line_color: [0, 0, 0]
+            opacity: 0.15
+            get_line_width: 1
+            stroked: true
+        legend:
+          labels: ["Group Ranch Boundaries","National Parks and Reserves"]
+          colors: ["#bdb76b","#4d6600"]
 
-
-value-grouper:
-  name: Value Grouper
-  description: A demonstration of a workflow grouped by a value.
+collared-lions-value-grouper:
+  name: Collared Lions – Value Grouper
+  description: Test case for Collared Lions Workflow grouped by a custom value index.
   params:
     workflow_details:
-      name: "Example Workflow"
-      description: "An example workflow for testing purposes."
+      name: "Collared Lions Workflow"
+      description: "Analyzes the movement patterns and home ranges of GPS-collared lions over a specified time period."
+    time_range:
+      since: "2024-01-01T00:00:00Z"
+      until: "2025-07-21T23:59:59Z"
+    er_client_name:
+      data_source:
+        name: "lg"
+    subject_obs:
+      subject_group_name: "Collared Lions"
+    subject_traj:
+      trajectory_segment_filter:
+        min_length_meters: 0.001
+        max_length_meters: 10000.0
+        max_time_secs: 21600.0
+        min_time_secs: 1.0
+        max_speed_kmhr: 10.0
+        min_speed_kmhr: 0.01
     groupers:
       groupers:
-        - index_name: "test"
-    time_range:
-      since: "2015-01-01T00:00:00Z"
-      until: "2015-02-28T23:59:59Z"
-    calculator:
-      a: 1
-      b: 1
-      operation: "add"
+        - groupby_col
+    base_map_defs:
+      base_maps:
+        - url: "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.7
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.2
+          max_zoom: 9
+          min_zoom: null
+    td:
+      auto_scale_or_custom_cell_size:
+        auto_scale_or_custom: "Customize"
+        grid_cell_size: 500
+    load_local_shapefiles:
+      config:
+        path: "/home/ttemu/ecoscope-workflows/shp_files"
+    create_custom_map_layers:
+      style_config:
+        styles:
+          GroupRanchBoundary:
+            get_fill_color: [189, 183, 107]
+            get_line_color: [0, 0, 0]
+            opacity: 0.1
+            get_line_width: 1.2
+            stroked: true
+          national_parks_and_reserves:
+            get_fill_color: [77, 102, 0]
+            get_line_color: [0, 0, 0]
+            opacity: 0.15
+            get_line_width: 1
+            stroked: true
+        legend:
+          labels: ["Group Ranch Boundaries","National Parks and Reserves"]
+          colors: ["#bdb76b","#4d6600"]
