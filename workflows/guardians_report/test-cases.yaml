@@ -1,0 +1,166 @@
+guardians-all-grouper:
+  name: Guardians – All Grouper
+  description: Test case with no grouping applied.
+  params:
+    workflow_details:
+      name: "Guardians Movement Workflow"
+      description: "Workflow intended to monitor guardians movement over time."
+    time_range:
+      since: "2025-01-01T00:00:00Z"
+      until: "2025-08-01T23:59:59Z"
+    er_client_name:
+      data_source:
+        name: "lg"
+    subject_group_observations:
+      subject_group_name: "Guardians"
+    subject_trajectory:
+      trajectory_segment_filter:
+        min_length_meters: 0.001
+        max_length_meters: 3000.0
+        max_time_secs: 1800.0
+        min_time_secs: 3.0
+        max_speed_kmhr: 7.5
+        min_speed_kmhr: 0.3
+    groupers:
+      groupers: []
+    base_map_defs:
+      base_maps:
+        - url: "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.7
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.2
+          max_zoom: 8.5
+          min_zoom: null
+    load_local_shapefiles:
+      config:
+        path: "/home/ttemu/ecoscope-workflows/shp_files"
+    create_custom_map_layers:
+      style_config:
+        styles:
+          GroupRanchBoundary:
+            get_fill_color: [189, 183, 107]
+            get_line_color: [0, 0, 0]
+            opacity: 0.1
+            get_line_width: 1.2
+            stroked: true
+          national_parks_and_reserves:
+            get_fill_color: [77, 102, 0]
+            get_line_color: [0, 0, 0]
+            opacity: 0.15
+            get_line_width: 1
+            stroked: true
+        legend:
+          labels: ["Group Ranch Boundaries", "National Parks and Reserves"]
+          colors: ["#bdb76b", "#4d6600"]
+
+guardians-month-grouper:
+  name: Guardians – Month Grouper
+  description: Test case grouped by month (%B).
+  params:
+    workflow_details:
+      name: "Guardians Movement Workflow"
+      description: "Workflow intended to monitor guardians movement over time."
+    time_range:
+      since: "2025-01-01T00:00:00Z"
+      until: "2025-08-01T23:59:59Z"
+    er_client_name:
+      data_source:
+        name: "lg"
+    subject_group_observations:
+      subject_group_name: "Guardians"
+    subject_trajectory:
+      trajectory_segment_filter:
+        min_length_meters: 0.001
+        max_length_meters: 3000.0
+        max_time_secs: 1800.0
+        min_time_secs: 3.0
+        max_speed_kmhr: 7.5
+        min_speed_kmhr: 0.3
+    groupers:
+      groupers:
+        - "%B"
+    base_map_defs:
+      base_maps:
+        - url: "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.7
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.2
+          max_zoom: 8.5
+          min_zoom: null
+    load_local_shapefiles:
+      config:
+        path: "/home/ttemu/ecoscope-workflows/shp_files"
+    create_custom_map_layers:
+      style_config:
+        styles:
+          GroupRanchBoundary:
+            get_fill_color: [189, 183, 107]
+            get_line_color: [0, 0, 0]
+            opacity: 0.1
+            get_line_width: 1.2
+            stroked: true
+          national_parks_and_reserves:
+            get_fill_color: [77, 102, 0]
+            get_line_color: [0, 0, 0]
+            opacity: 0.15
+            get_line_width: 1
+            stroked: true
+        legend:
+          labels: ["Group Ranch Boundaries", "National Parks and Reserves"]
+          colors: ["#bdb76b", "#4d6600"]
+
+guardians-subtype-grouper:
+  name: Guardians – Subject Subtype Grouper
+  description: Test case grouped by subject subtype.
+  params:
+    workflow_details:
+      name: "Guardians Movement Workflow"
+      description: "Workflow intended to monitor guardians movement over time."
+    time_range:
+      since: "2025-01-01T00:00:00Z"
+      until: "2025-08-01T23:59:59Z"
+    er_client_name:
+      data_source:
+        name: "lg"
+    subject_group_observations:
+      subject_group_name: "Guardians"
+    subject_trajectory:
+      trajectory_segment_filter:
+        min_length_meters: 0.001
+        max_length_meters: 3000.0
+        max_time_secs: 1800.0
+        min_time_secs: 3.0
+        max_speed_kmhr: 7.5
+        min_speed_kmhr: 0.3
+    groupers:
+      groupers:
+        - extra__subject_subtype
+    base_map_defs:
+      base_maps:
+        - url: "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.7
+        - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
+          opacity: 0.2
+          max_zoom: 8.5
+          min_zoom: null
+    load_local_shapefiles:
+      config:
+        path: "/home/ttemu/ecoscope-workflows/shp_files"
+    create_custom_map_layers:
+      style_config:
+        styles:
+          GroupRanchBoundary:
+            get_fill_color: [189, 183, 107]
+            get_line_color: [0, 0, 0]
+            opacity: 0.1
+            get_line_width: 1.2
+            stroked: true
+          national_parks_and_reserves:
+            get_fill_color: [77, 102, 0]
+            get_line_color: [0, 0, 0]
+            opacity: 0.15
+            get_line_width: 1
+            stroked: true
+        legend:
+          labels: ["Group Ranch Boundaries", "National Parks and Reserves"]
+          colors: ["#bdb76b", "#4d6600"]
