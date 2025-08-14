@@ -17,6 +17,7 @@ from ._map_utils import (
 from ._common_utils import html_to_img
 from ._inspect import view_data
 from ._zip import zip_grouped_by_key
+
 __all__ = [
     "view_data",
     "load_landdx_aoi",
@@ -33,5 +34,5 @@ __all__ = [
     "create_map_layers_from_annotated_dict",
     "load_map_files",
     "create_layer_from_gdf",
-    "html_to_img"
+    "html_to_img",
 ]

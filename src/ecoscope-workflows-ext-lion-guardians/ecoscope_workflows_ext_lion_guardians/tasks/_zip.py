@@ -1,9 +1,10 @@
 from typing import Sequence, TypeVar
 from ecoscope_workflows_core.decorators import task
 
-K = TypeVar("K")   # no Hashable bound
+K = TypeVar("K")  # no Hashable bound
 L = TypeVar("L")
 R = TypeVar("R")
+
 
 @task
 def zip_grouped_by_key(

@@ -196,11 +196,14 @@ def create_map_layers(file_dict: Dict[str, AnyGeoDataFrame], style_config: MapSt
 
 
 def _zoom_from_bbox(
-    minx: float, miny: float, maxx: float, maxy: float,
+    minx: float,
+    miny: float,
+    maxx: float,
+    maxy: float,
     viewport_width_px: int = 1000,
     viewport_height_px: int = 700,
-    padding_frac: float = 0.12,   # 12% padding around the bbox
-    tile_size: int = 512,         # 256 for classic, 512 for Mapbox/Deck default
+    padding_frac: float = 0.12,  # 12% padding around the bbox
+    tile_size: int = 512,  # 256 for classic, 512 for Mapbox/Deck default
     min_zoom: float = 2.0,
     max_zoom: float = 20.0,
 ) -> float:
@@ -225,11 +228,11 @@ def _zoom_from_bbox(
     lat_m_per_deg = 110_574.0
     lon_m_per_deg = 111_320.0 * math.cos(math.radians(center_lat))
 
-    width_m  = lon_span * abs(lon_m_per_deg)
+    width_m = lon_span * abs(lon_m_per_deg)
     height_m = lat_span * lat_m_per_deg
 
     # Required ground resolution (m/px) to fit bbox in inner viewport
-    req_res_x = width_m  / inner_w
+    req_res_x = width_m / inner_w
     req_res_y = height_m / inner_h
     req_res = max(req_res_x, req_res_y)  # fit both dimensions
 
@@ -263,10 +266,13 @@ def create_view_state_from_gdf(gdf: AnyGeoDataFrame, pitch: int = 0, bearing: in
     center_lat = (miny + maxy) / 2.0
 
     zoom = _zoom_from_bbox(
-        minx, miny, maxx, maxy,
-        viewport_width_px=1000,   # tweak if your map container differs
+        minx,
+        miny,
+        maxx,
+        maxy,
+        viewport_width_px=1000,  # tweak if your map container differs
         viewport_height_px=700,
-        padding_frac=0.12,        # increase to zoom out slightly; decrease to zoom in
+        padding_frac=0.12,  # increase to zoom out slightly; decrease to zoom in
         tile_size=512,
         min_zoom=2.0,
         max_zoom=20.0,
