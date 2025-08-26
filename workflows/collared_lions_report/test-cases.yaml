@@ -1,4 +1,4 @@
-collared-lions-all-grouper:
+all-grouper:
   name: Collared Lions – All Grouper
   description: Test case for Collared Lions Workflow with no grouping applied.
   params:
@@ -57,7 +57,7 @@ collared-lions-all-grouper:
           labels: ["Group Ranch Boundaries","National Parks and Reserves"]
           colors: ["#bdb76b","#4d6600"]
 
-collared-lions-month-grouper:
+month-grouper:
   name: Collared Lions – Month Grouper
   description: Test case for Collared Lions Workflow grouped by month.
   params:
@@ -117,7 +117,7 @@ collared-lions-month-grouper:
           labels: ["Group Ranch Boundaries","National Parks and Reserves"]
           colors: ["#bdb76b","#4d6600"]
 
-collared-lions-value-grouper:
+value-grouper:
   name: Collared Lions – Value Grouper
   description: Test case for Collared Lions Workflow grouped by a custom value index.
   params:

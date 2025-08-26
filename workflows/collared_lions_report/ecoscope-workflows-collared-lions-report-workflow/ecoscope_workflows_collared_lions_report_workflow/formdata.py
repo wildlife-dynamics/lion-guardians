@@ -208,6 +208,24 @@ class SubjectObs(BaseModel):
     )
 
 
+class CollaredSubjectDocWidget(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    caption: Optional[str] = Field(
+        None, description="The figure caption", title="Caption"
+    )
+
+
+class CreateReport(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    logo_path: Optional[str] = Field(
+        None, description="The logo file path", title="Logo Path"
+    )
+
+
 class TemporalGrouper(RootModel[str]):
     root: str = Field(..., title="Time")
 
@@ -397,3 +415,7 @@ class FormData(BaseModel):
         alias="Time Density Map",
         description="These settings show a grid-based heatmap showing where subjects spent the most time.",
     )
+    collared_subject_doc_widget: Optional[CollaredSubjectDocWidget] = Field(
+        None, title="Collared subject doc figure"
+    )
+    create_report: Optional[CreateReport] = Field(None, title="Create Report")

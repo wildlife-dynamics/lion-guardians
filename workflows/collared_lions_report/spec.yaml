@@ -5,7 +5,7 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
-    version: "0.0.2.*"
+    version: "0.0.3.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-lion-guardians
@@ -257,4 +257,37 @@ workflow:
       time_range: ${{ workflow.time_range.return}}
       groupers: ${{ workflow.groupers.return }}
 
-      
+  # convert html to png 
+  - name: Convert collared subject html to png
+    id: collared_html_png 
+    task: html_to_png
+    partial:
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      config:
+        wait_for_timeout: 50000
+    mapvalues:
+      argnames: html_path
+      argvalues: ${{ workflow.td_ecomap_html_url.return }}
+  
+  # create doc figure
+  - name: Collared subject doc figure
+    id: collared_subject_doc_widget
+    task: create_doc_figure
+    partial:
+      heading: "Home Range Ecomap"
+      level: 3
+    mapvalues:
+      argnames: filepath
+      argvalues: ${{ workflow.collared_html_png.return }}
+  
+  - name: Create Report 
+    id: create_report
+    task: gather_doc
+    partial:
+      title: "Report"
+      time_range: ${{ workflow.time_range.return }}
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename: "collared_report"
+    mapvalues:
+      argnames: doc_widgets
+      argvalues: ${{ workflow.collared_subject_doc_widget.return }}

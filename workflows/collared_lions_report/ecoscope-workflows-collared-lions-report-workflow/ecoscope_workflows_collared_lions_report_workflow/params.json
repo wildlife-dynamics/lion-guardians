@@ -389,6 +389,41 @@
       "required": [],
       "type": "object",
       "title": ""
+    },
+    "collared_subject_doc_widget": {
+      "additionalProperties": false,
+      "properties": {
+        "caption": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Caption",
+          "description": "The figure caption"
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Collared subject doc figure"
+    },
+    "create_report": {
+      "additionalProperties": false,
+      "properties": {
+        "logo_path": {
+          "default": null,
+          "title": "Logo Path",
+          "type": "string",
+          "description": "The logo file path"
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Create Report"
     }
   },
   "$defs": {
@@ -624,7 +659,9 @@
       "subject_traj",
       "load_local_shapefiles",
       "create_custom_map_layers",
-      "td"
+      "td",
+      "collared_subject_doc_widget",
+      "create_report"
     ]
   },
   "additionalProperties": false

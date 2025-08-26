@@ -5,8 +5,8 @@ workflow_details:
 
 # Desired time-range
 time_range:
-  since: "2024-01-01T00:00:00Z"
-  until: "2025-07-21T23:59:59Z"
+  since: "2025-01-01T00:00:00Z"
+  until: "2025-05-31T23:59:59Z"
 
 # Connect to EarthRanger
 er_client_name:
@@ -52,7 +52,7 @@ td:
 # Local shapefiles to load 
 load_local_shapefiles:
   config:
-    path: "/home/ttemu/ecoscope-workflows/shp_files"
+    path: "/home/ttemu/ecoscope-workflows/shp_files/shape-files/lion-guardians"
 
 create_custom_map_layers:
   style_config:

@@ -32,6 +32,9 @@ from ecoscope_workflows_core.tasks.results import create_map_widget_single_view
 from ecoscope_workflows_core.tasks.skip import never
 from ecoscope_workflows_core.tasks.results import merge_widget_views
 from ecoscope_workflows_core.tasks.results import gather_dashboard
+from ecoscope_workflows_ext_custom.tasks import html_to_png
+from ecoscope_workflows_ext_custom.tasks import create_doc_figure
+from ecoscope_workflows_ext_custom.tasks import gather_doc
 
 from ..params import Params
 
@@ -301,4 +304,39 @@ def main(params: Params):
         .call()
     )
 
-    return lg_dashboard
+    collared_html_png = (
+        html_to_png.validate()
+        .handle_errors(task_instance_id="collared_html_png")
+        .partial(
+            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            config={"wait_for_timeout": 50000},
+            **(params_dict.get("collared_html_png") or {}),
+        )
+        .mapvalues(argnames=["html_path"], argvalues=td_ecomap_html_url)
+    )
+
+    collared_subject_doc_widget = (
+        create_doc_figure.validate()
+        .handle_errors(task_instance_id="collared_subject_doc_widget")
+        .partial(
+            heading="Home Range Ecomap",
+            level=3,
+            **(params_dict.get("collared_subject_doc_widget") or {}),
+        )
+        .mapvalues(argnames=["filepath"], argvalues=collared_html_png)
+    )
+
+    create_report = (
+        gather_doc.validate()
+        .handle_errors(task_instance_id="create_report")
+        .partial(
+            title="Report",
+            time_range=time_range,
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename="collared_report",
+            **(params_dict.get("create_report") or {}),
+        )
+        .mapvalues(argnames=["doc_widgets"], argvalues=collared_subject_doc_widget)
+    )
+
+    return create_report

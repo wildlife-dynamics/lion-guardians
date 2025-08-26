@@ -34,6 +34,9 @@ from ecoscope_workflows_core.tasks.results import create_map_widget_single_view
 from ecoscope_workflows_core.tasks.skip import never
 from ecoscope_workflows_core.tasks.results import merge_widget_views
 from ecoscope_workflows_core.tasks.results import gather_dashboard
+from ecoscope_workflows_ext_custom.tasks import html_to_png
+from ecoscope_workflows_ext_custom.tasks import create_doc_figure
+from ecoscope_workflows_ext_custom.tasks import gather_doc
 
 from ..params import Params
 
@@ -70,6 +73,9 @@ def main(params: Params):
             "time_range",
             "groupers",
         ],
+        "collared_html_png": ["td_ecomap_html_url"],
+        "collared_subject_doc_widget": ["collared_html_png"],
+        "create_report": ["time_range", "collared_subject_doc_widget"],
     }
 
     nodes = {
@@ -381,6 +387,53 @@ def main(params: Params):
             }
             | (params_dict.get("lg_dashboard") or {}),
             method="call",
+        ),
+        "collared_html_png": Node(
+            async_task=html_to_png.validate()
+            .handle_errors(task_instance_id="collared_html_png")
+            .set_executor("lithops"),
+            partial={
+                "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "config": {"wait_for_timeout": 50000},
+            }
+            | (params_dict.get("collared_html_png") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["html_path"],
+                "argvalues": DependsOn("td_ecomap_html_url"),
+            },
+        ),
+        "collared_subject_doc_widget": Node(
+            async_task=create_doc_figure.validate()
+            .handle_errors(task_instance_id="collared_subject_doc_widget")
+            .set_executor("lithops"),
+            partial={
+                "heading": "Home Range Ecomap",
+                "level": 3,
+            }
+            | (params_dict.get("collared_subject_doc_widget") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["filepath"],
+                "argvalues": DependsOn("collared_html_png"),
+            },
+        ),
+        "create_report": Node(
+            async_task=gather_doc.validate()
+            .handle_errors(task_instance_id="create_report")
+            .set_executor("lithops"),
+            partial={
+                "title": "Report",
+                "time_range": DependsOn("time_range"),
+                "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "filename": "collared_report",
+            }
+            | (params_dict.get("create_report") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["doc_widgets"],
+                "argvalues": DependsOn("collared_subject_doc_widget"),
+            },
         ),
     }
     graph = Graph(dependencies=dependencies, nodes=nodes)
