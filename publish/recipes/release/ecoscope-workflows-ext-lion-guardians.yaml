@@ -29,8 +29,6 @@ requirements:
     - ecoscope-workflows-ext-custom
     - geopandas
     - shapely
-    - python-docx
-    - playwright
 
 about:
   license: BSD-3-Clause

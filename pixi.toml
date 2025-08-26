@@ -20,7 +20,9 @@ hatch = "*"
 # Include this if you add new tasks and the package has been built
 ecoscope-workflows-ext-lion-guardians = "*"
 ecoscope-workflows-ext-custom = "0.0.3.*"
-ecoscope-workflows-core = "0.6.0.*"
+ecoscope-workflows-core = "0.7.2.*"
+ecoscope-workflows-ext-ecoscope = "0.7.2.*"
+
 
 # Here we don't specify the channel on purpose, as we want to use the local channel if it exists,
 # otherwise we fall back to the remote channel.
