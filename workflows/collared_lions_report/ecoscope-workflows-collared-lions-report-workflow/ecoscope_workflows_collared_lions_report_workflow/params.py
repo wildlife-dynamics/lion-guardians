@@ -195,7 +195,7 @@ class BaseMapDefs(BaseModel):
             },
         ],
         description="Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
-        title="Set Map Base Layers",
+        title=" ",
     )
 
 
@@ -203,9 +203,7 @@ class SubjectObs(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    subject_group_name: str = Field(
-        ..., description="Name of EarthRanger Subject", title="Subject Group Name"
-    )
+    subject_group_name: str = Field(..., title="Subject Group Name")
 
 
 class CollaredSubjectDocWidget(BaseModel):
@@ -242,19 +240,19 @@ class TrajectorySegmentFilter(BaseModel):
     min_length_meters: Optional[confloat(ge=0.001)] = Field(
         0.001, title="Minimum Segment Length (Meters)"
     )
-    max_length_meters: Optional[float] = Field(
+    max_length_meters: Optional[confloat(gt=0.001)] = Field(
         100000, title="Maximum Segment Length (Meters)"
     )
     min_time_secs: Optional[confloat(ge=1.0)] = Field(
         1, title="Minimum Segment Duration (Seconds)"
     )
-    max_time_secs: Optional[float] = Field(
+    max_time_secs: Optional[confloat(gt=1.0)] = Field(
         172800, title="Maximum Segment Duration (Seconds)"
     )
     min_speed_kmhr: Optional[confloat(gt=0.001)] = Field(
         0.01, title="Minimum Segment Speed (Kilometers per Hour)"
     )
-    max_speed_kmhr: Optional[float] = Field(
+    max_speed_kmhr: Optional[confloat(gt=0.001)] = Field(
         500, title="Maximum Segment Speed (Kilometers per Hour)"
     )
 
@@ -282,9 +280,7 @@ class AutoScaleOrCustom(str, Enum):
 
 class AutoScaleGridCellSize(BaseModel):
     auto_scale_or_custom: Literal["Auto-scale"] = Field(
-        "Auto-scale",
-        description="Define the resolution of the raster grid (in meters per pixel). Auto-scale for an optimized grid based on the data, or Customize to set a specific resolution.",
-        title=" ",
+        "Auto-scale", title="Grid Cell Size"
     )
 
 
@@ -294,12 +290,12 @@ class AutoScaleOrCustom1(str, Enum):
 
 class CustomGridCellSize(BaseModel):
     auto_scale_or_custom: Literal["Customize"] = Field(
-        "Customize",
-        description="Define the resolution of the raster grid (in meters per pixel). Auto-scale for an optimized grid based on the data, or Customize to set a specific resolution.",
-        title=" ",
+        "Customize", title="Grid Cell Size"
     )
     grid_cell_size: Optional[confloat(lt=10000.0, gt=0.0)] = Field(
-        5000, description="Custom Raster Pixel Size (Meters)", title="Grid Cell Size"
+        5000,
+        description="Define the resolution of the raster grid (in metres per pixel). A smaller grid cell size provides more details, while a larger size generalizes the data.",
+        title="Custom Grid Cell Size (Meters)",
     )
 
 
@@ -339,7 +335,7 @@ class SubjectTraj(BaseModel):
             }
         ),
         description="Filter track data by setting limits on track segment length, duration, and speed. Segments outside these bounds are removed, reducing noise and to focus on meaningful movement patterns.",
-        title="Trajectory Segment Filter",
+        title=" ",
     )
 
 
@@ -363,10 +359,7 @@ class Td(BaseModel):
     )
     auto_scale_or_custom_cell_size: Optional[
         Union[AutoScaleGridCellSize, CustomGridCellSize]
-    ] = Field(
-        {"auto_scale_or_custom": "Auto-scale"},
-        title="Auto Scale Or Custom Grid Cell Size",
-    )
+    ] = Field({"auto_scale_or_custom": "Auto-scale"}, title="Grid Cell Size")
     max_speed_factor: Optional[float] = Field(
         1.05,
         description="An estimate of the subject's maximum speed as a factor of the maximum measured speed value in the dataset.",

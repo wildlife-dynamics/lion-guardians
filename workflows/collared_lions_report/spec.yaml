@@ -1,7 +1,7 @@
 id: collared_lions_report
 requirements:
   - name: ecoscope-workflows-core
-    version: "*"
+    version: "0.7.2.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
