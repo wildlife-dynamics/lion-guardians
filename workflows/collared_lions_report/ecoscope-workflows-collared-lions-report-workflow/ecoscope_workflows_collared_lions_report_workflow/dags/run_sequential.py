@@ -330,8 +330,11 @@ def main(params: Params):
     gather_widgets = (
         prepare_widget_list.validate()
         .handle_errors(task_instance_id="gather_widgets")
-        .partial(**(params_dict.get("gather_widgets") or {}))
-        .mapvalues(argnames=["widgets"], argvalues=collared_subject_doc_widget)
+        .partial(
+            widgets=collared_subject_doc_widget,
+            **(params_dict.get("gather_widgets") or {}),
+        )
+        .call()
     )
 
     create_report = (

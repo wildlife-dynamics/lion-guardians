@@ -424,12 +424,11 @@ def main(params: Params):
             async_task=prepare_widget_list.validate()
             .handle_errors(task_instance_id="gather_widgets")
             .set_executor("lithops"),
-            partial=(params_dict.get("gather_widgets") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["widgets"],
-                "argvalues": DependsOn("collared_subject_doc_widget"),
-            },
+            partial={
+                "widgets": DependsOn("collared_subject_doc_widget"),
+            }
+            | (params_dict.get("gather_widgets") or {}),
+            method="call",
         ),
         "create_report": Node(
             async_task=gather_doc.validate()

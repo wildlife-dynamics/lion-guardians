@@ -283,10 +283,8 @@ workflow:
   - name : Prepare widget list 
     id: gather_widgets 
     task: prepare_widget_list
-    mapvalues:
-      argnames: widgets 
-      argvalues: 
-        - ${{ workflow.collared_subject_doc_widget.return }}
+    partial:
+      widgets: ${{ workflow.collared_subject_doc_widget.return }}
 
   - name: Create Report 
     id: create_report

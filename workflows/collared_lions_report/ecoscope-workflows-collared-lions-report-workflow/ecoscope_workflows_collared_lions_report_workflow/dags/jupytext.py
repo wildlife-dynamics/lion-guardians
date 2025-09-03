@@ -652,8 +652,8 @@ gather_widgets_params = dict()
 
 gather_widgets = (
     prepare_widget_list.handle_errors(task_instance_id="gather_widgets")
-    .partial(**gather_widgets_params)
-    .mapvalues(argnames=["widgets"], argvalues=collared_subject_doc_widget)
+    .partial(widgets=collared_subject_doc_widget, **gather_widgets_params)
+    .call()
 )
 
 
