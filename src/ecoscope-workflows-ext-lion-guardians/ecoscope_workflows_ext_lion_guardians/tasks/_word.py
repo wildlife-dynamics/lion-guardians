@@ -206,7 +206,7 @@ def _flatten_doc_items(items: Any) -> list[Any]:
 @task
 def prepare_widget_list(
     widgets: Annotated[object, Field(description="Widget(s) or containers of widgets")]
-) -> list[DocWidget]:
+) -> list[object]:
     """
     Normalize widgets into a flat list[DocWidget].
     Accepts:
@@ -215,28 +215,28 @@ def prepare_widget_list(
       - a mapping: key -> widget or list-of-widgets
       - a list of (key, value) pairs
     """
-    def _flatten_values(vals: list[object]) -> list[DocWidget]:
-        out: list[DocWidget] = []
+    def _flatten_values(vals: list[object]) -> list[object]:
+        out: list[object] = []
         for v in vals:
             v2 = _coerce_widget_like(v)
             if _is_widget_by_type(v2) or isinstance(v2, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
-                out.append(v2)  # type: ignore[arg-type]
+                out.append(v2)
             elif isinstance(v2, list):
                 for item in v2:
                     item2 = _coerce_widget_like(item)
                     if _is_widget_by_type(item2) or isinstance(item2, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
-                        out.append(item2)  # type: ignore[arg-type]
+                        out.append(item2)
             elif isinstance(v2, Mapping):
                 out.extend(_flatten_values(list(v2.values())))
         return out
-        
+
     print("DEBUG prepare_widget_list type:", type(widgets))
     if isinstance(widgets, list) and widgets:
         print("DEBUG first item type:", type(widgets[0]))
 
     # single widget
     if _is_widget_by_type(widgets) or isinstance(widgets, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
-        return [widgets]  # type: ignore[list-item]
+        return [widgets]
 
     # mapping
     if isinstance(widgets, Mapping):
@@ -244,15 +244,14 @@ def prepare_widget_list(
 
     # list / iterable
     if isinstance(widgets, list):
-        # list of (k, v) items -> dict
         if widgets and isinstance(widgets[0], tuple) and len(widgets[0]) == 2:
             return _flatten_values([dict(widgets)])
         return _flatten_values(widgets)
 
-    # last-ditch: try to coerce once
+    # last-ditch
     coerced = _coerce_widget_like(widgets)
     if _is_widget_by_type(coerced) or isinstance(coerced, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
-        return [coerced]  # type: ignore[list-item]
+        return [coerced]
 
     return []
 
