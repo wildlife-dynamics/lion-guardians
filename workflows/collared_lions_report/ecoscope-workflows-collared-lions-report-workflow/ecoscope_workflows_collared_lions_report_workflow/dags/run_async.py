@@ -440,13 +440,10 @@ def main(params: Params):
                 "time_range": DependsOn("time_range"),
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "filename": "collared_report",
+                "doc_widgets": DependsOn("gather_widgets"),
             }
             | (params_dict.get("create_report") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["doc_widgets"],
-                "argvalues": DependsOn("gather_widgets"),
-            },
+            method="call",
         ),
     }
     graph = Graph(dependencies=dependencies, nodes=nodes)

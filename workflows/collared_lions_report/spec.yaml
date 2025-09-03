@@ -296,6 +296,4 @@ workflow:
       time_range: ${{ workflow.time_range.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "collared_report"
-    mapvalues:
-      argnames: doc_widgets
-      argvalues: ${{ workflow.gather_widgets.return }}
+      doc_widgets: ${{ workflow.gather_widgets.return }}
