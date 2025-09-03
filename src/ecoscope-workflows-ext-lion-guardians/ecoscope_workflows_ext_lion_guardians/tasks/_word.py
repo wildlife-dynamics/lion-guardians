@@ -90,29 +90,41 @@ def _is_widget_by_type(x: Any) -> bool:
     return False
 
 def _coerce_widget_like(obj: object) -> object:
-    """
-    Turn dicts or list-of-(key,value) tuples into local widget models.
-    Leaves true widget instances (local or cross-module) untouched.
-    """
-    # Already a widget (local or cross-module via duck typing)?
-    if _is_widget_by_type(obj) or isinstance(obj, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+    # Already a local widget?
+    if isinstance(obj, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
         return obj
 
-    # dict -> decide which widget to build
+    # Cross-module widget? (duck-typed)
+    if _is_widget_by_type(obj):
+        # Rebuild as local model
+        heading = getattr(obj, "heading", None)
+        level   = getattr(obj, "level", 1)
+        caption = getattr(obj, "caption", None)
+
+        if hasattr(obj, "filepath"):
+            width = getattr(obj, "width", 5.0)
+            return DocFigureWidget(heading=heading, level=level,
+                                   filepath=getattr(obj, "filepath"),
+                                   caption=caption, width=width)
+        if hasattr(obj, "df"):
+            return DocTableWidget(heading=heading, level=level,
+                                  df=getattr(obj, "df"), caption=caption)
+        # Default to heading if only heading/level are present
+        return DocHeadingWidget(heading=heading, level=level)
+
+    # dict → local model
     if isinstance(obj, dict):
-        d = obj  # type: dict[str, object]
-        if "filepath" in d:
-            return DocFigureWidget(**d)  # type: ignore[arg-type]
-        if "df" in d:
-            return DocTableWidget(**d)   # type: ignore[arg-type]
-        if "heading" in d or "level" in d:
-            return DocHeadingWidget(**d) # type: ignore[arg-type]
+        if "filepath" in obj:
+            return DocFigureWidget(**obj)  # type: ignore[arg-type]
+        if "df" in obj:
+            return DocTableWidget(**obj)   # type: ignore[arg-type]
+        if "heading" in obj or "level" in obj:
+            return DocHeadingWidget(**obj) # type: ignore[arg-type]
         return obj
 
-    # list of (k, v) -> make a dict -> build widget
+    # list of (k,v) → dict → local model
     if isinstance(obj, list) and all(isinstance(t, tuple) and len(t) == 2 for t in obj):
-        d = dict(obj)  # type: dict[str, object]
-        return _coerce_widget_like(d)
+        return _coerce_widget_like(dict(obj))
 
     return obj
 
@@ -277,14 +289,23 @@ def add_table(doc, table_widget, table_index):
         f"Table {table_index}: {table_widget.caption}" if table_widget.caption else f"Table {table_index}"
     )
 
-
 def add_figure(doc, widget, index):
+    import os
     from docx.shared import Inches
 
     if widget.heading:
         doc.add_heading(widget.heading, level=widget.level)
-    doc.add_picture(widget.filepath, width=Inches(widget.width))
 
+    path = widget.filepath
+    if isinstance(path, str) and path.startswith("file://"):
+        path = path[7:]
+
+    if not os.path.exists(path):
+        print(f"WARNING: image not found — {path}")
+        doc.add_paragraph(f"Figure {index}: (missing) {widget.caption or ''}".strip())
+        return
+
+    doc.add_picture(path, width=Inches(widget.width))
     doc.add_paragraph(f"Figure {index}: {widget.caption}" if widget.caption else f"Figure {index}")
 
 
@@ -344,6 +365,7 @@ def gather_document(
     figure_index = 0
 
     for item in normalized:
+        item = _coerce_widget_like(item)  # <— NEW
         # 1) First-class grouped block
         if isinstance(item, DocGroup):
             if item.label:
