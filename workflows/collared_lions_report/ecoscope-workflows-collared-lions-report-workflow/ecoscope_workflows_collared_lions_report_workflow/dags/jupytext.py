@@ -43,8 +43,7 @@ from ecoscope_workflows_core.tasks.results import merge_widget_views
 from ecoscope_workflows_core.tasks.results import gather_dashboard
 from ecoscope_workflows_ext_custom.tasks import html_to_png
 from ecoscope_workflows_ext_custom.tasks import create_doc_figure
-from ecoscope_workflows_ext_lion_guardians.tasks import prepare_widget_list
-from ecoscope_workflows_ext_custom.tasks import gather_doc
+from ecoscope_workflows_ext_lion_guardians.tasks import gather_document
 
 # %% [markdown]
 # ## Set Workflow Details
@@ -639,25 +638,6 @@ collared_subject_doc_widget = (
 
 
 # %% [markdown]
-# ## Prepare widget list
-
-# %%
-# parameters
-
-gather_widgets_params = dict()
-
-# %%
-# call the task
-
-
-gather_widgets = (
-    prepare_widget_list.handle_errors(task_instance_id="gather_widgets")
-    .partial(widgets=collared_subject_doc_widget, **gather_widgets_params)
-    .call()
-)
-
-
-# %% [markdown]
 # ## Create Report
 
 # %%
@@ -672,7 +652,7 @@ create_report_params = dict(
 
 
 create_report = (
-    gather_doc.handle_errors(task_instance_id="create_report")
+    gather_document.handle_errors(task_instance_id="create_report")
     .partial(
         title="Report",
         time_range=time_range,

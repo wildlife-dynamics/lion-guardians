@@ -423,8 +423,7 @@
         "logo_path": {
           "default": null,
           "title": "Logo Path",
-          "type": "string",
-          "description": "The logo file path"
+          "type": "string"
         }
       },
       "required": [],

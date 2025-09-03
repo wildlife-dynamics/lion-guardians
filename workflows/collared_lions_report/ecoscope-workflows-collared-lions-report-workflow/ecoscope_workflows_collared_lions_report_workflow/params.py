@@ -219,9 +219,7 @@ class CreateReport(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    logo_path: Optional[str] = Field(
-        None, description="The logo file path", title="Logo Path"
-    )
+    logo_path: Optional[str] = Field(None, title="Logo Path")
 
 
 class TemporalGrouper(RootModel[str]):

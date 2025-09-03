@@ -280,15 +280,9 @@ workflow:
       argnames: filepath
       argvalues: ${{ workflow.collared_html_png.return }}
   
-  - name : Prepare widget list 
-    id: gather_widgets 
-    task: prepare_widget_list
-    partial:
-      widgets: ${{ workflow.collared_subject_doc_widget.return }}
-
   - name: Create Report 
     id: create_report
-    task: gather_doc
+    task: gather_document
     partial:
       title: "Report"
       time_range: ${{ workflow.time_range.return }}

@@ -1,9 +1,13 @@
 # prepare custom widget list
+from __future__ import annotations
 from ecoscope_workflows_core.decorators import task
 from pydantic import BaseModel
 from ecoscope_workflows_core.annotations import AnyDataFrame
 from typing import Mapping, Hashable, TypeGuard, Union
-
+from typing import Annotated, Any, Literal, Tuple, Union, Sequence
+from ecoscope_workflows_core.tasks.filter._filter import TimeRange
+from pydantic import BaseModel, Field
+from pydantic.json_schema import SkipJsonSchema
 
 class DocHeadingWidget(BaseModel):
     heading: str | None = None
@@ -22,6 +26,7 @@ class DocFigureWidget(DocHeadingWidget):
 
 
 DocWidget = DocHeadingWidget | DocTableWidget | DocFigureWidget | list[DocTableWidget] | list[DocFigureWidget]
+Predicate = Tuple[str, Literal["=", "!=", "in", "not in"], Any]
 
 WidgetSingle = DocHeadingWidget | DocTableWidget | DocFigureWidget
 WidgetOrList = WidgetSingle | list[DocWidget]
@@ -50,6 +55,79 @@ def _flatten_values(vals: list[object]) -> list[DocWidget]:
             pass
     return out
 
+class DocGroup(BaseModel):
+    """
+    First-class grouped doc widget: a group of widgets tied to filter predicates.
+    `label` is optional; if omitted we'll derive something sensible from predicates.
+    """
+    predicates: list[Predicate]
+    widgets: list[DocHeadingWidget | DocTableWidget | DocFigureWidget | list[DocHeadingWidget | DocTableWidget | DocFigureWidget]]
+    label: str | None = None
+
+
+def _is_group_tuple(x: Any) -> bool:
+    # current legacy payloads look like: ((predicates...), widget_or_list)
+    return (
+        isinstance(x, tuple) and len(x) == 2
+        and isinstance(x[0], (list, tuple))
+    )
+
+def _coerce_to_docgroup(x: Any) -> DocGroup | Any:
+    """
+    Accept legacy tuple format and convert to DocGroup, otherwise return as-is.
+    Legacy examples:
+      ((('TemporalGrouper_%B', '=', 'February'),), DocFigureWidget(...))
+      ([('field','in',['A','B'])], [DocTableWidget(...), DocFigureWidget(...)])
+    """
+    if not _is_group_tuple(x):
+        return x
+    preds_raw, widgets_raw = x
+
+    # normalize predicates -> list[Predicate]
+    preds: list[Predicate] = []
+    if isinstance(preds_raw, tuple):
+        # either a single predicate triple or a tuple of triples
+        if len(preds_raw) == 3 and isinstance(preds_raw[1], str):
+            preds = [preds_raw]  # single predicate
+        else:
+            preds = list(preds_raw)
+    elif isinstance(preds_raw, list):
+        preds = preds_raw
+    else:
+        raise TypeError(f"Unsupported predicate structure: {type(preds_raw)}")
+
+    # normalize widgets -> list[widgets]
+    if isinstance(widgets_raw, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+        widgets = [widgets_raw]
+    elif isinstance(widgets_raw, list):
+        widgets = widgets_raw
+    else:
+        raise TypeError(f"Unsupported widget structure in group: {type(widgets_raw)}")
+
+    # try to derive a friendly label, e.g., "February" when you group by month
+    derived_label = None
+    if len(preds) == 1:
+        field, op, val = preds[0]
+        if isinstance(val, (str, int)):
+            derived_label = str(val)
+
+    return DocGroup(predicates=preds, widgets=widgets, label=derived_label)
+
+
+def _flatten_doc_items(items: Any) -> list[Any]:
+    """
+    Flatten nested lists/tuples but do NOT break widget objects.
+    We'll handle tuple->DocGroup coercion separately.
+    """
+    out: list[Any] = []
+    if isinstance(items, list):
+        for x in items:
+            out.extend(_flatten_doc_items(x))
+    else:
+        out.append(items)
+    return out
+
+
 
 @task
 def prepare_widget_list(widgets: Union[WidgetOrList, WidgetMap, KeyValList]) -> list[DocWidget]:
@@ -76,3 +154,112 @@ def prepare_widget_list(widgets: Union[WidgetOrList, WidgetMap, KeyValList]) -> 
     print(f"Return values : {_flatten_values(widgets)}")
 
     return []
+
+
+@task
+def gather_document(
+    title: Annotated[str, Field(description="The document title")],
+    time_range: Annotated[TimeRange | SkipJsonSchema[None], Field(description="Time range filter")],
+    # Accept anything, then coerce to supported types inside the function.
+    doc_widgets: Annotated[list[Any], Field(description="List of document components to gather (widgets or grouped widgets)")],
+    root_path: Annotated[str, Field(description="Root path to persist text to")],
+    filename: Annotated[str, Field(description="The filename to save the document as, without extension. The extension will be .docx")],
+    logo_path: Annotated[str | SkipJsonSchema[None], Field(description="The logo file path")] = None,
+) -> Annotated[str, Field(description="The saved file path")]:
+    import os
+    from docx import Document
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import Inches, Pt
+
+    doc = Document()
+
+    # --- Title
+    heading1 = doc.add_heading(title, level=1)
+    heading1.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    heading1.paragraph_format.space_before = Inches(2)
+    for run in heading1.runs:
+        run.font.size = Pt(30)
+
+    # --- Time range (optional)
+    if time_range:
+        fmt = time_range.time_format
+        formatted_time_range = f"From {time_range.since.strftime(fmt)} to {time_range.until.strftime(fmt)}"
+        heading2 = doc.add_heading(formatted_time_range, level=2)
+        heading2.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        for run in heading2.runs:
+            run.font.size = Pt(15)
+
+    # --- Logo (optional)
+    paragraph = doc.add_paragraph()
+    paragraph.paragraph_format.space_before = Inches(3)
+    paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = paragraph.add_run()
+    if logo_path:
+        run.add_picture(logo_path, width=Inches(1.5))
+
+    doc.add_page_break()
+
+    # ---- Normalize inputs:
+    #  - flatten nested lists
+    #  - coerce legacy group tuples into DocGroup
+    normalized = [_coerce_to_docgroup(x) for x in _flatten_doc_items(doc_widgets)]
+
+    table_index = 0
+    figure_index = 0
+
+    for item in normalized:
+        # 1) First-class grouped block
+        if isinstance(item, DocGroup):
+            if item.label:
+                doc.add_heading(str(item.label), level=2)
+            for w in _flatten_doc_items(item.widgets):
+                if isinstance(w, DocHeadingWidget):
+                    doc.add_heading(w.heading, level=w.level)
+                elif isinstance(w, DocTableWidget):
+                    table_index += 1
+                    add_table(doc, w, table_index)
+                elif isinstance(w, DocFigureWidget):
+                    figure_index += 1
+                    add_figure(doc, w, figure_index)
+                else:
+                    # If something unexpected slips through, ignore gracefully.
+                    continue
+
+        # 2) Plain widgets (no grouping)
+        elif isinstance(item, DocHeadingWidget):
+            doc.add_heading(item.heading, level=item.level)
+        elif isinstance(item, DocTableWidget):
+            table_index += 1
+            add_table(doc, item, table_index)
+        elif isinstance(item, DocFigureWidget):
+            figure_index += 1
+            add_figure(doc, item, figure_index)
+
+        # 3) Legacy tuple (if user passes one at the top-level and coercion returned it unmodified)
+        elif _is_group_tuple(item):
+            # Shouldn’t happen because we coerce above, but keep a fallback:
+            coerced = _coerce_to_docgroup(item)
+            if isinstance(coerced, DocGroup):
+                if coerced.label:
+                    doc.add_heading(str(coerced.label), level=2)
+                for w in _flatten_doc_items(coerced.widgets):
+                    if isinstance(w, DocHeadingWidget):
+                        doc.add_heading(w.heading, level=w.level)
+                    elif isinstance(w, DocTableWidget):
+                        table_index += 1
+                        add_table(doc, w, table_index)
+                    elif isinstance(w, DocFigureWidget):
+                        figure_index += 1
+                        add_figure(doc, w, figure_index)
+
+        else:
+            # Unknown thing — skip
+            continue
+
+    # Handle file://
+    if root_path.startswith("file://"):
+        root_path = root_path[7:]
+
+    path = os.path.join(root_path, f"{filename}.docx")
+    doc.save(path)
+    return path
