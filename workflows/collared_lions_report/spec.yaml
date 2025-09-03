@@ -295,4 +295,4 @@ workflow:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "collared_report"
       doc_widgets: 
-        - ${{ workflow.gather_widgets.return }}
+        - ${{ workflow.collared_subject_doc_widget.return }}

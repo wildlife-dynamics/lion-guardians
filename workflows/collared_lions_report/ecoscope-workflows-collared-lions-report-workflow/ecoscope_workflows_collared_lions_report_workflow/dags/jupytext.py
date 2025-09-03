@@ -678,7 +678,7 @@ create_report = (
         time_range=time_range,
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filename="collared_report",
-        doc_widgets=gather_widgets,
+        doc_widgets=collared_subject_doc_widget,
         **create_report_params,
     )
     .call()

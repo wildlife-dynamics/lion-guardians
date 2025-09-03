@@ -77,7 +77,7 @@ def main(params: Params):
         "collared_html_png": ["td_ecomap_html_url"],
         "collared_subject_doc_widget": ["collared_html_png"],
         "gather_widgets": ["collared_subject_doc_widget"],
-        "create_report": ["time_range", "gather_widgets"],
+        "create_report": ["time_range", "collared_subject_doc_widget"],
     }
 
     nodes = {
@@ -439,7 +439,7 @@ def main(params: Params):
                 "time_range": DependsOn("time_range"),
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "filename": "collared_report",
-                "doc_widgets": DependsOn("gather_widgets"),
+                "doc_widgets": DependsOn("collared_subject_doc_widget"),
             }
             | (params_dict.get("create_report") or {}),
             method="call",
