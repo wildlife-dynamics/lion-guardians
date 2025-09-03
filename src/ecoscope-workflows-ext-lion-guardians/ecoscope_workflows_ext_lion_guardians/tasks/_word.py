@@ -205,23 +205,16 @@ def _flatten_doc_items(items: Any) -> list[Any]:
 
 @task
 def prepare_widget_list(
-    widgets: Union[
-        DocWidget,                 # single widget
-        list[DocWidget],           # list of widgets
-        Mapping[Hashable, object], # dict-like containers of widgets/lists
-        KeyValList,                # list of (key, value) pairs
-        object                     # fallback to prevent Pydantic pre-validation
-    ]
+    widgets: Annotated[object, Field(description="Widget(s) or containers of widgets")]
 ) -> list[DocWidget]:
     """
     Normalize widgets into a flat list[DocWidget].
     Accepts:
-      - a single widget (DocHeadingWidget | DocTableWidget | DocFigureWidget)
+      - a single widget (local/cross-module)
       - a list of widgets
       - a mapping: key -> widget or list-of-widgets
       - a list of (key, value) pairs
     """
-
     def _flatten_values(vals: list[object]) -> list[DocWidget]:
         out: list[DocWidget] = []
         for v in vals:
@@ -236,18 +229,22 @@ def prepare_widget_list(
             elif isinstance(v2, Mapping):
                 out.extend(_flatten_values(list(v2.values())))
         return out
+        
+    print("DEBUG prepare_widget_list type:", type(widgets))
+    if isinstance(widgets, list) and widgets:
+        print("DEBUG first item type:", type(widgets[0]))
 
     # single widget
     if _is_widget_by_type(widgets) or isinstance(widgets, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
         return [widgets]  # type: ignore[list-item]
 
-    # mapping of widgets / lists
+    # mapping
     if isinstance(widgets, Mapping):
         return _flatten_values(list(widgets.values()))
 
     # list / iterable
     if isinstance(widgets, list):
-        # list of (k, v) items
+        # list of (k, v) items -> dict
         if widgets and isinstance(widgets[0], tuple) and len(widgets[0]) == 2:
             return _flatten_values([dict(widgets)])
         return _flatten_values(widgets)
@@ -258,7 +255,7 @@ def prepare_widget_list(
         return [coerced]  # type: ignore[list-item]
 
     return []
-    
+
 def add_table(doc, table_widget, table_index):
     if table_widget.heading:
         doc.add_heading(table_widget.heading, level=table_widget.level)
@@ -298,7 +295,7 @@ def gather_document(
     time_range: Annotated[TimeRange | SkipJsonSchema[None], Field(description="Time range filter")],
     # Accept anything, then coerce to supported types inside the function.
     doc_widgets: Annotated[
-        list[Any], Field(description="List of document components to gather (widgets or grouped widgets)")
+        list[object], Field(description="List of document components to gather (widgets or grouped widgets)")
     ],
     root_path: Annotated[str, Field(description="Root path to persist text to")],
     filename: Annotated[
