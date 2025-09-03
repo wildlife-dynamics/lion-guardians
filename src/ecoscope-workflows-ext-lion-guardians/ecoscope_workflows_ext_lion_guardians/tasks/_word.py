@@ -62,13 +62,9 @@ class DocGroup(BaseModel):
     First-class grouped doc widget: a group of widgets tied to filter predicates.
     `label` is optional; if omitted we'll derive something sensible from predicates.
     """
-
     predicates: list[Predicate]
-    widgets: list[
-        DocHeadingWidget | DocTableWidget | DocFigureWidget | list[DocHeadingWidget | DocTableWidget | DocFigureWidget]
-    ]
+    widgets: list[object]  
     label: str | None = None
-
 
 def _is_group_tuple(x: Any) -> bool:
     # current legacy payloads look like: ((predicates...), widget_or_list)
@@ -92,6 +88,33 @@ def _is_widget_by_type(x: Any) -> bool:
             else:  # DocHeadingWidget
                 return True
     return False
+
+def _coerce_widget_like(obj: object) -> object:
+    """
+    Turn dicts or list-of-(key,value) tuples into local widget models.
+    Leaves true widget instances (local or cross-module) untouched.
+    """
+    # Already a widget (local or cross-module via duck typing)?
+    if _is_widget_by_type(obj) or isinstance(obj, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+        return obj
+
+    # dict -> decide which widget to build
+    if isinstance(obj, dict):
+        d = obj  # type: dict[str, object]
+        if "filepath" in d:
+            return DocFigureWidget(**d)  # type: ignore[arg-type]
+        if "df" in d:
+            return DocTableWidget(**d)   # type: ignore[arg-type]
+        if "heading" in d or "level" in d:
+            return DocHeadingWidget(**d) # type: ignore[arg-type]
+        return obj
+
+    # list of (k, v) -> make a dict -> build widget
+    if isinstance(obj, list) and all(isinstance(t, tuple) and len(t) == 2 for t in obj):
+        d = dict(obj)  # type: dict[str, object]
+        return _coerce_widget_like(d)
+
+    return obj
 
 
 def _is_widget(x: object) -> TypeGuard[WidgetSingle]:
@@ -140,30 +163,21 @@ def _coerce_to_docgroup(x: Any) -> DocGroup | Any:
     else:
         raise TypeError(f"Unsupported predicate structure: {type(preds_raw)}")
 
-    # normalize widgets -> list[widgets] - use more flexible checking for cross-module widgets
-    if (_is_widget_by_type(widgets_raw) or 
-        isinstance(widgets_raw, (DocHeadingWidget, DocTableWidget, DocFigureWidget))):
-        widgets = [widgets_raw]
+    # normalize widgets -> list[widgets]
+    if _is_widget_by_type(widgets_raw) or isinstance(widgets_raw, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+        widgets = [_coerce_widget_like(widgets_raw)]  # type: list[object]
     elif isinstance(widgets_raw, list):
-        # Validate that all items in the list are widgets
-        validated_widgets = []
+        widgets = []
         for widget in widgets_raw:
-            if (_is_widget_by_type(widget) or 
-                isinstance(widget, (DocHeadingWidget, DocTableWidget, DocFigureWidget))):
-                validated_widgets.append(widget)
-            else:
-                raise TypeError(f"Unsupported widget type in list: {type(widget)}")
-        widgets = validated_widgets
+            w = _coerce_widget_like(widget)
+            if _is_widget_by_type(w) or isinstance(w, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+                widgets.append(w)
+            # else: ignore unrecognized members gracefully
     else:
-        # If we get here, log more details for debugging
-        print(f"DEBUG: Unsupported widget structure - Type: {type(widgets_raw)}, Class name: {getattr(widgets_raw, '__class__', None)}")
-        if hasattr(widgets_raw, '__dict__'):
-            print(f"DEBUG: Widget attributes: {list(widgets_raw.__dict__.keys())}")
-        
-        # Try one more fallback - if it looks like a widget but doesn't pass our checks
-        if (hasattr(widgets_raw, 'heading') or hasattr(widgets_raw, 'filepath') or hasattr(widgets_raw, 'df')):
-            print(f"DEBUG: Treating as widget despite type check failure: {type(widgets_raw)}")
-            widgets = [widgets_raw]
+        # final fallback: try to coerce once
+        coerced = _coerce_widget_like(widgets_raw)
+        if _is_widget_by_type(coerced) or isinstance(coerced, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+            widgets = [coerced]
         else:
             raise TypeError(f"Unsupported widget structure in group: {type(widgets_raw)}")
 
@@ -190,32 +204,61 @@ def _flatten_doc_items(items: Any) -> list[Any]:
     return out
 
 @task
-def prepare_widget_list(widgets: Union[WidgetOrList, WidgetMap, KeyValList]) -> list[DocWidget]:
+def prepare_widget_list(
+    widgets: Union[
+        DocWidget,                 # single widget
+        list[DocWidget],           # list of widgets
+        Mapping[Hashable, object], # dict-like containers of widgets/lists
+        KeyValList,                # list of (key, value) pairs
+        object                     # fallback to prevent Pydantic pre-validation
+    ]
+) -> list[DocWidget]:
     """
     Normalize widgets into a flat list[DocWidget].
-
     Accepts:
       - a single widget (DocHeadingWidget | DocTableWidget | DocFigureWidget)
       - a list of widgets
       - a mapping: key -> widget or list-of-widgets
-      - a list of (key, value) pairs where value is widget or list-of-widgets
+      - a list of (key, value) pairs
     """
-    if _is_widget(widgets):
-        return [widgets]
+
+    def _flatten_values(vals: list[object]) -> list[DocWidget]:
+        out: list[DocWidget] = []
+        for v in vals:
+            v2 = _coerce_widget_like(v)
+            if _is_widget_by_type(v2) or isinstance(v2, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+                out.append(v2)  # type: ignore[arg-type]
+            elif isinstance(v2, list):
+                for item in v2:
+                    item2 = _coerce_widget_like(item)
+                    if _is_widget_by_type(item2) or isinstance(item2, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+                        out.append(item2)  # type: ignore[arg-type]
+            elif isinstance(v2, Mapping):
+                out.extend(_flatten_values(list(v2.values())))
+        return out
+
+    # single widget
+    if _is_widget_by_type(widgets) or isinstance(widgets, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+        return [widgets]  # type: ignore[list-item]
+
+    # mapping of widgets / lists
     if isinstance(widgets, Mapping):
         return _flatten_values(list(widgets.values()))
 
+    # list / iterable
     if isinstance(widgets, list):
+        # list of (k, v) items
         if widgets and isinstance(widgets[0], tuple) and len(widgets[0]) == 2:
-            vals = [kv[1] for kv in widgets]
-            return _flatten_values(vals)
+            return _flatten_values([dict(widgets)])
         return _flatten_values(widgets)
 
-    print(f"Return values : {_flatten_values(widgets)}")
+    # last-ditch: try to coerce once
+    coerced = _coerce_widget_like(widgets)
+    if _is_widget_by_type(coerced) or isinstance(coerced, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+        return [coerced]  # type: ignore[list-item]
 
     return []
-
-
+    
 def add_table(doc, table_widget, table_index):
     if table_widget.heading:
         doc.add_heading(table_widget.heading, level=table_widget.level)
