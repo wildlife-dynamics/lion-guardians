@@ -15,7 +15,7 @@ from ._map_utils import (
 )
 from ._zip import zip_grouped_by_key
 from ._example import add_one_thousand
-from ._word import prepare_widget_list ,gather_document
+from ._word import prepare_widget_list, gather_document
 
 __all__ = [
     "view_data",

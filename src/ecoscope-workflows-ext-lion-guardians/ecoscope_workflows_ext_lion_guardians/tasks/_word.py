@@ -4,10 +4,11 @@ from ecoscope_workflows_core.decorators import task
 from pydantic import BaseModel
 from ecoscope_workflows_core.annotations import AnyDataFrame
 from typing import Mapping, Hashable, TypeGuard, Union
-from typing import Annotated, Any, Literal, Tuple, Union, Sequence
+from typing import Annotated, Any, Literal, Tuple
 from ecoscope_workflows_core.tasks.filter._filter import TimeRange
-from pydantic import BaseModel, Field
+from pydantic import Field
 from pydantic.json_schema import SkipJsonSchema
+
 
 class DocHeadingWidget(BaseModel):
     heading: str | None = None
@@ -55,22 +56,24 @@ def _flatten_values(vals: list[object]) -> list[DocWidget]:
             pass
     return out
 
+
 class DocGroup(BaseModel):
     """
     First-class grouped doc widget: a group of widgets tied to filter predicates.
     `label` is optional; if omitted we'll derive something sensible from predicates.
     """
+
     predicates: list[Predicate]
-    widgets: list[DocHeadingWidget | DocTableWidget | DocFigureWidget | list[DocHeadingWidget | DocTableWidget | DocFigureWidget]]
+    widgets: list[
+        DocHeadingWidget | DocTableWidget | DocFigureWidget | list[DocHeadingWidget | DocTableWidget | DocFigureWidget]
+    ]
     label: str | None = None
 
 
 def _is_group_tuple(x: Any) -> bool:
     # current legacy payloads look like: ((predicates...), widget_or_list)
-    return (
-        isinstance(x, tuple) and len(x) == 2
-        and isinstance(x[0], (list, tuple))
-    )
+    return isinstance(x, tuple) and len(x) == 2 and isinstance(x[0], (list, tuple))
+
 
 def _coerce_to_docgroup(x: Any) -> DocGroup | Any:
     """
@@ -128,7 +131,6 @@ def _flatten_doc_items(items: Any) -> list[Any]:
     return out
 
 
-
 @task
 def prepare_widget_list(widgets: Union[WidgetOrList, WidgetMap, KeyValList]) -> list[DocWidget]:
     """
@@ -155,15 +157,50 @@ def prepare_widget_list(widgets: Union[WidgetOrList, WidgetMap, KeyValList]) -> 
 
     return []
 
+def add_table(doc, table_widget, table_index):
+    if table_widget.heading:
+        doc.add_heading(table_widget.heading, level=table_widget.level)
+    df = table_widget.df
+    table = doc.add_table(rows=len(df.index) + 1, cols=len(df.columns) + 1)
+    header_cells = table.rows[0].cells
+    for i, column in enumerate(df.columns):
+        header_cells[i + 1].text = str(column)
+
+    for i, idx in enumerate(df.index):
+        row_cells = table.rows[i + 1].cells
+        # Add index
+        row_cells[0].text = str(idx)
+
+        # Add row data
+        for j, value in enumerate(df.iloc[i]):
+            row_cells[j + 1].text = str(value)
+
+    doc.add_paragraph(
+        f"Table {table_index}: {table_widget.caption}" if table_widget.caption else f"Table {table_index}"
+    )
+
+
+def add_figure(doc, widget, index):
+    from docx.shared import Inches
+
+    if widget.heading:
+        doc.add_heading(widget.heading, level=widget.level)
+    doc.add_picture(widget.filepath, width=Inches(widget.width))
+
+    doc.add_paragraph(f"Figure {index}: {widget.caption}" if widget.caption else f"Figure {index}")
 
 @task
 def gather_document(
     title: Annotated[str, Field(description="The document title")],
     time_range: Annotated[TimeRange | SkipJsonSchema[None], Field(description="Time range filter")],
     # Accept anything, then coerce to supported types inside the function.
-    doc_widgets: Annotated[list[Any], Field(description="List of document components to gather (widgets or grouped widgets)")],
+    doc_widgets: Annotated[
+        list[Any], Field(description="List of document components to gather (widgets or grouped widgets)")
+    ],
     root_path: Annotated[str, Field(description="Root path to persist text to")],
-    filename: Annotated[str, Field(description="The filename to save the document as, without extension. The extension will be .docx")],
+    filename: Annotated[
+        str, Field(description="The filename to save the document as, without extension. The extension will be .docx")
+    ],
     logo_path: Annotated[str | SkipJsonSchema[None], Field(description="The logo file path")] = None,
 ) -> Annotated[str, Field(description="The saved file path")]:
     import os
