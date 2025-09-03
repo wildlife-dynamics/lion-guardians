@@ -229,43 +229,61 @@ def prepare_widget_list(
     """
     def _flatten_values(vals: list[object]) -> list[object]:
         out: list[object] = []
-        for v in vals:
+        print("DEBUG _flatten_values called with:", type(vals), "len:", len(vals))
+        for i, v in enumerate(vals):
+            print(f"  DEBUG item[{i}] type:", type(v), "value:", v)
             v2 = _coerce_widget_like(v)
+            print("   DEBUG after _coerce_widget_like:", type(v2), v2)
             if _is_widget_by_type(v2) or isinstance(v2, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+                print("   DEBUG recognized widget:", v2)
                 out.append(v2)
             elif isinstance(v2, list):
-                for item in v2:
+                print("   DEBUG nested list found, recursing")
+                for j, item in enumerate(v2):
                     item2 = _coerce_widget_like(item)
+                    print(f"    DEBUG nested[{j}] after coerce:", type(item2), item2)
                     if _is_widget_by_type(item2) or isinstance(item2, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
                         out.append(item2)
             elif isinstance(v2, Mapping):
+                print("   DEBUG nested mapping found, recursing")
                 out.extend(_flatten_values(list(v2.values())))
+        print("DEBUG _flatten_values returning len:", len(out))
         return out
 
-    print("DEBUG prepare_widget_list type:", type(widgets))
+    print("DEBUG prepare_widget_list called with:", type(widgets), "value:", widgets)
+
     if isinstance(widgets, list) and widgets:
-        print("DEBUG first item type:", type(widgets[0]))
+        print("DEBUG widgets is list, first item type:", type(widgets[0]), "value:", widgets[0])
 
     # single widget
     if _is_widget_by_type(widgets) or isinstance(widgets, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+        print("DEBUG single widget case hit")
         return [widgets]
 
     # mapping
     if isinstance(widgets, Mapping):
+        print("DEBUG mapping case hit")
         return _flatten_values(list(widgets.values()))
 
     # list / iterable
     if isinstance(widgets, list):
+        print("DEBUG list case hit")
         if widgets and isinstance(widgets[0], tuple) and len(widgets[0]) == 2:
+            print("DEBUG list of (key, value) tuples case hit")
             return _flatten_values([dict(widgets)])
         return _flatten_values(widgets)
 
     # last-ditch
+    print("DEBUG last-ditch coercion case hit")
     coerced = _coerce_widget_like(widgets)
+    print("DEBUG coerced type:", type(coerced), "value:", coerced)
     if _is_widget_by_type(coerced) or isinstance(coerced, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+        print("DEBUG last-ditch recognized widget")
         return [coerced]
 
+    print("DEBUG returning empty list")
     return []
+
 
 def add_table(doc, table_widget, table_index):
     if table_widget.heading:
@@ -290,22 +308,12 @@ def add_table(doc, table_widget, table_index):
     )
 
 def add_figure(doc, widget, index):
-    import os
     from docx.shared import Inches
 
     if widget.heading:
         doc.add_heading(widget.heading, level=widget.level)
+    doc.add_picture(widget.filepath, width=Inches(widget.width))
 
-    path = widget.filepath
-    if isinstance(path, str) and path.startswith("file://"):
-        path = path[7:]
-
-    if not os.path.exists(path):
-        print(f"WARNING: image not found — {path}")
-        doc.add_paragraph(f"Figure {index}: (missing) {widget.caption or ''}".strip())
-        return
-
-    doc.add_picture(path, width=Inches(widget.width))
     doc.add_paragraph(f"Figure {index}: {widget.caption}" if widget.caption else f"Figure {index}")
 
 
@@ -328,6 +336,12 @@ def gather_document(
     from docx.enum.text import WD_ALIGN_PARAGRAPH
     from docx.shared import Inches, Pt
 
+    print("DEBUG gather_document called")
+    print(f"  title={title}")
+    print(f"  time_range={time_range}")
+    print(f"  doc_widgets type={type(doc_widgets)}, len={len(doc_widgets)}")
+    print(f"  root_path={root_path}, filename={filename}, logo_path={logo_path}")
+
     doc = Document()
 
     # --- Title
@@ -345,6 +359,9 @@ def gather_document(
         heading2.alignment = WD_ALIGN_PARAGRAPH.CENTER
         for run in heading2.runs:
             run.font.size = Pt(15)
+        print("DEBUG added time_range heading:", formatted_time_range)
+    else:
+        print("DEBUG no time_range provided")
 
     # --- Logo (optional)
     paragraph = doc.add_paragraph()
@@ -352,72 +369,95 @@ def gather_document(
     paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
     run = paragraph.add_run()
     if logo_path:
+        print("DEBUG adding logo:", logo_path)
         run.add_picture(logo_path, width=Inches(1.5))
+    else:
+        print("DEBUG no logo provided")
 
     doc.add_page_break()
+    print("DEBUG added title page + page break")
 
-    # ---- Normalize inputs:
-    #  - flatten nested lists
-    #  - coerce legacy group tuples into DocGroup
+    # ---- Normalize inputs
     normalized = [_coerce_to_docgroup(x) for x in _flatten_doc_items(doc_widgets)]
+    print("DEBUG normalized widgets:", normalized)
 
     table_index = 0
     figure_index = 0
 
-    for item in normalized:
-        item = _coerce_widget_like(item)  # <— NEW
-        # 1) First-class grouped block
+    for idx, item in enumerate(normalized):
+        print(f"DEBUG processing item[{idx}] type={type(item)} value={item}")
+        item = _coerce_widget_like(item)
+        print("  DEBUG after _coerce_widget_like:", type(item), item)
+
+        # 1) Group
         if isinstance(item, DocGroup):
+            print("  DEBUG DocGroup found with label:", item.label)
             if item.label:
                 doc.add_heading(str(item.label), level=2)
-            for w in _flatten_doc_items(item.widgets):
+            for j, w in enumerate(_flatten_doc_items(item.widgets)):
+                print(f"    DEBUG group widget[{j}] type={type(w)} value={w}")
                 if isinstance(w, DocHeadingWidget):
+                    print("     DEBUG adding heading:", w.heading)
                     doc.add_heading(w.heading, level=w.level)
                 elif isinstance(w, DocTableWidget):
                     table_index += 1
+                    print("     DEBUG adding table index:", table_index, "caption:", w.caption)
                     add_table(doc, w, table_index)
                 elif isinstance(w, DocFigureWidget):
                     figure_index += 1
+                    print("     DEBUG adding figure index:", figure_index, "caption:", w.caption)
                     add_figure(doc, w, figure_index)
                 else:
-                    # If something unexpected slips through, ignore gracefully.
-                    continue
+                    print("     DEBUG skipping unexpected widget:", w)
 
-        # 2) Plain widgets (no grouping)
+        # 2) Plain widgets
         elif isinstance(item, DocHeadingWidget):
+            print("  DEBUG adding plain heading:", item.heading)
             doc.add_heading(item.heading, level=item.level)
         elif isinstance(item, DocTableWidget):
             table_index += 1
+            print("  DEBUG adding plain table index:", table_index, "caption:", item.caption)
             add_table(doc, item, table_index)
         elif isinstance(item, DocFigureWidget):
             figure_index += 1
+            print("  DEBUG adding plain figure index:", figure_index, "caption:", item.caption)
             add_figure(doc, item, figure_index)
 
-        # 3) Legacy tuple (if user passes one at the top-level and coercion returned it unmodified)
+        # 3) Legacy tuple
         elif _is_group_tuple(item):
-            # Shouldn’t happen because we coerce above, but keep a fallback:
+            print("  DEBUG legacy group tuple found:", item)
             coerced = _coerce_to_docgroup(item)
             if isinstance(coerced, DocGroup):
+                print("   DEBUG coerced legacy tuple into DocGroup with label:", coerced.label)
                 if coerced.label:
                     doc.add_heading(str(coerced.label), level=2)
-                for w in _flatten_doc_items(coerced.widgets):
+                for j, w in enumerate(_flatten_doc_items(coerced.widgets)):
+                    print(f"    DEBUG legacy group widget[{j}] type={type(w)} value={w}")
                     if isinstance(w, DocHeadingWidget):
+                        print("     DEBUG adding heading:", w.heading)
                         doc.add_heading(w.heading, level=w.level)
                     elif isinstance(w, DocTableWidget):
                         table_index += 1
+                        print("     DEBUG adding table index:", table_index, "caption:", w.caption)
                         add_table(doc, w, table_index)
                     elif isinstance(w, DocFigureWidget):
                         figure_index += 1
+                        print("     DEBUG adding figure index:", figure_index, "caption:", w.caption)
                         add_figure(doc, w, figure_index)
+                    else:
+                        print("     DEBUG skipping unexpected widget:", w)
 
         else:
-            # Unknown thing — skip
+            print("  DEBUG skipping unknown item:", item)
             continue
 
     # Handle file://
     if root_path.startswith("file://"):
+        print("DEBUG stripping file:// prefix from root_path")
         root_path = root_path[7:]
 
     path = os.path.join(root_path, f"{filename}.docx")
+    print("DEBUG saving document to:", path)
     doc.save(path)
+    print("DEBUG document saved successfully")
     return path
