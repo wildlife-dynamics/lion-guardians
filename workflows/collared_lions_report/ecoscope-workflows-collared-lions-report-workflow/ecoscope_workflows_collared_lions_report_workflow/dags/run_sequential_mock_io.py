@@ -372,10 +372,7 @@ def main(params: Params):
     output_files = (
         gather_output_files.validate()
         .handle_errors(task_instance_id="output_files")
-        .partial(
-            files=[create_report, lg_dashboard, collared_html_png, td_ecomap_html_url],
-            **(params_dict.get("output_files") or {}),
-        )
+        .partial(files=create_report, **(params_dict.get("output_files") or {}))
         .call()
     )
 

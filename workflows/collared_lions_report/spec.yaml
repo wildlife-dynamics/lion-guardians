@@ -302,7 +302,3 @@ workflow:
     partial:
       files:
         - ${{ workflow.create_report.return }}
-        - ${{ workflow.lg_dashboard.return }}
-        - ${{ workflow.collared_html_png.return }}
-        - ${{ workflow.td_ecomap_html_url.return }}
-        

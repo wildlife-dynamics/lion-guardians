@@ -312,20 +312,74 @@ def add_figure(doc, widget, index):
     import os
 
     path = widget.filepath
+    print(f"DEBUG add_figure: START - processing widget {index}")
+    print(f"DEBUG add_figure: path = '{path}'")
+    print(f"DEBUG add_figure: widget heading = '{widget.heading}'")
+    print(f"DEBUG add_figure: widget width = {widget.width}")
+
+    # Your paths are already clean, so minimal processing needed
     if isinstance(path, str) and path.startswith("file://"):
         path = path[7:]
+        print(f"DEBUG add_figure: removed file:// prefix, new path = '{path}'")
 
-    if widget.heading:
-        doc.add_heading(widget.heading, level=widget.level)
+    # File existence and readability checks
+    print(f"DEBUG add_figure: checking if path exists...")
+    if not os.path.exists(path):
+        print(f"ERROR add_figure: FILE DOES NOT EXIST -> '{path}'")
+        # List directory contents to see what's actually there
+        dir_path = os.path.dirname(path)
+        if os.path.exists(dir_path):
+            files = os.listdir(dir_path)
+            print(f"DEBUG add_figure: directory contents: {files}")
+        else:
+            print(f"ERROR add_figure: directory doesn't exist: '{dir_path}'")
+        return
 
+    print(f"DEBUG add_figure: file exists ✓")
+    
+    if not os.access(path, os.R_OK):
+        print(f"ERROR add_figure: file is not readable -> '{path}'")
+        return
+    
+    print(f"DEBUG add_figure: file is readable ✓")
+
+    # Get file info
     try:
-        if not os.path.exists(path):
-            print(f"WARNING add_figure: file does not exist -> {path}")
-        doc.add_picture(path, width=Inches(widget.width))
+        file_size = os.path.getsize(path)
+        print(f"DEBUG add_figure: file size = {file_size} bytes")
     except Exception as e:
-        print(f"ERROR add_figure: failed to add picture '{path}': {e}")
+        print(f"ERROR add_figure: could not get file size: {e}")
+        return
 
-    doc.add_paragraph(f"Figure {index}: {widget.caption}" if widget.caption else f"Figure {index}")
+    # Add heading if present
+    if widget.heading:
+        print(f"DEBUG add_figure: adding heading '{widget.heading}' at level {widget.level}")
+        heading = doc.add_heading(widget.heading, level=widget.level)
+        print(f"DEBUG add_figure: heading added successfully")
+    else:
+        print(f"DEBUG add_figure: no heading to add")
+
+    # Try to add the picture
+    print(f"DEBUG add_figure: attempting to add picture...")
+    try:
+        print(f"DEBUG add_figure: calling doc.add_picture with width={widget.width} inches")
+        picture = doc.add_picture(path, width=Inches(widget.width))
+        print(f"DEBUG add_figure: doc.add_picture returned: {type(picture)}")
+        print(f"DEBUG add_figure: picture added successfully ✓")
+        
+    except Exception as e:
+        print(f"ERROR add_figure: failed to add picture '{path}': {type(e).__name__}: {e}")
+        print(f"ERROR add_figure: full exception: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return
+
+    # Add caption
+    caption_text = f"Figure {index}: {widget.caption}" if widget.caption else f"Figure {index}"
+    print(f"DEBUG add_figure: adding caption: '{caption_text}'")
+    caption_paragraph = doc.add_paragraph(caption_text)
+    print(f"DEBUG add_figure: caption added successfully")
+    print(f"DEBUG add_figure: COMPLETE - widget {index} processed successfully")
 
 
 

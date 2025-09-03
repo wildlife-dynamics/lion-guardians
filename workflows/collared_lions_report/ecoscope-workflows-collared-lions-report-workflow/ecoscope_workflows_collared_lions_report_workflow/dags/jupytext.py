@@ -700,9 +700,6 @@ output_files_params = dict()
 
 output_files = (
     gather_output_files.handle_errors(task_instance_id="output_files")
-    .partial(
-        files=[create_report, lg_dashboard, collared_html_png, td_ecomap_html_url],
-        **output_files_params,
-    )
+    .partial(files=create_report, **output_files_params)
     .call()
 )
