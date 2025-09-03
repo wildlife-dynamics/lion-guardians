@@ -74,15 +74,48 @@ def _is_group_tuple(x: Any) -> bool:
     # current legacy payloads look like: ((predicates...), widget_or_list)
     return isinstance(x, tuple) and len(x) == 2 and isinstance(x[0], (list, tuple))
 
-def _coerce_to_docgroup(x: Any) -> DocGroup | DocHeadingWidget | DocTableWidget | DocFigureWidget:
+def _is_widget_by_type(x: Any) -> bool:
+    """
+    Check if an object is a widget by examining its class name and attributes.
+    This is more robust than isinstance checks when dealing with imports from different modules.
+    """
+    if hasattr(x, '__class__'):
+        class_name = x.__class__.__name__
+        if class_name in ('DocHeadingWidget', 'DocTableWidget', 'DocFigureWidget'):
+            return True
+        # Also check if it has the expected attributes
+        if hasattr(x, 'heading') and hasattr(x, 'level'):
+            if hasattr(x, 'filepath'):  # DocFigureWidget
+                return True
+            elif hasattr(x, 'df'):  # DocTableWidget
+                return True
+            else:  # DocHeadingWidget
+                return True
+    return False
+def _is_widget(x: object) -> TypeGuard[WidgetSingle]:
+    """
+    Type guard that checks if an object is a widget, handling cross-module imports.
+    """
+    # First try isinstance for local widgets
+    if isinstance(x, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+        return True
+    
+    # Then use duck typing for widgets from other modules
+    return _is_widget_by_type(x)
+
+def _is_group_tuple(x: Any) -> bool:
+    # current legacy payloads look like: ((predicates...), widget_or_list)
+    return isinstance(x, tuple) and len(x) == 2 and isinstance(x[0], (list, tuple))
+
+def _coerce_to_docgroup(x: Any) -> DocGroup | Any:
     """
     Accept legacy tuple format and convert to DocGroup, or return individual widgets as-is.
     Legacy examples:
       ((('TemporalGrouper_%B', '=', 'February'),), DocFigureWidget(...))
       ([('field','in',['A','B'])], [DocTableWidget(...), DocFigureWidget(...)])
     """
-    # Handle individual widgets directly
-    if isinstance(x, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+    # Handle individual widgets directly - use flexible checking
+    if _is_widget_by_type(x) or isinstance(x, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
         return x
     
     if not _is_group_tuple(x):
@@ -103,13 +136,32 @@ def _coerce_to_docgroup(x: Any) -> DocGroup | DocHeadingWidget | DocTableWidget 
     else:
         raise TypeError(f"Unsupported predicate structure: {type(preds_raw)}")
 
-    # normalize widgets -> list[widgets]
-    if isinstance(widgets_raw, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+    # normalize widgets -> list[widgets] - use more flexible checking for cross-module widgets
+    if (_is_widget_by_type(widgets_raw) or 
+        isinstance(widgets_raw, (DocHeadingWidget, DocTableWidget, DocFigureWidget))):
         widgets = [widgets_raw]
     elif isinstance(widgets_raw, list):
-        widgets = widgets_raw
+        # Validate that all items in the list are widgets
+        validated_widgets = []
+        for widget in widgets_raw:
+            if (_is_widget_by_type(widget) or 
+                isinstance(widget, (DocHeadingWidget, DocTableWidget, DocFigureWidget))):
+                validated_widgets.append(widget)
+            else:
+                raise TypeError(f"Unsupported widget type in list: {type(widget)}")
+        widgets = validated_widgets
     else:
-        raise TypeError(f"Unsupported widget structure in group: {type(widgets_raw)}")
+        # If we get here, log more details for debugging
+        print(f"DEBUG: Unsupported widget structure - Type: {type(widgets_raw)}, Class name: {getattr(widgets_raw, '__class__', None)}")
+        if hasattr(widgets_raw, '__dict__'):
+            print(f"DEBUG: Widget attributes: {list(widgets_raw.__dict__.keys())}")
+        
+        # Try one more fallback - if it looks like a widget but doesn't pass our checks
+        if (hasattr(widgets_raw, 'heading') or hasattr(widgets_raw, 'filepath') or hasattr(widgets_raw, 'df')):
+            print(f"DEBUG: Treating as widget despite type check failure: {type(widgets_raw)}")
+            widgets = [widgets_raw]
+        else:
+            raise TypeError(f"Unsupported widget structure in group: {type(widgets_raw)}")
 
     # try to derive a friendly label, e.g., "February" when you group by month
     derived_label = None
@@ -119,6 +171,7 @@ def _coerce_to_docgroup(x: Any) -> DocGroup | DocHeadingWidget | DocTableWidget 
             derived_label = str(val)
 
     return DocGroup(predicates=preds, widgets=widgets, label=derived_label)
+
 
 def _flatten_doc_items(items: Any) -> list[Any]:
     """
@@ -132,7 +185,6 @@ def _flatten_doc_items(items: Any) -> list[Any]:
     else:
         out.append(items)
     return out
-
 
 @task
 def prepare_widget_list(widgets: Union[WidgetOrList, WidgetMap, KeyValList]) -> list[DocWidget]:
