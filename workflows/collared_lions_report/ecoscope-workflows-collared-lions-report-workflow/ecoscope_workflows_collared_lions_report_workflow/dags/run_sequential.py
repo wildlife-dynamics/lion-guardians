@@ -34,6 +34,7 @@ from ecoscope_workflows_core.tasks.results import merge_widget_views
 from ecoscope_workflows_core.tasks.results import gather_dashboard
 from ecoscope_workflows_ext_custom.tasks import html_to_png
 from ecoscope_workflows_ext_custom.tasks import create_doc_figure
+from ecoscope_workflows_ext_lion_guardians.tasks import prepare_widget_list
 from ecoscope_workflows_ext_custom.tasks import gather_doc
 
 from ..params import Params
@@ -326,6 +327,13 @@ def main(params: Params):
         .mapvalues(argnames=["filepath"], argvalues=collared_html_png)
     )
 
+    gather_widgets = (
+        prepare_widget_list.validate()
+        .handle_errors(task_instance_id="gather_widgets")
+        .partial(**(params_dict.get("gather_widgets") or {}))
+        .mapvalues(argnames=["widgets"], argvalues=collared_subject_doc_widget)
+    )
+
     create_report = (
         gather_doc.validate()
         .handle_errors(task_instance_id="create_report")
@@ -336,7 +344,7 @@ def main(params: Params):
             filename="collared_report",
             **(params_dict.get("create_report") or {}),
         )
-        .mapvalues(argnames=["doc_widgets"], argvalues=collared_subject_doc_widget)
+        .mapvalues(argnames=["doc_widgets"], argvalues=gather_widgets)
     )
 
     return create_report

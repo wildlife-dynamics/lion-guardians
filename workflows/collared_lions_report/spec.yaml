@@ -280,6 +280,14 @@ workflow:
       argnames: filepath
       argvalues: ${{ workflow.collared_html_png.return }}
   
+  - name : Prepare widget list 
+    id: gather_widgets 
+    task: prepare_widget_list
+    mapvalues:
+      argnames: widgets 
+      argvalues: 
+        - ${{ workflow.collared_subject_doc_widget.return }}
+
   - name: Create Report 
     id: create_report
     task: gather_doc
@@ -290,4 +298,4 @@ workflow:
       filename: "collared_report"
     mapvalues:
       argnames: doc_widgets
-      argvalues: ${{ workflow.collared_subject_doc_widget.return }}
+      argvalues: ${{ workflow.gather_widgets.return }}
