@@ -74,16 +74,20 @@ def _is_group_tuple(x: Any) -> bool:
     # current legacy payloads look like: ((predicates...), widget_or_list)
     return isinstance(x, tuple) and len(x) == 2 and isinstance(x[0], (list, tuple))
 
-
-def _coerce_to_docgroup(x: Any) -> DocGroup | Any:
+def _coerce_to_docgroup(x: Any) -> DocGroup | DocHeadingWidget | DocTableWidget | DocFigureWidget:
     """
-    Accept legacy tuple format and convert to DocGroup, otherwise return as-is.
+    Accept legacy tuple format and convert to DocGroup, or return individual widgets as-is.
     Legacy examples:
       ((('TemporalGrouper_%B', '=', 'February'),), DocFigureWidget(...))
       ([('field','in',['A','B'])], [DocTableWidget(...), DocFigureWidget(...)])
     """
+    # Handle individual widgets directly
+    if isinstance(x, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+        return x
+    
     if not _is_group_tuple(x):
         return x
+        
     preds_raw, widgets_raw = x
 
     # normalize predicates -> list[Predicate]
@@ -115,7 +119,6 @@ def _coerce_to_docgroup(x: Any) -> DocGroup | Any:
             derived_label = str(val)
 
     return DocGroup(predicates=preds, widgets=widgets, label=derived_label)
-
 
 def _flatten_doc_items(items: Any) -> list[Any]:
     """
@@ -157,6 +160,7 @@ def prepare_widget_list(widgets: Union[WidgetOrList, WidgetMap, KeyValList]) -> 
 
     return []
 
+
 def add_table(doc, table_widget, table_index):
     if table_widget.heading:
         doc.add_heading(table_widget.heading, level=table_widget.level)
@@ -188,6 +192,7 @@ def add_figure(doc, widget, index):
     doc.add_picture(widget.filepath, width=Inches(widget.width))
 
     doc.add_paragraph(f"Figure {index}: {widget.caption}" if widget.caption else f"Figure {index}")
+
 
 @task
 def gather_document(

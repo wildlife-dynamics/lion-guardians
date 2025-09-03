@@ -16,7 +16,7 @@ installed_requirements:
   version: {version: ==0.0.3}
 - channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
   name: ecoscope-workflows-ext-lion-guardians
-  version: {version: ==10000.dev23+geb3402bf2.d20250903}
+  version: {version: ==10000.dev25+gfb890b894.d20250903}
 params_sha256: 463c84203942426dce11a179994a42abb343bc9a64524de3f8af4b98f97d6278
 spec_sha256: 729106643343a704545398b26c9d102a0d3420782206727cf757619ee98bcff6
 
