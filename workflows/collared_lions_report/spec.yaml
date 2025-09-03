@@ -279,7 +279,13 @@ workflow:
     mapvalues:
       argnames: filepath
       argvalues: ${{ workflow.collared_html_png.return }}
-  
+
+  - name: Normalize report widgets
+    id: normalized_doc_widgets
+    task: prepare_widget_list
+    partial:
+      widgets: ${{ workflow.collared_subject_doc_widget.return }}
+      
   - name: Create Report 
     id: create_report
     task: gather_document
@@ -288,5 +294,4 @@ workflow:
       time_range: ${{ workflow.time_range.return }}
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "collared_report"
-      doc_widgets: 
-        - ${{ workflow.collared_subject_doc_widget.return }}
+      doc_widgets: ${{ workflow.normalized_doc_widgets.return }}

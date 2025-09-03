@@ -51,6 +51,7 @@ from ecoscope_workflows_core.tasks.results import merge_widget_views
 from ecoscope_workflows_core.tasks.results import gather_dashboard
 from ecoscope_workflows_ext_custom.tasks import html_to_png
 from ecoscope_workflows_ext_custom.tasks import create_doc_figure
+from ecoscope_workflows_ext_lion_guardians.tasks import prepare_widget_list
 from ecoscope_workflows_ext_lion_guardians.tasks import gather_document
 
 from ..params import Params
@@ -92,7 +93,8 @@ def main(params: Params):
         ],
         "collared_html_png": ["td_ecomap_html_url"],
         "collared_subject_doc_widget": ["collared_html_png"],
-        "create_report": ["time_range", "collared_subject_doc_widget"],
+        "normalized_doc_widgets": ["collared_subject_doc_widget"],
+        "create_report": ["time_range", "normalized_doc_widgets"],
     }
 
     nodes = {
@@ -435,6 +437,16 @@ def main(params: Params):
                 "argvalues": DependsOn("collared_html_png"),
             },
         ),
+        "normalized_doc_widgets": Node(
+            async_task=prepare_widget_list.validate()
+            .handle_errors(task_instance_id="normalized_doc_widgets")
+            .set_executor("lithops"),
+            partial={
+                "widgets": DependsOn("collared_subject_doc_widget"),
+            }
+            | (params_dict.get("normalized_doc_widgets") or {}),
+            method="call",
+        ),
         "create_report": Node(
             async_task=gather_document.validate()
             .handle_errors(task_instance_id="create_report")
@@ -444,7 +456,7 @@ def main(params: Params):
                 "time_range": DependsOn("time_range"),
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "filename": "collared_report",
-                "doc_widgets": DependsOn("collared_subject_doc_widget"),
+                "doc_widgets": DependsOn("normalized_doc_widgets"),
             }
             | (params_dict.get("create_report") or {}),
             method="call",

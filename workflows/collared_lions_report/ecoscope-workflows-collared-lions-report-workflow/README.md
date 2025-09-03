@@ -5,8 +5,8 @@
 
 ```yaml
 # fingerprint:
-artifacts_sha256_basic: f00e87a04dff9751f3ff502938e43c20b2eebe9100707fc3ddf2f28421a78986
-artifacts_sha256_strict: d368ffcdeea5c90491ae161f9702a8e53449460f2f8ae140aac50b00d212fc5c
+artifacts_sha256_basic: 493be17bb2532c99b8cf1df828c311637ec5055138e1440ccfd45ecba46361ae
+artifacts_sha256_strict: 6f066a1ac181bc744251e26a6b9a5d58571ff1ab33a779133c76264cc1ec4243
 installed_requirements:
 - channel: https://repo.prefix.dev/ecoscope-workflows/
   name: ecoscope-workflows-core
@@ -16,9 +16,9 @@ installed_requirements:
   version: {version: ==0.0.3}
 - channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
   name: ecoscope-workflows-ext-lion-guardians
-  version: {version: ==10000.dev28+gbec5ab76c.d20250903}
+  version: {version: ==10000.dev29+g32fa19155.d20250903}
 params_sha256: 463c84203942426dce11a179994a42abb343bc9a64524de3f8af4b98f97d6278
-spec_sha256: 729106643343a704545398b26c9d102a0d3420782206727cf757619ee98bcff6
+spec_sha256: 31d14c483aef3bcfc235f3b004073c5269bd625a847743b314714bf37a90820e
 
 ```
 
