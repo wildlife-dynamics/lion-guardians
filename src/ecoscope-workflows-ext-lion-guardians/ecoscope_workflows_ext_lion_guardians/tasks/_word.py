@@ -92,6 +92,8 @@ def _is_widget_by_type(x: Any) -> bool:
             else:  # DocHeadingWidget
                 return True
     return False
+
+
 def _is_widget(x: object) -> TypeGuard[WidgetSingle]:
     """
     Type guard that checks if an object is a widget, handling cross-module imports.
@@ -103,9 +105,11 @@ def _is_widget(x: object) -> TypeGuard[WidgetSingle]:
     # Then use duck typing for widgets from other modules
     return _is_widget_by_type(x)
 
+
 def _is_group_tuple(x: Any) -> bool:
     # current legacy payloads look like: ((predicates...), widget_or_list)
     return isinstance(x, tuple) and len(x) == 2 and isinstance(x[0], (list, tuple))
+
 
 def _coerce_to_docgroup(x: Any) -> DocGroup | Any:
     """
@@ -171,7 +175,6 @@ def _coerce_to_docgroup(x: Any) -> DocGroup | Any:
             derived_label = str(val)
 
     return DocGroup(predicates=preds, widgets=widgets, label=derived_label)
-
 
 def _flatten_doc_items(items: Any) -> list[Any]:
     """
