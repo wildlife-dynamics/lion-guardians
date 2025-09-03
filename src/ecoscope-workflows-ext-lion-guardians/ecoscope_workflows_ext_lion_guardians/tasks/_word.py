@@ -309,12 +309,24 @@ def add_table(doc, table_widget, table_index):
 
 def add_figure(doc, widget, index):
     from docx.shared import Inches
+    import os
+
+    path = widget.filepath
+    if isinstance(path, str) and path.startswith("file://"):
+        path = path[7:]
 
     if widget.heading:
         doc.add_heading(widget.heading, level=widget.level)
-    doc.add_picture(widget.filepath, width=Inches(widget.width))
+
+    try:
+        if not os.path.exists(path):
+            print(f"WARNING add_figure: file does not exist -> {path}")
+        doc.add_picture(path, width=Inches(widget.width))
+    except Exception as e:
+        print(f"ERROR add_figure: failed to add picture '{path}': {e}")
 
     doc.add_paragraph(f"Figure {index}: {widget.caption}" if widget.caption else f"Figure {index}")
+
 
 
 @task
@@ -396,10 +408,8 @@ def gather_document(
                 doc.add_heading(str(item.label), level=2)
             for j, w in enumerate(_flatten_doc_items(item.widgets)):
                 print(f"    DEBUG group widget[{j}] type={type(w)} value={w}")
-                if isinstance(w, DocHeadingWidget):
-                    print("     DEBUG adding heading:", w.heading)
-                    doc.add_heading(w.heading, level=w.level)
-                elif isinstance(w, DocTableWidget):
+                # --- specific subclasses first ---
+                if isinstance(w, DocTableWidget):
                     table_index += 1
                     print("     DEBUG adding table index:", table_index, "caption:", w.caption)
                     add_table(doc, w, table_index)
@@ -407,8 +417,9 @@ def gather_document(
                     figure_index += 1
                     print("     DEBUG adding figure index:", figure_index, "caption:", w.caption)
                     add_figure(doc, w, figure_index)
-                else:
-                    print("     DEBUG skipping unexpected widget:", w)
+                elif isinstance(w, DocHeadingWidget):
+                    print("     DEBUG adding heading:", w.heading)
+                    doc.add_heading(w.heading, level=w.level)
 
         # 2) Plain widgets
         elif isinstance(item, DocHeadingWidget):
@@ -433,10 +444,8 @@ def gather_document(
                     doc.add_heading(str(coerced.label), level=2)
                 for j, w in enumerate(_flatten_doc_items(coerced.widgets)):
                     print(f"    DEBUG legacy group widget[{j}] type={type(w)} value={w}")
-                    if isinstance(w, DocHeadingWidget):
-                        print("     DEBUG adding heading:", w.heading)
-                        doc.add_heading(w.heading, level=w.level)
-                    elif isinstance(w, DocTableWidget):
+                    # --- specific subclasses first ---
+                    if isinstance(w, DocTableWidget):
                         table_index += 1
                         print("     DEBUG adding table index:", table_index, "caption:", w.caption)
                         add_table(doc, w, table_index)
@@ -444,8 +453,9 @@ def gather_document(
                         figure_index += 1
                         print("     DEBUG adding figure index:", figure_index, "caption:", w.caption)
                         add_figure(doc, w, figure_index)
-                    else:
-                        print("     DEBUG skipping unexpected widget:", w)
+                    elif isinstance(w, DocHeadingWidget):
+                        print("     DEBUG adding heading:", w.heading)
+                        doc.add_heading(w.heading, level=w.level)
 
         else:
             print("  DEBUG skipping unknown item:", item)

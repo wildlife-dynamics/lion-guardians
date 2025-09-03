@@ -45,6 +45,7 @@ from ecoscope_workflows_ext_custom.tasks import html_to_png
 from ecoscope_workflows_ext_custom.tasks import create_doc_figure
 from ecoscope_workflows_ext_lion_guardians.tasks import prepare_widget_list
 from ecoscope_workflows_ext_lion_guardians.tasks import gather_document
+from ecoscope_workflows_core.tasks.results import gather_output_files
 
 # %% [markdown]
 # ## Set Workflow Details
@@ -680,6 +681,28 @@ create_report = (
         filename="collared_report",
         doc_widgets=normalized_doc_widgets,
         **create_report_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Gather Output Files
+
+# %%
+# parameters
+
+output_files_params = dict()
+
+# %%
+# call the task
+
+
+output_files = (
+    gather_output_files.handle_errors(task_instance_id="output_files")
+    .partial(
+        files=[create_report, lg_dashboard, collared_html_png, td_ecomap_html_url],
+        **output_files_params,
     )
     .call()
 )

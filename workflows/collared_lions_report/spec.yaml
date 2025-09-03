@@ -295,3 +295,14 @@ workflow:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: "collared_report"
       doc_widgets: ${{ workflow.normalized_doc_widgets.return }}
+
+  - name: Gather Output Files
+    id: output_files
+    task: gather_output_files
+    partial:
+      files:
+        - ${{ workflow.create_report.return }}
+        - ${{ workflow.lg_dashboard.return }}
+        - ${{ workflow.collared_html_png.return }}
+        - ${{ workflow.td_ecomap_html_url.return }}
+        

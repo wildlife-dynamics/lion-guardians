@@ -2,7 +2,7 @@
 import json
 import os
 
-from ecoscope_workflows_core.graph import DependsOn, Graph, Node
+from ecoscope_workflows_core.graph import DependsOn, DependsOnSequence, Graph, Node
 
 from ecoscope_workflows_core.tasks.config import set_workflow_details
 from ecoscope_workflows_core.tasks.filter import set_time_range
@@ -38,6 +38,7 @@ from ecoscope_workflows_ext_custom.tasks import html_to_png
 from ecoscope_workflows_ext_custom.tasks import create_doc_figure
 from ecoscope_workflows_ext_lion_guardians.tasks import prepare_widget_list
 from ecoscope_workflows_ext_lion_guardians.tasks import gather_document
+from ecoscope_workflows_core.tasks.results import gather_output_files
 
 from ..params import Params
 
@@ -78,6 +79,12 @@ def main(params: Params):
         "collared_subject_doc_widget": ["collared_html_png"],
         "normalized_doc_widgets": ["collared_subject_doc_widget"],
         "create_report": ["time_range", "normalized_doc_widgets"],
+        "output_files": [
+            "create_report",
+            "lg_dashboard",
+            "collared_html_png",
+            "td_ecomap_html_url",
+        ],
     }
 
     nodes = {
@@ -442,6 +449,23 @@ def main(params: Params):
                 "doc_widgets": DependsOn("normalized_doc_widgets"),
             }
             | (params_dict.get("create_report") or {}),
+            method="call",
+        ),
+        "output_files": Node(
+            async_task=gather_output_files.validate()
+            .handle_errors(task_instance_id="output_files")
+            .set_executor("lithops"),
+            partial={
+                "files": DependsOnSequence(
+                    [
+                        DependsOn("create_report"),
+                        DependsOn("lg_dashboard"),
+                        DependsOn("collared_html_png"),
+                        DependsOn("td_ecomap_html_url"),
+                    ],
+                ),
+            }
+            | (params_dict.get("output_files") or {}),
             method="call",
         ),
     }
