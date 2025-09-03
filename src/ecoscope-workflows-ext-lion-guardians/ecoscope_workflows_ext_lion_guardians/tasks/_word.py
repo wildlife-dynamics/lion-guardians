@@ -70,5 +70,7 @@ def prepare_widget_list(
             vals = [kv[1] for kv in widgets]  
             return _flatten_values(vals)
         return _flatten_values(widgets)  
+    
+    print(f"Return values : {_flatten_values(widgets)}")
 
     return []

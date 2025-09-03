@@ -6,12 +6,12 @@ workflow_details:
 # Desired time-range
 time_range:
   since: "2025-01-01T00:00:00Z"
-  until: "2025-05-31T23:59:59Z"
+  until: "2025-02-28T23:59:59Z"
 
 # Connect to EarthRanger
 er_client_name:
   data_source:
-    name: "lg"
+    name: "lion_guardians"
 
 # Subject group name
 subject_obs:
@@ -33,7 +33,6 @@ groupers:
     - "%B"
 
 # Desired basemap layers
-
 base_map_defs:
   base_maps:
     - url: "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
@@ -52,7 +51,7 @@ td:
 # Local shapefiles to load 
 load_local_shapefiles:
   config:
-    path: "/home/ttemu/ecoscope-workflows/shp_files/shape-files/lion-guardians"
+    path: "C:\\Users\\Admin\\Desktop\\Ecoscope Pgaff\\shape-files\\lion-guardians" # temorary path for testing
 
 create_custom_map_layers:
   style_config:
