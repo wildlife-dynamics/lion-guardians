@@ -53,7 +53,6 @@ from ecoscope_workflows_ext_custom.tasks import html_to_png
 from ecoscope_workflows_ext_custom.tasks import create_doc_figure
 from ecoscope_workflows_ext_lion_guardians.tasks import prepare_widget_list
 from ecoscope_workflows_ext_lion_guardians.tasks import gather_document
-from ecoscope_workflows_core.tasks.results import gather_output_files
 
 from ..params import Params
 
@@ -96,7 +95,6 @@ def main(params: Params):
         "collared_subject_doc_widget": ["collared_html_png"],
         "normalized_doc_widgets": ["collared_subject_doc_widget"],
         "create_report": ["time_range", "normalized_doc_widgets"],
-        "output_files": ["create_report"],
     }
 
     nodes = {
@@ -461,16 +459,6 @@ def main(params: Params):
                 "doc_widgets": DependsOn("normalized_doc_widgets"),
             }
             | (params_dict.get("create_report") or {}),
-            method="call",
-        ),
-        "output_files": Node(
-            async_task=gather_output_files.validate()
-            .handle_errors(task_instance_id="output_files")
-            .set_executor("lithops"),
-            partial={
-                "files": DependsOn("create_report"),
-            }
-            | (params_dict.get("output_files") or {}),
             method="call",
         ),
     }
