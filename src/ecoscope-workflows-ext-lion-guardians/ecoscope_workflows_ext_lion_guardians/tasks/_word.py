@@ -3,24 +3,28 @@ from __future__ import annotations
 from ecoscope_workflows_core.decorators import task
 from pydantic import BaseModel
 from ecoscope_workflows_core.annotations import AnyDataFrame
-from typing import Mapping, Hashable, TypeGuard, Union
+from typing import Mapping, Hashable, TypeGuard
 from typing import Annotated, Any, Literal, Tuple
 from ecoscope_workflows_core.tasks.filter._filter import TimeRange
 from pydantic import Field
 from pydantic.json_schema import SkipJsonSchema
 
+
 class DocHeadingWidget(BaseModel):
     heading: str | None = None
     level: int = 1
+
 
 class DocTableWidget(DocHeadingWidget):
     df: AnyDataFrame
     caption: str | None = None
 
+
 class DocFigureWidget(DocHeadingWidget):
     filepath: str
     caption: str | None = None
     width: float = 5.0  # Default width in inches
+
 
 DocWidget = DocHeadingWidget | DocTableWidget | DocFigureWidget | list[DocTableWidget] | list[DocFigureWidget]
 Predicate = Tuple[str, Literal["=", "!=", "in", "not in"], Any]
@@ -30,8 +34,10 @@ WidgetOrList = WidgetSingle | list[DocWidget]
 WidgetMap = Mapping[Hashable, object]  # values may be widgets or lists/maps (we'll inspect at runtime)
 KeyValList = list[tuple[Hashable, object]]
 
+
 def _is_widget(x: object) -> TypeGuard[WidgetSingle]:
     return isinstance(x, (DocHeadingWidget, DocTableWidget, DocFigureWidget))
+
 
 def _flatten_values(vals: list[object]) -> list[DocWidget]:
     out: list[DocWidget] = []
@@ -50,37 +56,42 @@ def _flatten_values(vals: list[object]) -> list[DocWidget]:
             pass
     return out
 
+
 class DocGroup(BaseModel):
     """
     First-class grouped doc widget: a group of widgets tied to filter predicates.
     `label` is optional; if omitted we'll derive something sensible from predicates.
     """
+
     predicates: list[Predicate]
-    widgets: list[object]  
+    widgets: list[object]
     label: str | None = None
+
 
 def _is_group_tuple(x: Any) -> bool:
     # current legacy payloads look like: ((predicates...), widget_or_list)
     return isinstance(x, tuple) and len(x) == 2 and isinstance(x[0], (list, tuple))
+
 
 def _is_widget_by_type(x: Any) -> bool:
     """
     Check if an object is a widget by examining its class name and attributes.
     This is more robust than isinstance checks when dealing with imports from different modules.
     """
-    if hasattr(x, '__class__'):
+    if hasattr(x, "__class__"):
         class_name = x.__class__.__name__
-        if class_name in ('DocHeadingWidget', 'DocTableWidget', 'DocFigureWidget'):
+        if class_name in ("DocHeadingWidget", "DocTableWidget", "DocFigureWidget"):
             return True
         # Also check if it has the expected attributes
-        if hasattr(x, 'heading') and hasattr(x, 'level'):
-            if hasattr(x, 'filepath'):  # DocFigureWidget
+        if hasattr(x, "heading") and hasattr(x, "level"):
+            if hasattr(x, "filepath"):  # DocFigureWidget
                 return True
-            elif hasattr(x, 'df'):  # DocTableWidget
+            elif hasattr(x, "df"):  # DocTableWidget
                 return True
             else:  # DocHeadingWidget
                 return True
     return False
+
 
 def _coerce_widget_like(obj: object) -> object:
     # Already a local widget?
@@ -91,17 +102,16 @@ def _coerce_widget_like(obj: object) -> object:
     if _is_widget_by_type(obj):
         # Rebuild as local model
         heading = getattr(obj, "heading", None)
-        level   = getattr(obj, "level", 1)
+        level = getattr(obj, "level", 1)
         caption = getattr(obj, "caption", None)
 
         if hasattr(obj, "filepath"):
             width = getattr(obj, "width", 5.0)
-            return DocFigureWidget(heading=heading, level=level,
-                                   filepath=getattr(obj, "filepath"),
-                                   caption=caption, width=width)
+            return DocFigureWidget(
+                heading=heading, level=level, filepath=getattr(obj, "filepath"), caption=caption, width=width
+            )
         if hasattr(obj, "df"):
-            return DocTableWidget(heading=heading, level=level,
-                                  df=getattr(obj, "df"), caption=caption)
+            return DocTableWidget(heading=heading, level=level, df=getattr(obj, "df"), caption=caption)
         # Default to heading if only heading/level are present
         return DocHeadingWidget(heading=heading, level=level)
 
@@ -110,9 +120,9 @@ def _coerce_widget_like(obj: object) -> object:
         if "filepath" in obj:
             return DocFigureWidget(**obj)  # type: ignore[arg-type]
         if "df" in obj:
-            return DocTableWidget(**obj)   # type: ignore[arg-type]
+            return DocTableWidget(**obj)  # type: ignore[arg-type]
         if "heading" in obj or "level" in obj:
-            return DocHeadingWidget(**obj) # type: ignore[arg-type]
+            return DocHeadingWidget(**obj)  # type: ignore[arg-type]
         return obj
 
     # list of (k,v) → dict → local model
@@ -121,6 +131,7 @@ def _coerce_widget_like(obj: object) -> object:
 
     return obj
 
+
 def _is_widget(x: object) -> TypeGuard[WidgetSingle]:
     """
     Type guard that checks if an object is a widget, handling cross-module imports.
@@ -128,13 +139,15 @@ def _is_widget(x: object) -> TypeGuard[WidgetSingle]:
     # First try isinstance for local widgets
     if isinstance(x, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
         return True
-    
+
     # Then use duck typing for widgets from other modules
     return _is_widget_by_type(x)
+
 
 def _is_group_tuple(x: Any) -> bool:
     # current legacy payloads look like: ((predicates...), widget_or_list)
     return isinstance(x, tuple) and len(x) == 2 and isinstance(x[0], (list, tuple))
+
 
 def _coerce_to_docgroup(x: Any) -> DocGroup | Any:
     """
@@ -146,10 +159,10 @@ def _coerce_to_docgroup(x: Any) -> DocGroup | Any:
     # Handle individual widgets directly - use flexible checking
     if _is_widget_by_type(x) or isinstance(x, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
         return x
-    
+
     if not _is_group_tuple(x):
         return x
-        
+
     preds_raw, widgets_raw = x
 
     # normalize predicates -> list[Predicate]
@@ -192,6 +205,7 @@ def _coerce_to_docgroup(x: Any) -> DocGroup | Any:
 
     return DocGroup(predicates=preds, widgets=widgets, label=derived_label)
 
+
 def _flatten_doc_items(items: Any) -> list[Any]:
     """
     Flatten nested lists/tuples but do NOT break widget objects.
@@ -205,9 +219,10 @@ def _flatten_doc_items(items: Any) -> list[Any]:
         out.append(items)
     return out
 
+
 @task
 def prepare_widget_list(
-    widgets: Annotated[object, Field(description="Widget(s) or containers of widgets")]
+    widgets: Annotated[object, Field(description="Widget(s) or containers of widgets")],
 ) -> list[object]:
     """
     Normalize widgets into a flat list[DocWidget].
@@ -217,6 +232,7 @@ def prepare_widget_list(
       - a mapping: key -> widget or list-of-widgets
       - a list of (key, value) pairs
     """
+
     def _flatten_values(vals: list[object]) -> list[object]:
         out: list[object] = []
         print("DEBUG _flatten_values called with:", type(vals), "len:", len(vals))
@@ -232,7 +248,9 @@ def prepare_widget_list(
                 for j, item in enumerate(v2):
                     item2 = _coerce_widget_like(item)
                     print(f"    DEBUG nested[{j}] after coerce:", type(item2), item2)
-                    if _is_widget_by_type(item2) or isinstance(item2, (DocHeadingWidget, DocTableWidget, DocFigureWidget)):
+                    if _is_widget_by_type(item2) or isinstance(
+                        item2, (DocHeadingWidget, DocTableWidget, DocFigureWidget)
+                    ):
                         out.append(item2)
             elif isinstance(v2, Mapping):
                 print("   DEBUG nested mapping found, recursing")
@@ -274,6 +292,7 @@ def prepare_widget_list(
     print("DEBUG returning empty list")
     return []
 
+
 def add_table(doc, table_widget, table_index):
     if table_widget.heading:
         doc.add_heading(table_widget.heading, level=table_widget.level)
@@ -296,6 +315,7 @@ def add_table(doc, table_widget, table_index):
         f"Table {table_index}: {table_widget.caption}" if table_widget.caption else f"Table {table_index}"
     )
 
+
 def add_figure(doc, widget, index):
     from docx.shared import Inches
     import os
@@ -312,7 +332,7 @@ def add_figure(doc, widget, index):
         print(f"DEBUG add_figure: removed file:// prefix, new path = '{path}'")
 
     # File existence and readability checks
-    print(f"DEBUG add_figure: checking if path exists...")
+    print("DEBUG add_figure: checking if path exists...")
     if not os.path.exists(path):
         print(f"ERROR add_figure: FILE DOES NOT EXIST -> '{path}'")
         # List directory contents to see what's actually there
@@ -324,13 +344,13 @@ def add_figure(doc, widget, index):
             print(f"ERROR add_figure: directory doesn't exist: '{dir_path}'")
         return
 
-    print(f"DEBUG add_figure: file exists OK") 
-    
+    print("DEBUG add_figure: file exists OK")
+
     if not os.access(path, os.R_OK):
         print(f"ERROR add_figure: file is not readable -> '{path}'")
         return
-    
-    print(f"DEBUG add_figure: file is readable OK")  
+
+    print("DEBUG add_figure: file is readable OK")
 
     # Get file info
     try:
@@ -343,32 +363,31 @@ def add_figure(doc, widget, index):
     # Add heading if present
     if widget.heading:
         print(f"DEBUG add_figure: adding heading '{widget.heading}' at level {widget.level}")
-        heading = doc.add_heading(widget.heading, level=widget.level)
-        print(f"DEBUG add_figure: heading added successfully")
+        doc.add_heading(widget.heading, level=widget.level)
+        print("DEBUG add_figure: heading added successfully")
     else:
-        print(f"DEBUG add_figure: no heading to add")
+        print("DEBUG add_figure: no heading to add")
 
     # Try to add the picture
-    print(f"DEBUG add_figure: attempting to add picture...")
+    print("DEBUG add_figure: attempting to add picture...")
     try:
         print(f"DEBUG add_figure: calling doc.add_picture with width={widget.width} inches")
         picture = doc.add_picture(path, width=Inches(widget.width))
         print(f"DEBUG add_figure: doc.add_picture returned: {type(picture)}")
-        print(f"DEBUG add_figure: picture added successfully OK") 
-        
+        print("DEBUG add_figure: picture added successfully OK")
+
     except Exception as e:
         print(f"ERROR add_figure: failed to add picture '{path}': {type(e).__name__}: {e}")
         print(f"ERROR add_figure: full exception: {str(e)}")
         import traceback
+
         traceback.print_exc()
         return
 
     # Add caption
     caption_text = f"Figure {index}: {widget.caption}" if widget.caption else f"Figure {index}"
     print(f"DEBUG add_figure: adding caption: '{caption_text}'")
-    caption_paragraph = doc.add_paragraph(caption_text)
-    print(f"DEBUG add_figure: caption added successfully")
-    print(f"DEBUG add_figure: COMPLETE - widget {index} processed successfully")
+
 
 @task
 def gather_document(
