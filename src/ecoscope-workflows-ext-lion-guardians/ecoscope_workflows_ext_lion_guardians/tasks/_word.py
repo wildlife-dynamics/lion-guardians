@@ -9,22 +9,18 @@ from ecoscope_workflows_core.tasks.filter._filter import TimeRange
 from pydantic import Field
 from pydantic.json_schema import SkipJsonSchema
 
-
 class DocHeadingWidget(BaseModel):
     heading: str | None = None
     level: int = 1
-
 
 class DocTableWidget(DocHeadingWidget):
     df: AnyDataFrame
     caption: str | None = None
 
-
 class DocFigureWidget(DocHeadingWidget):
     filepath: str
     caption: str | None = None
     width: float = 5.0  # Default width in inches
-
 
 DocWidget = DocHeadingWidget | DocTableWidget | DocFigureWidget | list[DocTableWidget] | list[DocFigureWidget]
 Predicate = Tuple[str, Literal["=", "!=", "in", "not in"], Any]
@@ -34,10 +30,8 @@ WidgetOrList = WidgetSingle | list[DocWidget]
 WidgetMap = Mapping[Hashable, object]  # values may be widgets or lists/maps (we'll inspect at runtime)
 KeyValList = list[tuple[Hashable, object]]
 
-
 def _is_widget(x: object) -> TypeGuard[WidgetSingle]:
     return isinstance(x, (DocHeadingWidget, DocTableWidget, DocFigureWidget))
-
 
 def _flatten_values(vals: list[object]) -> list[DocWidget]:
     out: list[DocWidget] = []
@@ -55,7 +49,6 @@ def _flatten_values(vals: list[object]) -> list[DocWidget]:
         else:
             pass
     return out
-
 
 class DocGroup(BaseModel):
     """
@@ -128,7 +121,6 @@ def _coerce_widget_like(obj: object) -> object:
 
     return obj
 
-
 def _is_widget(x: object) -> TypeGuard[WidgetSingle]:
     """
     Type guard that checks if an object is a widget, handling cross-module imports.
@@ -140,11 +132,9 @@ def _is_widget(x: object) -> TypeGuard[WidgetSingle]:
     # Then use duck typing for widgets from other modules
     return _is_widget_by_type(x)
 
-
 def _is_group_tuple(x: Any) -> bool:
     # current legacy payloads look like: ((predicates...), widget_or_list)
     return isinstance(x, tuple) and len(x) == 2 and isinstance(x[0], (list, tuple))
-
 
 def _coerce_to_docgroup(x: Any) -> DocGroup | Any:
     """
@@ -284,7 +274,6 @@ def prepare_widget_list(
     print("DEBUG returning empty list")
     return []
 
-
 def add_table(doc, table_widget, table_index):
     if table_widget.heading:
         doc.add_heading(table_widget.heading, level=table_widget.level)
@@ -335,13 +324,13 @@ def add_figure(doc, widget, index):
             print(f"ERROR add_figure: directory doesn't exist: '{dir_path}'")
         return
 
-    print(f"DEBUG add_figure: file exists OK")  # Changed from ✓ to OK
+    print(f"DEBUG add_figure: file exists OK") 
     
     if not os.access(path, os.R_OK):
         print(f"ERROR add_figure: file is not readable -> '{path}'")
         return
     
-    print(f"DEBUG add_figure: file is readable OK")  # Changed from ✓ to OK
+    print(f"DEBUG add_figure: file is readable OK")  
 
     # Get file info
     try:
@@ -513,7 +502,6 @@ def gather_document(
             print("  DEBUG skipping unknown item:", item)
             continue
 
-    # Handle file://
     if root_path.startswith("file://"):
         print("DEBUG stripping file:// prefix from root_path")
         root_path = root_path[7:]
