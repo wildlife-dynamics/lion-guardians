@@ -195,7 +195,7 @@ class BaseMapDefs(BaseModel):
             },
         ],
         description="Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
-        title="Set Map Base Layers",
+        title=" ",
     )
 
 
@@ -203,9 +203,7 @@ class SubjectGroupObservations(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    subject_group_name: str = Field(
-        ..., description="Name of EarthRanger Subject", title="Subject Group Name"
-    )
+    subject_group_name: str = Field(..., title="Subject Group Name")
 
 
 class SummaryTrajectoryTable(BaseModel):
@@ -252,19 +250,19 @@ class TrajectorySegmentFilter(BaseModel):
     min_length_meters: Optional[confloat(ge=0.001)] = Field(
         0.001, title="Minimum Segment Length (Meters)"
     )
-    max_length_meters: Optional[float] = Field(
+    max_length_meters: Optional[confloat(gt=0.001)] = Field(
         100000, title="Maximum Segment Length (Meters)"
     )
     min_time_secs: Optional[confloat(ge=1.0)] = Field(
         1, title="Minimum Segment Duration (Seconds)"
     )
-    max_time_secs: Optional[float] = Field(
+    max_time_secs: Optional[confloat(gt=1.0)] = Field(
         172800, title="Maximum Segment Duration (Seconds)"
     )
     min_speed_kmhr: Optional[confloat(gt=0.001)] = Field(
         0.01, title="Minimum Segment Speed (Kilometers per Hour)"
     )
-    max_speed_kmhr: Optional[float] = Field(
+    max_speed_kmhr: Optional[confloat(gt=0.001)] = Field(
         500, title="Maximum Segment Speed (Kilometers per Hour)"
     )
 
@@ -319,7 +317,7 @@ class SubjectTrajectory(BaseModel):
             }
         ),
         description="Filter track data by setting limits on track segment length, duration, and speed. Segments outside these bounds are removed, reducing noise and to focus on meaningful movement patterns.",
-        title="Trajectory Segment Filter",
+        title=" ",
     )
 
 
