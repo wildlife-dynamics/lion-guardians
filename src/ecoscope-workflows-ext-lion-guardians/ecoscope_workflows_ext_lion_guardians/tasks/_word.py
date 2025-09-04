@@ -529,4 +529,4 @@ def gather_document(
     print("DEBUG saving document to:", path)
     doc.save(path)
     print("DEBUG document saved successfully")
-    return path
+    return str(path)
