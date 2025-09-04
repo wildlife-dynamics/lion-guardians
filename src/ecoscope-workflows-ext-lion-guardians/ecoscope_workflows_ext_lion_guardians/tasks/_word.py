@@ -381,8 +381,6 @@ def add_figure(doc, widget, index):
     print(f"DEBUG add_figure: caption added successfully")
     print(f"DEBUG add_figure: COMPLETE - widget {index} processed successfully")
 
-
-
 @task
 def gather_document(
     title: Annotated[str, Field(description="The document title")],
@@ -462,7 +460,7 @@ def gather_document(
                 doc.add_heading(str(item.label), level=2)
             for j, w in enumerate(_flatten_doc_items(item.widgets)):
                 print(f"    DEBUG group widget[{j}] type={type(w)} value={w}")
-                # --- specific subclasses first ---
+                # --- CHECK MOST SPECIFIC SUBCLASSES FIRST ---
                 if isinstance(w, DocTableWidget):
                     table_index += 1
                     print("     DEBUG adding table index:", table_index, "caption:", w.caption)
@@ -471,22 +469,22 @@ def gather_document(
                     figure_index += 1
                     print("     DEBUG adding figure index:", figure_index, "caption:", w.caption)
                     add_figure(doc, w, figure_index)
-                elif isinstance(w, DocHeadingWidget):
+                elif isinstance(w, DocHeadingWidget):  # This should be LAST since it's the base class
                     print("     DEBUG adding heading:", w.heading)
                     doc.add_heading(w.heading, level=w.level)
 
-        # 2) Plain widgets
-        elif isinstance(item, DocHeadingWidget):
-            print("  DEBUG adding plain heading:", item.heading)
-            doc.add_heading(item.heading, level=item.level)
-        elif isinstance(item, DocTableWidget):
+        # 2) Plain widgets - CHECK MOST SPECIFIC SUBCLASSES FIRST
+        elif isinstance(item, DocTableWidget):  # Check DocTableWidget before DocHeadingWidget
             table_index += 1
             print("  DEBUG adding plain table index:", table_index, "caption:", item.caption)
             add_table(doc, item, table_index)
-        elif isinstance(item, DocFigureWidget):
+        elif isinstance(item, DocFigureWidget):  # Check DocFigureWidget before DocHeadingWidget
             figure_index += 1
             print("  DEBUG adding plain figure index:", figure_index, "caption:", item.caption)
             add_figure(doc, item, figure_index)
+        elif isinstance(item, DocHeadingWidget):  # This should be LAST since it's the base class
+            print("  DEBUG adding plain heading:", item.heading)
+            doc.add_heading(item.heading, level=item.level)
 
         # 3) Legacy tuple
         elif _is_group_tuple(item):
@@ -498,7 +496,7 @@ def gather_document(
                     doc.add_heading(str(coerced.label), level=2)
                 for j, w in enumerate(_flatten_doc_items(coerced.widgets)):
                     print(f"    DEBUG legacy group widget[{j}] type={type(w)} value={w}")
-                    # --- specific subclasses first ---
+                    # --- CHECK MOST SPECIFIC SUBCLASSES FIRST ---
                     if isinstance(w, DocTableWidget):
                         table_index += 1
                         print("     DEBUG adding table index:", table_index, "caption:", w.caption)
@@ -507,7 +505,7 @@ def gather_document(
                         figure_index += 1
                         print("     DEBUG adding figure index:", figure_index, "caption:", w.caption)
                         add_figure(doc, w, figure_index)
-                    elif isinstance(w, DocHeadingWidget):
+                    elif isinstance(w, DocHeadingWidget):  # This should be LAST
                         print("     DEBUG adding heading:", w.heading)
                         doc.add_heading(w.heading, level=w.level)
 
