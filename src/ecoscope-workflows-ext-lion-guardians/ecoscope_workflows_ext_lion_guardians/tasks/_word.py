@@ -335,13 +335,13 @@ def add_figure(doc, widget, index):
             print(f"ERROR add_figure: directory doesn't exist: '{dir_path}'")
         return
 
-    print(f"DEBUG add_figure: file exists ✓")
+    print(f"DEBUG add_figure: file exists OK")  # Changed from ✓ to OK
     
     if not os.access(path, os.R_OK):
         print(f"ERROR add_figure: file is not readable -> '{path}'")
         return
     
-    print(f"DEBUG add_figure: file is readable ✓")
+    print(f"DEBUG add_figure: file is readable OK")  # Changed from ✓ to OK
 
     # Get file info
     try:
@@ -365,7 +365,7 @@ def add_figure(doc, widget, index):
         print(f"DEBUG add_figure: calling doc.add_picture with width={widget.width} inches")
         picture = doc.add_picture(path, width=Inches(widget.width))
         print(f"DEBUG add_figure: doc.add_picture returned: {type(picture)}")
-        print(f"DEBUG add_figure: picture added successfully ✓")
+        print(f"DEBUG add_figure: picture added successfully OK") 
         
     except Exception as e:
         print(f"ERROR add_figure: failed to add picture '{path}': {type(e).__name__}: {e}")
