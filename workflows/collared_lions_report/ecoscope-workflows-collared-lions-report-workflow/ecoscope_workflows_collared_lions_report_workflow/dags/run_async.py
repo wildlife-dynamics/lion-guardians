@@ -82,6 +82,7 @@ def main(params: Params):
         "subject_traj": ["subject_reloc"],
         "traj_add_temporal_index": ["subject_traj", "groupers"],
         "persist_trajs": ["traj_add_temporal_index"],
+        "persist_trajs_csv": ["traj_add_temporal_index"],
         "split_subject_traj_groups": ["traj_add_temporal_index", "groupers"],
         "td": ["split_subject_traj_groups"],
         "td_colormap": ["td"],
@@ -405,13 +406,24 @@ def main(params: Params):
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "filetype": "gpkg",
+                "df": DependsOn("traj_add_temporal_index"),
             }
             | (params_dict.get("persist_trajs") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["df"],
-                "argvalues": DependsOn("traj_add_temporal_index"),
-            },
+            method="call",
+        ),
+        "persist_trajs_csv": Node(
+            async_task=persist_df.validate()
+            .set_task_instance_id("persist_trajs_csv")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "filetype": "csv",
+                "df": DependsOn("traj_add_temporal_index"),
+            }
+            | (params_dict.get("persist_trajs_csv") or {}),
+            method="call",
         ),
         "split_subject_traj_groups": Node(
             async_task=split_groups.validate()

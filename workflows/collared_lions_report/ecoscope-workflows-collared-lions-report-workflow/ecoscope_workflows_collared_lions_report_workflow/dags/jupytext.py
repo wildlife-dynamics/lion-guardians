@@ -556,9 +556,38 @@ persist_trajs = (
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filetype="gpkg",
+        df=traj_add_temporal_index,
         **persist_trajs_params,
     )
-    .mapvalues(argnames=["df"], argvalues=traj_add_temporal_index)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Persist trajectories
+
+# %%
+# parameters
+
+persist_trajs_csv_params = dict(
+    filename=...,
+)
+
+# %%
+# call the task
+
+
+persist_trajs_csv = (
+    persist_df.set_task_instance_id("persist_trajs_csv")
+    .handle_errors()
+    .with_tracing()
+    .partial(
+        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        filetype="csv",
+        df=traj_add_temporal_index,
+        **persist_trajs_csv_params,
+    )
+    .call()
 )
 
 

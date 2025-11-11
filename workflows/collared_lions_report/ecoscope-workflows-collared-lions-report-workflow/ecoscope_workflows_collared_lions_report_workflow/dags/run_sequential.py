@@ -322,9 +322,24 @@ def main(params: Params):
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             filetype="gpkg",
+            df=traj_add_temporal_index,
             **(params_dict.get("persist_trajs") or {}),
         )
-        .mapvalues(argnames=["df"], argvalues=traj_add_temporal_index)
+        .call()
+    )
+
+    persist_trajs_csv = (
+        persist_df.validate()
+        .set_task_instance_id("persist_trajs_csv")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filetype="csv",
+            df=traj_add_temporal_index,
+            **(params_dict.get("persist_trajs_csv") or {}),
+        )
+        .call()
     )
 
     split_subject_traj_groups = (
