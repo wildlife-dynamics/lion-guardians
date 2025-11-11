@@ -193,6 +193,16 @@ workflow:
       cast_to_datetime: true
       format: mixed
 
+  - name: Persist trajectories 
+    id: persist_trajs
+    task: persist_df 
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filetype: gpkg
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.traj_add_temporal_index.return }}
+
   # Split subjects trajectories by group
   - name: Split Subject Trajectories by Group
     id: split_subject_traj_groups

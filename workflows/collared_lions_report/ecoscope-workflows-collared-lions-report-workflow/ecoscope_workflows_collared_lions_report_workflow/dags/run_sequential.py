@@ -314,6 +314,19 @@ def main(params: Params):
         .call()
     )
 
+    persist_trajs = (
+        persist_df.validate()
+        .set_task_instance_id("persist_trajs")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filetype="gpkg",
+            **(params_dict.get("persist_trajs") or {}),
+        )
+        .mapvalues(argnames=["df"], argvalues=traj_add_temporal_index)
+    )
+
     split_subject_traj_groups = (
         split_groups.validate()
         .set_task_instance_id("split_subject_traj_groups")

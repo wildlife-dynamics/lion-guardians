@@ -81,6 +81,7 @@ def main(params: Params):
         "subject_reloc": ["subject_obs"],
         "subject_traj": ["subject_reloc"],
         "traj_add_temporal_index": ["subject_traj", "groupers"],
+        "persist_trajs": ["traj_add_temporal_index"],
         "split_subject_traj_groups": ["traj_add_temporal_index", "groupers"],
         "td": ["split_subject_traj_groups"],
         "td_colormap": ["td"],
@@ -394,6 +395,23 @@ def main(params: Params):
             }
             | (params_dict.get("traj_add_temporal_index") or {}),
             method="call",
+        ),
+        "persist_trajs": Node(
+            async_task=persist_df.validate()
+            .set_task_instance_id("persist_trajs")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "filetype": "gpkg",
+            }
+            | (params_dict.get("persist_trajs") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("traj_add_temporal_index"),
+            },
         ),
         "split_subject_traj_groups": Node(
             async_task=split_groups.validate()
