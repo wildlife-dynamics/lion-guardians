@@ -554,8 +554,8 @@ def main(params: Params):
         .handle_errors()
         .with_tracing()
         .partial(
-            df=subject_reloc,
-            column_name="extra__subject__name",
+            df=summary_table,
+            column_name="extra__name",
             **(params_dict.get("unique_subjects") or {}),
         )
         .call()

@@ -405,8 +405,8 @@ workflow:
     id: unique_subjects
     task: dataframe_column_nunique
     partial:
-      df: ${{ workflow.subject_reloc.return }}
-      column_name: extra__subject__name
+      df: ${{ workflow.summary_table.return }}
+      column_name: extra__name
 
   # Create context and persist subject report 
   - name: Create and persist cover page context

@@ -118,7 +118,7 @@ def main(params: Params):
         "add_total_events_row": ["summary_table"],
         "persist_summary_table": ["add_total_events_row"],
         "collared_html_png": ["td_ecomap_html_url"],
-        "unique_subjects": ["subject_reloc"],
+        "unique_subjects": ["summary_table"],
         "create_cover_context": ["time_range", "unique_subjects", "persist_cover_page"],
         "zip_metrics_etd": ["summary_table", "collared_html_png"],
         "subject_context_doc": ["persist_indv_subject_page", "zip_metrics_etd"],
@@ -715,8 +715,8 @@ def main(params: Params):
             .with_tracing()
             .set_executor("lithops"),
             partial={
-                "df": DependsOn("subject_reloc"),
-                "column_name": "extra__subject__name",
+                "df": DependsOn("summary_table"),
+                "column_name": "extra__name",
             }
             | (params_dict.get("unique_subjects") or {}),
             method="call",
