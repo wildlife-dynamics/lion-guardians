@@ -10,47 +10,65 @@ that they would not be included (or would be different) in the production versio
 import json
 import os
 import warnings  # 🧪
-from ecoscope_workflows_core.testing import create_task_magicmock  # 🧪
-
 
 from ecoscope_workflows_core.tasks.config import set_workflow_details
 from ecoscope_workflows_core.tasks.filter import set_time_range
 from ecoscope_workflows_core.tasks.groupby import set_groupers
 from ecoscope_workflows_core.tasks.io import set_er_connection
+from ecoscope_workflows_core.testing import create_task_magicmock  # 🧪
 from ecoscope_workflows_ext_ecoscope.tasks.results import set_base_maps
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    create_map_layers,
+    download_file_and_persist,
+    load_geospatial_files,
+    make_text_layer,
+)
 
 get_subjectgroup_observations = create_task_magicmock(  # 🧪
     anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
     func_name="get_subjectgroup_observations",  # 🧪
 )  # 🧪
-from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import process_relocations
-from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
-    relocations_to_trajectory,
+from ecoscope_workflows_core.tasks.analysis import (
+    dataframe_column_nunique,
+    dataframe_column_sum,
+)
+from ecoscope_workflows_core.tasks.groupby import split_groups
+from ecoscope_workflows_core.tasks.io import persist_text
+from ecoscope_workflows_core.tasks.results import (
+    create_map_widget_single_view,
+    create_single_value_widget_single_view,
+    gather_dashboard,
+    merge_widget_views,
+)
+from ecoscope_workflows_core.tasks.skip import (
+    any_dependency_skipped,
+    any_is_empty_df,
+    never,
 )
 from ecoscope_workflows_core.tasks.transformation import add_temporal_index
-from ecoscope_workflows_core.tasks.groupby import split_groups
-from ecoscope_workflows_ext_lion_guardians.tasks import load_map_files
-from ecoscope_workflows_ext_lion_guardians.tasks import create_map_layers
+from ecoscope_workflows_ext_custom.tasks import html_to_png
 from ecoscope_workflows_ext_ecoscope.tasks.analysis import (
     calculate_elliptical_time_density,
+    summarize_df,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.io import persist_df
+from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
+    process_relocations,
+    relocations_to_trajectory,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import apply_color_map
-from ecoscope_workflows_ext_ecoscope.tasks.results import create_polygon_layer
-from ecoscope_workflows_core.tasks.skip import any_is_empty_df
-from ecoscope_workflows_core.tasks.skip import any_dependency_skipped
-from ecoscope_workflows_ext_lion_guardians.tasks import combine_map_layers
-from ecoscope_workflows_ext_lion_guardians.tasks import create_view_state_from_gdf
-from ecoscope_workflows_ext_lion_guardians.tasks import zip_grouped_by_key
-from ecoscope_workflows_ext_ecoscope.tasks.results import draw_ecomap
-from ecoscope_workflows_core.tasks.io import persist_text
-from ecoscope_workflows_core.tasks.results import create_map_widget_single_view
-from ecoscope_workflows_core.tasks.skip import never
-from ecoscope_workflows_core.tasks.results import merge_widget_views
-from ecoscope_workflows_core.tasks.results import gather_dashboard
-from ecoscope_workflows_ext_custom.tasks import html_to_png
-from ecoscope_workflows_ext_custom.tasks import create_doc_figure
-from ecoscope_workflows_ext_lion_guardians.tasks import prepare_widget_list
-from ecoscope_workflows_ext_lion_guardians.tasks import gather_document
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    add_totals_row,
+    combine_docx_files,
+    create_cover_context_page,
+    create_geojson_layer,
+    create_report_context,
+    draw_custom_map,
+    merge_static_and_grouped_layers,
+    round_off_values,
+    view_state_deck_gdf,
+    zip_grouped_by_key,
+)
 
 from ..params import Params
 
@@ -62,14 +80,18 @@ def main(params: Params):
 
     workflow_details = (
         set_workflow_details.validate()
-        .handle_errors(task_instance_id="workflow_details")
+        .set_task_instance_id("workflow_details")
+        .handle_errors()
+        .with_tracing()
         .partial(**(params_dict.get("workflow_details") or {}))
         .call()
     )
 
     time_range = (
         set_time_range.validate()
-        .handle_errors(task_instance_id="time_range")
+        .set_task_instance_id("time_range")
+        .handle_errors()
+        .with_tracing()
         .partial(
             time_format="%d %b %Y %H:%M:%S %Z", **(params_dict.get("time_range") or {})
         )
@@ -78,28 +100,149 @@ def main(params: Params):
 
     groupers = (
         set_groupers.validate()
-        .handle_errors(task_instance_id="groupers")
+        .set_task_instance_id("groupers")
+        .handle_errors()
+        .with_tracing()
         .partial(**(params_dict.get("groupers") or {}))
         .call()
     )
 
     er_client_name = (
         set_er_connection.validate()
-        .handle_errors(task_instance_id="er_client_name")
+        .set_task_instance_id("er_client_name")
+        .handle_errors()
+        .with_tracing()
         .partial(**(params_dict.get("er_client_name") or {}))
         .call()
     )
 
     base_map_defs = (
         set_base_maps.validate()
-        .handle_errors(task_instance_id="base_map_defs")
+        .set_task_instance_id("base_map_defs")
+        .handle_errors()
+        .with_tracing()
         .partial(**(params_dict.get("base_map_defs") or {}))
+        .call()
+    )
+
+    persist_ambo_gpkg = (
+        download_file_and_persist.validate()
+        .set_task_instance_id("persist_ambo_gpkg")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            url="https://www.dropbox.com/scl/fi/phlc488gxqpcvr6ua3vk7/amboseli_group_ranch_boundaries.gpkg?rlkey=p5ztypwmj4ndjova9xe2ssiun&st=pknuicus&dl=0",
+            output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            overwrite_existing=False,
+            retries=3,
+            unzip=False,
+            **(params_dict.get("persist_ambo_gpkg") or {}),
+        )
+        .call()
+    )
+
+    persist_cover_page = (
+        download_file_and_persist.validate()
+        .set_task_instance_id("persist_cover_page")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            url="https://www.dropbox.com/scl/fi/1cbilbjq8625gsd5bb45m/collared_lions_cover_page.docx?rlkey=j6aq1bjrrsiv0qj4bghwywe1d&st=eqttsiau&dl=0",
+            output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            overwrite_existing=False,
+            retries=3,
+            unzip=False,
+            **(params_dict.get("persist_cover_page") or {}),
+        )
+        .call()
+    )
+
+    persist_indv_subject_page = (
+        download_file_and_persist.validate()
+        .set_task_instance_id("persist_indv_subject_page")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            url="https://www.dropbox.com/scl/fi/rdjej0c0dva7y8czw82de/collared_lion_subject_template.docx?rlkey=479h5pmpvjncgn314hd2r80yh&st=iuuc1o6t&dl=0",
+            output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            overwrite_existing=False,
+            retries=3,
+            unzip=False,
+            **(params_dict.get("persist_indv_subject_page") or {}),
+        )
+        .call()
+    )
+
+    load_local_shapefiles = (
+        load_geospatial_files.validate()
+        .set_task_instance_id("load_local_shapefiles")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            config={"path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"]},
+            **(params_dict.get("load_local_shapefiles") or {}),
+        )
+        .call()
+    )
+
+    create_custom_map_layers = (
+        create_map_layers.validate()
+        .set_task_instance_id("create_custom_map_layers")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            file_dict=load_local_shapefiles,
+            style_config={
+                "styles": {
+                    "amboseli_group_ranch_boundaries": {
+                        "stroked": True,
+                        "filled": False,
+                        "get_elevation": 50,
+                        "opacity": 0.55,
+                        "get_line_color": [105, 105, 105, 200],
+                        "get_line_width": 3.5,
+                    }
+                },
+                "legend": {"label": ["Group ranch boundaries"], "color": ["#696969"]},
+            },
+            **(params_dict.get("create_custom_map_layers") or {}),
+        )
+        .call()
+    )
+
+    custom_text_layer = (
+        make_text_layer.validate()
+        .set_task_instance_id("custom_text_layer")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            txt_gdf=load_local_shapefiles,
+            label_column="R_NAME",
+            fallback_columns=None,
+            use_centroid=True,
+            color=[0, 0, 0, 255],
+            size=75,
+            font_family="Calibri",
+            font_weight="bold",
+            background=False,
+            background_color=None,
+            background_padding=None,
+            text_anchor="start",
+            alignment_baseline="bottom",
+            billboard=True,
+            pickable=True,
+            tooltip_columns=["label"],
+            target_crs="epsg:4326",
+            **(params_dict.get("custom_text_layer") or {}),
+        )
         .call()
     )
 
     subject_obs = (
         get_subjectgroup_observations.validate()
-        .handle_errors(task_instance_id="subject_obs")
+        .set_task_instance_id("subject_obs")
+        .handle_errors()
+        .with_tracing()
         .partial(
             client=er_client_name,
             time_range=time_range,
@@ -113,7 +256,9 @@ def main(params: Params):
 
     subject_reloc = (
         process_relocations.validate()
-        .handle_errors(task_instance_id="subject_reloc")
+        .set_task_instance_id("subject_reloc")
+        .handle_errors()
+        .with_tracing()
         .partial(
             observations=subject_obs,
             relocs_columns=[
@@ -137,14 +282,18 @@ def main(params: Params):
 
     subject_traj = (
         relocations_to_trajectory.validate()
-        .handle_errors(task_instance_id="subject_traj")
+        .set_task_instance_id("subject_traj")
+        .handle_errors()
+        .with_tracing()
         .partial(relocations=subject_reloc, **(params_dict.get("subject_traj") or {}))
         .call()
     )
 
     traj_add_temporal_index = (
         add_temporal_index.validate()
-        .handle_errors(task_instance_id="traj_add_temporal_index")
+        .set_task_instance_id("traj_add_temporal_index")
+        .handle_errors()
+        .with_tracing()
         .partial(
             df=subject_traj,
             time_col="segment_start",
@@ -158,7 +307,9 @@ def main(params: Params):
 
     split_subject_traj_groups = (
         split_groups.validate()
-        .handle_errors(task_instance_id="split_subject_traj_groups")
+        .set_task_instance_id("split_subject_traj_groups")
+        .handle_errors()
+        .with_tracing()
         .partial(
             df=traj_add_temporal_index,
             groupers=groupers,
@@ -167,26 +318,11 @@ def main(params: Params):
         .call()
     )
 
-    load_local_shapefiles = (
-        load_map_files.validate()
-        .handle_errors(task_instance_id="load_local_shapefiles")
-        .partial(**(params_dict.get("load_local_shapefiles") or {}))
-        .call()
-    )
-
-    create_custom_map_layers = (
-        create_map_layers.validate()
-        .handle_errors(task_instance_id="create_custom_map_layers")
-        .partial(
-            file_dict=load_local_shapefiles,
-            **(params_dict.get("create_custom_map_layers") or {}),
-        )
-        .call()
-    )
-
     td = (
         calculate_elliptical_time_density.validate()
-        .handle_errors(task_instance_id="td")
+        .set_task_instance_id("td")
+        .handle_errors()
+        .with_tracing()
         .partial(
             crs="ESRI:53042",
             percentiles=[50.0, 60.0, 70.0, 80.0, 90.0, 95.0, 99.0],
@@ -199,7 +335,9 @@ def main(params: Params):
 
     td_colormap = (
         apply_color_map.validate()
-        .handle_errors(task_instance_id="td_colormap")
+        .set_task_instance_id("td_colormap")
+        .handle_errors()
+        .with_tracing()
         .partial(
             input_column_name="percentile",
             colormap="RdYlGn",
@@ -210,8 +348,10 @@ def main(params: Params):
     )
 
     td_map_layer = (
-        create_polygon_layer.validate()
-        .handle_errors(task_instance_id="td_map_layer")
+        create_geojson_layer.validate()
+        .set_task_instance_id("td_map_layer")
+        .handle_errors()
+        .with_tracing()
         .skipif(
             conditions=[
                 any_is_empty_df,
@@ -220,7 +360,12 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            layer_style={"fill_color_column": "percentile_colormap", "opacity": 0.45},
+            layer_style={
+                "get_fill_color": "percentile_colormap",
+                "opacity": 0.45,
+                "get_line_width": 0.75,
+                "stroked": True,
+            },
             legend={
                 "label_column": "percentile",
                 "color_column": "percentile_colormap",
@@ -232,25 +377,31 @@ def main(params: Params):
     )
 
     combine_custom_map_layers = (
-        combine_map_layers.validate()
-        .handle_errors(task_instance_id="combine_custom_map_layers")
+        merge_static_and_grouped_layers.validate()
+        .set_task_instance_id("combine_custom_map_layers")
+        .handle_errors()
+        .with_tracing()
         .partial(
-            static_layers=create_custom_map_layers,
+            static_layers=[create_custom_map_layers, custom_text_layer],
             **(params_dict.get("combine_custom_map_layers") or {}),
         )
         .mapvalues(argnames=["grouped_layers"], argvalues=td_map_layer)
     )
 
     zoom_view_state = (
-        create_view_state_from_gdf.validate()
-        .handle_errors(task_instance_id="zoom_view_state")
+        view_state_deck_gdf.validate()
+        .set_task_instance_id("zoom_view_state")
+        .handle_errors()
+        .with_tracing()
         .partial(pitch=0, bearing=0, **(params_dict.get("zoom_view_state") or {}))
         .mapvalues(argnames=["gdf"], argvalues=td_colormap)
     )
 
     zip_layers_view = (
         zip_grouped_by_key.validate()
-        .handle_errors(task_instance_id="zip_layers_view")
+        .set_task_instance_id("zip_layers_view")
+        .handle_errors()
+        .with_tracing()
         .partial(
             left=combine_custom_map_layers,
             right=zoom_view_state,
@@ -260,15 +411,16 @@ def main(params: Params):
     )
 
     td_ecomap = (
-        draw_ecomap.validate()
-        .handle_errors(task_instance_id="td_ecomap")
+        draw_custom_map.validate()
+        .set_task_instance_id("td_ecomap")
+        .handle_errors()
+        .with_tracing()
         .partial(
             tile_layers=base_map_defs,
-            north_arrow_style={"placement": "top-left"},
-            legend_style={"placement": "bottom-right", "title": "Home Range Metrics"},
             static=False,
             title=None,
-            max_zoom=20,
+            max_zoom=15,
+            legend_style={"placement": "bottom-right", "title": "ETD Metrics"},
             **(params_dict.get("td_ecomap") or {}),
         )
         .mapvalues(argnames=["geo_layers", "view_state"], argvalues=zip_layers_view)
@@ -276,7 +428,9 @@ def main(params: Params):
 
     td_ecomap_html_url = (
         persist_text.validate()
-        .handle_errors(task_instance_id="td_ecomap_html_url")
+        .set_task_instance_id("td_ecomap_html_url")
+        .handle_errors()
+        .with_tracing()
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             **(params_dict.get("td_ecomap_html_url") or {}),
@@ -286,7 +440,263 @@ def main(params: Params):
 
     td_map_widget = (
         create_map_widget_single_view.validate()
-        .handle_errors(task_instance_id="td_map_widget")
+        .set_task_instance_id("td_map_widget")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                never,
+            ],
+            unpack_depth=1,
+        )
+        .partial(title="Home Range Metrics", **(params_dict.get("td_map_widget") or {}))
+        .map(argnames=["view", "data"], argvalues=td_ecomap_html_url)
+    )
+
+    td_grouped_map_widget = (
+        merge_widget_views.validate()
+        .set_task_instance_id("td_grouped_map_widget")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            widgets=td_map_widget, **(params_dict.get("td_grouped_map_widget") or {})
+        )
+        .call()
+    )
+
+    summary_table = (
+        summarize_df.validate()
+        .set_task_instance_id("summary_table")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            groupby_cols=["extra__name"],
+            summary_params=[
+                {
+                    "display_name": "mean_speed",
+                    "aggregator": "mean",
+                    "column": "speed_kmhr",
+                },
+                {
+                    "display_name": "min_speed",
+                    "aggregator": "min",
+                    "column": "speed_kmhr",
+                },
+                {
+                    "display_name": "max_speed",
+                    "aggregator": "max",
+                    "column": "speed_kmhr",
+                },
+                {
+                    "display_name": "total_distance",
+                    "aggregator": "sum",
+                    "columnn": "dist_meters",
+                    "original_unit": "m",
+                    "new_unit": "km",
+                },
+            ],
+            reset_index=True,
+            **(params_dict.get("summary_table") or {}),
+        )
+        .mapvalues(argnames=["df"], argvalues=split_subject_traj_groups)
+    )
+
+    add_total_events_row = (
+        add_totals_row.validate()
+        .set_task_instance_id("add_total_events_row")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            label_col=["extra__name"],
+            label="Total",
+            **(params_dict.get("add_total_events_row") or {}),
+        )
+        .mapvalues(argnames=["df"], argvalues=summary_table)
+    )
+
+    persist_summary_table = (
+        persist_df.validate()
+        .set_task_instance_id("persist_summary_table")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filetype="csv",
+            **(params_dict.get("persist_summary_table") or {}),
+        )
+        .mapvalues(argnames=["df"], argvalues=add_total_events_row)
+    )
+
+    collared_html_png = (
+        html_to_png.validate()
+        .set_task_instance_id("collared_html_png")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            config={"wait_for_timeout": 25000},
+            **(params_dict.get("collared_html_png") or {}),
+        )
+        .mapvalues(argnames=["html_path"], argvalues=td_ecomap_html_url)
+    )
+
+    unique_subjects = (
+        dataframe_column_nunique.validate()
+        .set_task_instance_id("unique_subjects")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            df=subject_reloc,
+            column_name="extra__subject__name",
+            **(params_dict.get("unique_subjects") or {}),
+        )
+        .call()
+    )
+
+    create_cover_context = (
+        create_cover_context_page.validate()
+        .set_task_instance_id("create_cover_context")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            report_period=time_range,
+            prepared_by="Ecoscope",
+            count=unique_subjects,
+            template_path=persist_cover_page,
+            output_directory=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename="cover_page.docx",
+            **(params_dict.get("create_cover_context") or {}),
+        )
+        .call()
+    )
+
+    zip_metrics_etd = (
+        zip_grouped_by_key.validate()
+        .set_task_instance_id("zip_metrics_etd")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            left=summary_table,
+            right=collared_html_png,
+            **(params_dict.get("zip_metrics_etd") or {}),
+        )
+        .call()
+    )
+
+    subject_context_doc = (
+        create_report_context.validate()
+        .set_task_instance_id("subject_context_doc")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            template_path=persist_indv_subject_page,
+            output_directory=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename=None,
+            validate_images=True,
+            box_h_cm=9.0,
+            box_w_cm=15.0,
+            **(params_dict.get("subject_context_doc") or {}),
+        )
+        .mapvalues(
+            argnames=["subject_metrics", "home_range_ecomap"], argvalues=zip_metrics_etd
+        )
+    )
+
+    generate_mapbook_report = (
+        combine_docx_files.validate()
+        .set_task_instance_id("generate_mapbook_report")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            cover_page_path=create_cover_context,
+            output_directory=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            context_page_items=subject_context_doc,
+            filename="overall_report.docx",
+            **(params_dict.get("generate_mapbook_report") or {}),
+        )
+        .call()
+    )
+
+    calc_mean_speed = (
+        dataframe_column_sum.validate()
+        .set_task_instance_id("calc_mean_speed")
+        .handle_errors()
+        .with_tracing()
+        .partial(column_name="mean_speed", **(params_dict.get("calc_mean_speed") or {}))
+        .mapvalues(argnames=["df"], argvalues=summary_table)
+    )
+
+    round_mean_speed = (
+        round_off_values.validate()
+        .set_task_instance_id("round_mean_speed")
+        .handle_errors()
+        .with_tracing()
+        .partial(dp=2, **(params_dict.get("round_mean_speed") or {}))
+        .mapvalues(argnames=["value"], argvalues=calc_mean_speed)
+    )
+
+    calc_min_speed = (
+        dataframe_column_sum.validate()
+        .set_task_instance_id("calc_min_speed")
+        .handle_errors()
+        .with_tracing()
+        .partial(column_name="min_speed", **(params_dict.get("calc_min_speed") or {}))
+        .mapvalues(argnames=["df"], argvalues=summary_table)
+    )
+
+    round_min_speed = (
+        round_off_values.validate()
+        .set_task_instance_id("round_min_speed")
+        .handle_errors()
+        .with_tracing()
+        .partial(dp=2, **(params_dict.get("round_min_speed") or {}))
+        .mapvalues(argnames=["value"], argvalues=calc_min_speed)
+    )
+
+    calc_max_speed = (
+        dataframe_column_sum.validate()
+        .set_task_instance_id("calc_max_speed")
+        .handle_errors()
+        .with_tracing()
+        .partial(column_name="max_speed", **(params_dict.get("calc_max_speed") or {}))
+        .mapvalues(argnames=["df"], argvalues=summary_table)
+    )
+
+    round_max_speed = (
+        round_off_values.validate()
+        .set_task_instance_id("round_max_speed")
+        .handle_errors()
+        .with_tracing()
+        .partial(dp=2, **(params_dict.get("round_max_speed") or {}))
+        .mapvalues(argnames=["value"], argvalues=calc_max_speed)
+    )
+
+    total_distance_covered = (
+        dataframe_column_sum.validate()
+        .set_task_instance_id("total_distance_covered")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            column_name="total_distance",
+            **(params_dict.get("total_distance_covered") or {}),
+        )
+        .mapvalues(argnames=["df"], argvalues=summary_table)
+    )
+
+    round_total_distance = (
+        round_off_values.validate()
+        .set_task_instance_id("round_total_distance")
+        .handle_errors()
+        .with_tracing()
+        .partial(dp=2, **(params_dict.get("round_total_distance") or {}))
+        .mapvalues(argnames=["value"], argvalues=total_distance_covered)
+    )
+
+    total_mean_speed_widgets = (
+        create_single_value_widget_single_view.validate()
+        .set_task_instance_id("total_mean_speed_widgets")
+        .handle_errors()
+        .with_tracing()
         .skipif(
             conditions=[
                 never,
@@ -294,27 +704,132 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            title="Collared Lions Home Range Ecomap",
-            **(params_dict.get("td_map_widget") or {}),
+            title="Mean Speed",
+            decimal_places=1,
+            **(params_dict.get("total_mean_speed_widgets") or {}),
         )
-        .map(argnames=["view", "data"], argvalues=td_ecomap_html_url)
+        .map(argnames=["view", "data"], argvalues=round_mean_speed)
     )
 
-    td_grouped_map_widget = (
+    total_mean_speed_sv_widget = (
         merge_widget_views.validate()
-        .handle_errors(task_instance_id="td_grouped_map_widget")
+        .set_task_instance_id("total_mean_speed_sv_widget")
+        .handle_errors()
+        .with_tracing()
         .partial(
-            widgets=td_map_widget, **(params_dict.get("td_grouped_map_widget") or {})
+            widgets=total_mean_speed_widgets,
+            **(params_dict.get("total_mean_speed_sv_widget") or {}),
+        )
+        .call()
+    )
+
+    total_min_speed_widgets = (
+        create_single_value_widget_single_view.validate()
+        .set_task_instance_id("total_min_speed_widgets")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                never,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            title="Min Speed",
+            decimal_places=1,
+            **(params_dict.get("total_min_speed_widgets") or {}),
+        )
+        .map(argnames=["view", "data"], argvalues=round_min_speed)
+    )
+
+    total_min_speed_sv_widget = (
+        merge_widget_views.validate()
+        .set_task_instance_id("total_min_speed_sv_widget")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            widgets=total_min_speed_widgets,
+            **(params_dict.get("total_min_speed_sv_widget") or {}),
+        )
+        .call()
+    )
+
+    total_max_speed_widgets = (
+        create_single_value_widget_single_view.validate()
+        .set_task_instance_id("total_max_speed_widgets")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                never,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            title="Max Speed",
+            decimal_places=1,
+            **(params_dict.get("total_max_speed_widgets") or {}),
+        )
+        .map(argnames=["view", "data"], argvalues=round_max_speed)
+    )
+
+    total_max_speed_sv_widget = (
+        merge_widget_views.validate()
+        .set_task_instance_id("total_max_speed_sv_widget")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            widgets=total_max_speed_widgets,
+            **(params_dict.get("total_max_speed_sv_widget") or {}),
+        )
+        .call()
+    )
+
+    total_distance_widgets = (
+        create_single_value_widget_single_view.validate()
+        .set_task_instance_id("total_distance_widgets")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                never,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            title="Distance covered",
+            decimal_places=1,
+            **(params_dict.get("total_distance_widgets") or {}),
+        )
+        .map(argnames=["view", "data"], argvalues=round_total_distance)
+    )
+
+    total_distance_sv_widget = (
+        merge_widget_views.validate()
+        .set_task_instance_id("total_distance_sv_widget")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            widgets=total_distance_widgets,
+            **(params_dict.get("total_distance_sv_widget") or {}),
         )
         .call()
     )
 
     lg_dashboard = (
         gather_dashboard.validate()
-        .handle_errors(task_instance_id="lg_dashboard")
+        .set_task_instance_id("lg_dashboard")
+        .handle_errors()
+        .with_tracing()
         .partial(
             details=workflow_details,
-            widgets=td_grouped_map_widget,
+            widgets=[
+                total_mean_speed_sv_widget,
+                total_min_speed_sv_widget,
+                total_max_speed_sv_widget,
+                total_distance_sv_widget,
+                td_grouped_map_widget,
+            ],
             time_range=time_range,
             groupers=groupers,
             **(params_dict.get("lg_dashboard") or {}),
@@ -322,50 +837,4 @@ def main(params: Params):
         .call()
     )
 
-    collared_html_png = (
-        html_to_png.validate()
-        .handle_errors(task_instance_id="collared_html_png")
-        .partial(
-            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            config={"wait_for_timeout": 50000},
-            **(params_dict.get("collared_html_png") or {}),
-        )
-        .mapvalues(argnames=["html_path"], argvalues=td_ecomap_html_url)
-    )
-
-    collared_subject_doc_widget = (
-        create_doc_figure.validate()
-        .handle_errors(task_instance_id="collared_subject_doc_widget")
-        .partial(
-            heading="Home Range Ecomap",
-            level=3,
-            **(params_dict.get("collared_subject_doc_widget") or {}),
-        )
-        .mapvalues(argnames=["filepath"], argvalues=collared_html_png)
-    )
-
-    normalized_doc_widgets = (
-        prepare_widget_list.validate()
-        .handle_errors(task_instance_id="normalized_doc_widgets")
-        .partial(
-            widgets=collared_subject_doc_widget,
-            **(params_dict.get("normalized_doc_widgets") or {}),
-        )
-        .call()
-    )
-
-    create_report = (
-        gather_document.validate()
-        .handle_errors(task_instance_id="create_report")
-        .partial(
-            title="Report",
-            time_range=time_range,
-            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            filename="collared_report",
-            doc_widgets=normalized_doc_widgets,
-            **(params_dict.get("create_report") or {}),
-        )
-        .call()
-    )
-
-    return create_report
+    return lg_dashboard

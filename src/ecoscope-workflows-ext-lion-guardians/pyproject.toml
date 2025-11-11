@@ -61,14 +61,12 @@ py-rattler = ">=0.7.0,<0.8"
 "ruamel.yaml" = "*"
 ruff = "*"
 tomli-w = "*"
-ecoscope-workflows-core = ">=0.7.2"
 geopandas = "*"
 shapely = "*"
-ecoscope-workflows-ext-ecoscope = ">=0.7.2"
-ecoscope-workflows-ext-custom = "0.0.3.*"
-python-docx = "*"
+docxtpl="*"
 playwright = "*"
-
+ecoscope-workflows-core = ">=0.17.0"
+ecoscope-workflows-ext-ecoscope=">=0.17.0"
 # additional dependencies added by this extension
 
 

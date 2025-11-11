@@ -34,6 +34,15 @@
           "title": "Until",
           "type": "string",
           "description": "The end time"
+        },
+        "timezone": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/TimezoneInfo"
+            }
+          ],
+          "default": null,
+          "title": "Timezone"
         }
       },
       "required": [
@@ -289,7 +298,8 @@
       "properties": {
         "subject_group_name": {
           "title": "Subject Group Name",
-          "type": "string"
+          "type": "string",
+          "description": "\u26a0\ufe0f The use of a group with mixed subtypes could lead to unexpected results"
         }
       },
       "required": [
@@ -323,34 +333,6 @@
       "required": [],
       "type": "object",
       "title": "Transform Relocations to Trajectories"
-    },
-    "load_local_shapefiles": {
-      "additionalProperties": false,
-      "properties": {
-        "config": {
-          "$ref": "#/$defs/MapProcessingConfig",
-          "title": "Config"
-        }
-      },
-      "required": [
-        "config"
-      ],
-      "type": "object",
-      "title": "Load local map files"
-    },
-    "create_custom_map_layers": {
-      "additionalProperties": false,
-      "properties": {
-        "style_config": {
-          "$ref": "#/$defs/MapStyleConfig",
-          "title": "Style Config"
-        }
-      },
-      "required": [
-        "style_config"
-      ],
-      "type": "object",
-      "title": "Create Map Layers"
     },
     "td": {
       "additionalProperties": false,
@@ -388,43 +370,37 @@
       "required": [],
       "type": "object",
       "title": ""
-    },
-    "collared_subject_doc_widget": {
-      "additionalProperties": false,
-      "properties": {
-        "caption": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ],
-          "default": null,
-          "title": "Caption",
-          "description": "The figure caption"
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Collared subject doc figure"
-    },
-    "create_report": {
-      "additionalProperties": false,
-      "properties": {
-        "logo_path": {
-          "default": null,
-          "title": "Logo Path",
-          "type": "string"
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Create Report"
     }
   },
   "$defs": {
+    "TimezoneInfo": {
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "tzCode": {
+          "title": "Tzcode",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "utc": {
+          "title": "Utc",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "tzCode",
+        "name",
+        "utc"
+      ],
+      "title": "TimezoneInfo",
+      "type": "object"
+    },
     "TemporalGrouper": {
       "oneOf": [
         {
@@ -529,62 +505,6 @@
       "title": "TrajectorySegmentFilter",
       "type": "object"
     },
-    "MapProcessingConfig": {
-      "properties": {
-        "path": {
-          "description": "Directory path to load geospatial files from",
-          "title": "Path",
-          "type": "string"
-        },
-        "target_crs": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "string"
-            }
-          ],
-          "default": 4326,
-          "description": "Target CRS to convert maps to",
-          "title": "Target Crs"
-        },
-        "recursive": {
-          "default": false,
-          "description": "Whether to walk folders recursively",
-          "title": "Recursive",
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "path"
-      ],
-      "title": "MapProcessingConfig",
-      "type": "object"
-    },
-    "MapStyleConfig": {
-      "properties": {
-        "styles": {
-          "additionalProperties": {
-            "type": "object"
-          },
-          "title": "Styles",
-          "type": "object"
-        },
-        "legend": {
-          "additionalProperties": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "title": "Legend",
-          "type": "object"
-        }
-      },
-      "title": "MapStyleConfig",
-      "type": "object"
-    },
     "AutoScaleGridCellSize": {
       "properties": {
         "auto_scale_or_custom": {
@@ -615,12 +535,12 @@
         },
         "grid_cell_size": {
           "default": 5000,
-          "description": "Define the resolution of the raster grid (in metres per pixel). A smaller grid cell size provides more details, while a larger size generalizes the data.",
+          "description": "Define the resolution of the raster grid (in the unit of measurement defined by the coordinate reference system set below). A smaller grid cell size provides more detail, while a larger size generalizes the data.",
           "exclusiveMaximum": 10000,
           "exclusiveMinimum": 0,
           "gt": 0,
           "lt": 10000,
-          "title": "Custom Grid Cell Size (Meters)",
+          "title": "Custom Grid Cell Size",
           "type": "number"
         }
       },
@@ -638,7 +558,8 @@
     "time_range": {
       "ui:order": [
         "since",
-        "until"
+        "until",
+        "timezone"
       ]
     },
     "td": {
@@ -656,11 +577,7 @@
       "base_map_defs",
       "subject_obs",
       "subject_traj",
-      "load_local_shapefiles",
-      "create_custom_map_layers",
-      "td",
-      "collared_subject_doc_widget",
-      "create_report"
+      "td"
     ]
   },
   "additionalProperties": false

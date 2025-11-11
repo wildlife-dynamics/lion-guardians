@@ -3,18 +3,11 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union
 
-from pydantic import (
-    AwareDatetime,
-    BaseModel,
-    ConfigDict,
-    Field,
-    RootModel,
-    confloat,
-    constr,
-)
+from pydantic import BaseModel, ConfigDict, Field, RootModel, confloat, constr
 
 
 class WorkflowDetails(BaseModel):
@@ -23,14 +16,6 @@ class WorkflowDetails(BaseModel):
     )
     name: str = Field(..., title="Workflow Name")
     description: Optional[str] = Field("", title="Workflow Description")
-
-
-class TimeRange(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    since: AwareDatetime = Field(..., description="The start time", title="Since")
-    until: AwareDatetime = Field(..., description="The end time", title="Until")
 
 
 class Url(str, Enum):
@@ -203,23 +188,18 @@ class SubjectObs(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    subject_group_name: str = Field(..., title="Subject Group Name")
-
-
-class CollaredSubjectDocWidget(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    caption: Optional[str] = Field(
-        None, description="The figure caption", title="Caption"
+    subject_group_name: str = Field(
+        ...,
+        description="⚠️ The use of a group with mixed subtypes could lead to unexpected results",
+        title="Subject Group Name",
     )
 
 
-class CreateReport(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    logo_path: Optional[str] = Field(None, title="Logo Path")
+class TimezoneInfo(BaseModel):
+    label: str = Field(..., title="Label")
+    tzCode: str = Field(..., title="Tzcode")
+    name: str = Field(..., title="Name")
+    utc: str = Field(..., title="Utc")
 
 
 class TemporalGrouper(RootModel[str]):
@@ -255,23 +235,6 @@ class TrajectorySegmentFilter(BaseModel):
     )
 
 
-class MapProcessingConfig(BaseModel):
-    path: str = Field(
-        ..., description="Directory path to load geospatial files from", title="Path"
-    )
-    target_crs: Optional[Union[int, str]] = Field(
-        4326, description="Target CRS to convert maps to", title="Target Crs"
-    )
-    recursive: Optional[bool] = Field(
-        False, description="Whether to walk folders recursively", title="Recursive"
-    )
-
-
-class MapStyleConfig(BaseModel):
-    styles: Optional[Dict[str, Dict[str, Any]]] = Field(None, title="Styles")
-    legend: Optional[Dict[str, List[str]]] = Field(None, title="Legend")
-
-
 class AutoScaleOrCustom(str, Enum):
     Auto_scale = "Auto-scale"
 
@@ -292,9 +255,18 @@ class CustomGridCellSize(BaseModel):
     )
     grid_cell_size: Optional[confloat(lt=10000.0, gt=0.0)] = Field(
         5000,
-        description="Define the resolution of the raster grid (in metres per pixel). A smaller grid cell size provides more details, while a larger size generalizes the data.",
-        title="Custom Grid Cell Size (Meters)",
+        description="Define the resolution of the raster grid (in the unit of measurement defined by the coordinate reference system set below). A smaller grid cell size provides more detail, while a larger size generalizes the data.",
+        title="Custom Grid Cell Size",
     )
+
+
+class TimeRange(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    since: datetime = Field(..., description="The start time", title="Since")
+    until: datetime = Field(..., description="The end time", title="Until")
+    timezone: Optional[TimezoneInfo] = Field(None, title="Timezone")
 
 
 class Groupers(BaseModel):
@@ -335,20 +307,6 @@ class SubjectTraj(BaseModel):
         description="Filter track data by setting limits on track segment length, duration, and speed. Segments outside these bounds are removed, reducing noise and to focus on meaningful movement patterns.",
         title=" ",
     )
-
-
-class LoadLocalShapefiles(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    config: MapProcessingConfig = Field(..., title="Config")
-
-
-class CreateCustomMapLayers(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    style_config: MapStyleConfig = Field(..., title="Style Config")
 
 
 class Td(BaseModel):
@@ -395,18 +353,8 @@ class FormData(BaseModel):
     subject_traj: Optional[SubjectTraj] = Field(
         None, title="Transform Relocations to Trajectories"
     )
-    load_local_shapefiles: Optional[LoadLocalShapefiles] = Field(
-        None, title="Load local map files"
-    )
-    create_custom_map_layers: Optional[CreateCustomMapLayers] = Field(
-        None, title="Create Map Layers"
-    )
     Time_Density_Map: Optional[TimeDensityMap] = Field(
         None,
         alias="Time Density Map",
         description="These settings show a grid-based heatmap showing where subjects spent the most time.",
     )
-    collared_subject_doc_widget: Optional[CollaredSubjectDocWidget] = Field(
-        None, title="Collared subject doc figure"
-    )
-    create_report: Optional[CreateReport] = Field(None, title="Create Report")

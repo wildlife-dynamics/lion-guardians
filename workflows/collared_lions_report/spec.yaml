@@ -1,17 +1,20 @@
 id: collared_lions_report
 requirements:
   - name: ecoscope-workflows-core
-    version: "0.7.2.*"
+    version: "0.17.0.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows/
+
+  - name: ecoscope-workflows-ext-ecoscope
+    version: "0.17.0.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
-    version: "0.0.4.*"
+    version: "*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-lion-guardians
     version: "*"
     channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
-
 
 workflow:
   #Set workflow details
@@ -40,6 +43,91 @@ workflow:
   - name: Base Maps
     id: base_map_defs
     task: set_base_maps
+
+  # Download amboseli group ranches and the collared lions templates
+  - name: Download amboseli group ranches
+    id: persist_ambo_gpkg
+    task: download_file_and_persist
+    partial:
+      url: https://www.dropbox.com/scl/fi/phlc488gxqpcvr6ua3vk7/amboseli_group_ranch_boundaries.gpkg?rlkey=p5ztypwmj4ndjova9xe2ssiun&st=pknuicus&dl=0
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: false
+      retries: 3
+      unzip: false
+  
+  - name: Download collared lions cover page 
+    id: persist_cover_page
+    task: download_file_and_persist
+    partial:
+      url: https://www.dropbox.com/scl/fi/1cbilbjq8625gsd5bb45m/collared_lions_cover_page.docx?rlkey=j6aq1bjrrsiv0qj4bghwywe1d&st=eqttsiau&dl=0
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: false
+      retries: 3
+      unzip: false
+
+  - name: Download collared subject page
+    id: persist_indv_subject_page
+    task: download_file_and_persist
+    partial:
+      url: https://www.dropbox.com/scl/fi/rdjej0c0dva7y8czw82de/collared_lion_subject_template.docx?rlkey=479h5pmpvjncgn314hd2r80yh&st=iuuc1o6t&dl=0
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: false
+      retries: 3
+      unzip: false
+
+
+ #Load custom shapefiles
+  - name : Load downloaded shapefiles
+    id: load_local_shapefiles 
+    task: load_geospatial_files
+    partial:
+      config: 
+        path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+
+  # Create community conservancy map layers 
+  - name: Create Map Layers
+    id: create_custom_map_layers
+    task: create_map_layers
+    partial:
+      file_dict: ${{ workflow.load_local_shapefiles.return }}
+      style_config:
+        styles:
+          amboseli_group_ranch_boundaries: 
+            stroked: true
+            filled: false
+            get_elevation: 50
+            opacity: 0.55
+            get_line_color: [105, 105, 105, 200]
+            get_line_width: 3.5
+        legend:
+          label:
+            - Group ranch boundaries
+          color:
+            - "#696969"
+
+  - name: Create text layer 
+    id: custom_text_layer
+    task: make_text_layer
+    partial:
+      txt_gdf: ${{ workflow.load_local_shapefiles.return }}
+      label_column: "R_NAME"
+      fallback_columns: null
+      use_centroid: true 
+      color: [0,0,0,255]
+      size: 75
+      font_family: Calibri
+      font_weight: bold
+      background: false
+      background_color: null
+      background_padding: null
+      text_anchor: start
+      alignment_baseline: bottom
+      billboard: true
+      pickable: true
+      tooltip_columns:
+        - label 
+      target_crs: epsg:4326
+
 
   #Get subject group observations
   - name: Get Subject Group Observations from EarthRanger
@@ -100,16 +188,6 @@ workflow:
       df: ${{ workflow.traj_add_temporal_index.return }}
       groupers: ${{ workflow.groupers.return }}
   
-  #Load custom shapefiles
-  - name : Load local map files
-    id: load_local_shapefiles 
-    task: load_map_files
-
-  - name: Create Map Layers
-    id: create_custom_map_layers
-    task: create_map_layers
-    partial:
-      file_dict: ${{ workflow.load_local_shapefiles.return }}
 
   # Calculate Time Density
   - title: Time Density Map
@@ -151,15 +229,17 @@ workflow:
       # create polygon layer
       - name: Create map layer from Time Density
         id: td_map_layer
-        task: create_polygon_layer
+        task: create_geojson_layer
         skipif:
           conditions:
             - any_is_empty_df
             - any_dependency_skipped
         partial:
           layer_style:
-            fill_color_column: percentile_colormap
+            get_fill_color: percentile_colormap
             opacity: 0.45
+            get_line_width: 0.75
+            stroked: true
           legend:
             label_column: percentile
             color_column: percentile_colormap
@@ -172,9 +252,11 @@ workflow:
         # Combine layers ie static and grouped
       - name: Combine Map Layers
         id: combine_custom_map_layers
-        task: combine_map_layers
+        task: merge_static_and_grouped_layers
         partial:
-          static_layers: ${{ workflow.create_custom_map_layers.return }}
+          static_layers: 
+            - ${{ workflow.create_custom_map_layers.return }}
+            - ${{ workflow.custom_text_layer.return }}
         mapvalues:
           argnames: grouped_layers
           argvalues: ${{ workflow.td_map_layer.return }}
@@ -182,7 +264,7 @@ workflow:
       # Dynamically zoom map to layer of interest
       - name: zoom by view state
         id: zoom_view_state
-        task: create_view_state_from_gdf
+        task: view_state_deck_gdf
         partial:
           pitch: 0
           bearing: 0
@@ -200,17 +282,15 @@ workflow:
 
       - name: Draw Ecomap from Time Density
         id: td_ecomap
-        task: draw_ecomap
+        task: draw_custom_map
         partial:
           tile_layers: ${{ workflow.base_map_defs.return }}
-          north_arrow_style:
-            placement: top-left 
-          legend_style:  
-            placement: bottom-right 
-            title: Home Range Metrics
           static: false
           title: null
-          max_zoom: 20
+          max_zoom: 15
+          legend_style:
+            placement: "bottom-right"
+            title: "ETD Metrics"
         mapvalues:
           argnames:
             - geo_layers
@@ -234,7 +314,7 @@ workflow:
           conditions:
             - never
         partial:
-          title: Collared Lions Home Range Ecomap
+          title: Home Range Metrics
         map:
           argnames:
             - view
@@ -247,15 +327,56 @@ workflow:
         partial:
           widgets: ${{ workflow.td_map_widget.return }}
   
-  - name: LG Dashboard
-    id: lg_dashboard
-    task: gather_dashboard
+  - name: Generate summary table metrics for subjects
+    id: summary_table
+    task: summarize_df
     partial:
-      details: ${{ workflow.workflow_details.return}}
-      widgets:
-        - ${{ workflow.td_grouped_map_widget.return }}
-      time_range: ${{ workflow.time_range.return}}
-      groupers: ${{ workflow.groupers.return }}
+      groupby_cols:
+        - extra__name
+      summary_params: 
+        - display_name: mean_speed
+          aggregator: mean
+          column: speed_kmhr
+
+        - display_name: min_speed
+          aggregator: min
+          column: speed_kmhr
+
+        - display_name: max_speed
+          aggregator: max
+          column: speed_kmhr
+        
+        - display_name: total_distance
+          aggregator: sum 
+          columnn: dist_meters
+          original_unit: m
+          new_unit: km 
+
+      reset_index: true 
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_subject_traj_groups.return }}
+
+  - name: Add total row on summary table
+    id: add_total_events_row
+    task: add_totals_row
+    partial:
+      label_col:
+        - extra__name 
+      label: Total
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summary_table.return }}
+
+  - name: Persist summary table
+    id: persist_summary_table
+    task: persist_df 
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filetype: csv
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.add_total_events_row.return }}
 
   # convert html to png 
   - name: Convert collared subject html to png
@@ -264,35 +385,236 @@ workflow:
     partial:
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       config:
-        wait_for_timeout: 50000
+        wait_for_timeout: 25000
     mapvalues:
       argnames: html_path
       argvalues: ${{ workflow.td_ecomap_html_url.return }}
-  
-  # create doc figure
-  - name: Collared subject doc figure
-    id: collared_subject_doc_widget
-    task: create_doc_figure
-    partial:
-      heading: "Home Range Ecomap"
-      level: 3
-    mapvalues:
-      argnames: filepath
-      argvalues: ${{ workflow.collared_html_png.return }}
 
-  - name: Normalize report widgets
-    id: normalized_doc_widgets
-    task: prepare_widget_list
+  # Retrieve unique subjects extracted from relocs
+  - name: Unique subjects on relocs
+    id: unique_subjects
+    task: dataframe_column_nunique
     partial:
-      widgets: ${{ workflow.collared_subject_doc_widget.return }}
+      df: ${{ workflow.subject_reloc.return }}
+      column_name: extra__subject__name
+
+  # Create context and persist subject report 
+  - name: Create and persist cover page context
+    id: create_cover_context
+    task: create_cover_context_page
+    partial:
+      report_period: ${{ workflow.time_range.return}}
+      prepared_by: Ecoscope
+      count: ${{ workflow.unique_subjects.return }}
+      template_path: ${{ workflow.persist_cover_page.return }}
+      output_directory: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename: cover_page.docx
+
+  - name: Zip subject metrics and home range ecomap
+    id: zip_metrics_etd
+    task: zip_grouped_by_key
+    partial:
+      left: ${{ workflow.summary_table.return }}
+      right: ${{ workflow.collared_html_png.return }}
+
+  - name: Create individual subject context and persist
+    id: subject_context_doc
+    task: create_report_context
+    partial:
+      template_path: ${{ workflow.persist_indv_subject_page.return }}
+      output_directory: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename: null
+      validate_images: true
+      box_h_cm: 9.0
+      box_w_cm: 15.0
+
+    mapvalues: 
+      argnames: 
+        - subject_metrics
+        - home_range_ecomap
+      argvalues: ${{ workflow.zip_metrics_etd.return }}
+
+  - name: Generate final report 
+    id: generate_mapbook_report
+    task: combine_docx_files
+    partial:
+      cover_page_path: ${{ workflow.create_cover_context.return }}
+      output_directory: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      context_page_items: ${{ workflow.subject_context_doc.return }}
+      filename: overall_report.docx
+
+  # Metric summary widgets 
+  - name: Calculate mean speed 
+    id: calc_mean_speed
+    task: dataframe_column_sum
+    partial:
+      column_name: mean_speed
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summary_table.return }}
+
+  - name: Round off mean speed to 2 decimal_places
+    id: round_mean_speed
+    task: round_off_values
+    partial:
+      dp: 2
+    mapvalues:
+      argnames: value
+      argvalues: ${{ workflow.calc_mean_speed.return }}
+
+  - name: Calculate min speed 
+    id: calc_min_speed
+    task: dataframe_column_sum
+    partial:
+      column_name: min_speed
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summary_table.return }}
+
+  - name: Round off min speed to 2 decimal_places
+    id: round_min_speed
+    task: round_off_values
+    partial:
+      dp: 2
+    mapvalues:
+      argnames: value
+      argvalues: ${{ workflow.calc_min_speed.return }}
       
-  - name: Create Report 
-    id: create_report
-    task: gather_document
+  - name: Calculate max speed 
+    id: calc_max_speed
+    task: dataframe_column_sum
     partial:
-      title: "Report"
-      time_range: ${{ workflow.time_range.return }}
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      filename: "collared_report"
-      doc_widgets: ${{ workflow.normalized_doc_widgets.return }}
+      column_name: max_speed
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summary_table.return }}
+
+  - name: Round off max speed to 2 decimal_places
+    id: round_max_speed
+    task: round_off_values
+    partial:
+      dp: 2
+    mapvalues:
+      argnames: value
+      argvalues: ${{ workflow.calc_max_speed.return }}
+
+  - name: Calculate total distance
+    id: total_distance_covered
+    task: dataframe_column_sum
+    partial:
+      column_name: total_distance
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summary_table.return }}
+
+  - name: Round off total distance to 2 decimal_places
+    id: round_total_distance
+    task: round_off_values
+    partial:
+      dp: 2
+    mapvalues:
+      argnames: value
+      argvalues: ${{ workflow.total_distance_covered.return }}
+
+  - name: Create Single Value Widgets for total mean speed Per Group
+    id: total_mean_speed_widgets
+    task: create_single_value_widget_single_view
+    skipif:
+      conditions:
+        - never
+    partial:
+      title: Mean Speed 
+      decimal_places: 1
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.round_mean_speed.return }}
+
+  - name: Merge per group mean speed SV widgets
+    id: total_mean_speed_sv_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.total_mean_speed_widgets.return }}
+
+  - name: Create Single Value Widgets for total min speed Per Group
+    id: total_min_speed_widgets
+    task: create_single_value_widget_single_view
+    skipif:
+      conditions:
+        - never
+    partial:
+      title: Min Speed 
+      decimal_places: 1
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.round_min_speed.return }}
+
+  - name: Merge per group min speed SV widgets
+    id: total_min_speed_sv_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.total_min_speed_widgets.return }}
+
+  - name: Create Single Value Widgets for total max speed Per Group
+    id: total_max_speed_widgets
+    task: create_single_value_widget_single_view
+    skipif:
+      conditions:
+        - never
+    partial:
+      title: Max Speed 
+      decimal_places: 1
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.round_max_speed.return }}
+
+  - name: Merge per group max speed SV widgets
+    id: total_max_speed_sv_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.total_max_speed_widgets.return }}
+
+  - name: Create Single Value Widgets for total distance Per Group
+    id: total_distance_widgets
+    task: create_single_value_widget_single_view
+    skipif:
+      conditions:
+        - never
+    partial:
+      title: Distance covered
+      decimal_places: 1
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.round_total_distance.return }}
+
+  - name: Merge per group total distance SV widgets
+    id: total_distance_sv_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.total_distance_widgets.return }}
+
+  - name: LG Dashboard
+    id: lg_dashboard
+    task: gather_dashboard
+    partial:
+      details: ${{ workflow.workflow_details.return}}
+      widgets:
+        - ${{ workflow.total_mean_speed_sv_widget.return }}
+        - ${{ workflow.total_min_speed_sv_widget.return }}
+        - ${{ workflow.total_max_speed_sv_widget.return }}
+        - ${{ workflow.total_distance_sv_widget.return }}
+        - ${{ workflow.td_grouped_map_widget.return }}
+
+      time_range: ${{ workflow.time_range.return}}
+      groupers: ${{ workflow.groupers.return }}
+
+
+  
       

@@ -1,40 +1,52 @@
-from ._map_utils import (
-    load_landdx_aoi,
-    download_land_dx,
-    create_map_layers,
-    clean_geodataframe,
-    combine_map_layers,
-    generate_density_grid,
-    build_landdx_style_config,
-    create_view_state_from_gdf,
-    check_shapefile_geometry_type,
-    annotate_gdf_dict_with_geometry_type,
-    create_map_layers_from_annotated_dict,
-    load_map_files,
-    create_layer_from_gdf,
-)
-from ._zip import zip_grouped_by_key
-from ._example import add_one_thousand
-from ._word import prepare_widget_list, gather_document
 
+from ._report_context import (
+    round_off_values,
+    create_cover_context_page,
+    create_report_context,
+    combine_docx_files
+)
+
+from ._mapdeck import (
+    draw_custom_map,
+    make_text_layer,
+    create_map_layers,
+    clean_file_keys,
+    select_koi,
+    create_geojson_layer,
+    custom_deckgl_layer,
+    view_state_deck_gdf,
+    load_geospatial_files,
+    remove_invalid_geometries,
+    remove_invalid_point_geometries,
+    merge_static_and_grouped_layers
+)
+
+from ._zip import zip_grouped_by_key,flatten_tuple
+from ._download_file import download_file_and_persist
+from ._tabular import add_totals_row
 __all__ = [
-    "view_data",
-    "load_landdx_aoi",
     "zip_grouped_by_key",
-    "download_land_dx",
+    "flatten_tuple",
+
+    "round_off_values",
+    "create_cover_context_page",
+    "create_report_context",
+    "combine_docx_files",
+
+    "draw_custom_map",
+    "make_text_layer",
     "create_map_layers",
-    "clean_geodataframe",
-    "combine_map_layers",
-    "generate_density_grid",
-    "build_landdx_style_config",
-    "create_view_state_from_gdf",
-    "check_shapefile_geometry_type",
-    "annotate_gdf_dict_with_geometry_type",
-    "create_map_layers_from_annotated_dict",
-    "load_map_files",
-    "create_layer_from_gdf",
-    "html_to_img",
-    "add_one_thousand",
-    "prepare_widget_list",
-    "gather_document",
+    "clean_file_keys",
+    "select_koi",
+    "create_geojson_layer",
+    "custom_deckgl_layer",
+    "view_state_deck_gdf",
+    "load_geospatial_files",
+    "remove_invalid_geometries",
+    "remove_invalid_point_geometries",
+    "merge_static_and_grouped_layers",
+
+    "download_file_and_persist",
+
+    "add_totals_row"
 ]

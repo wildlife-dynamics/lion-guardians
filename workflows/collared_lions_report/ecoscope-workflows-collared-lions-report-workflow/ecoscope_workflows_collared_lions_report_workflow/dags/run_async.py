@@ -2,42 +2,58 @@
 import json
 import os
 
-from ecoscope_workflows_core.graph import DependsOn, Graph, Node
-
+from ecoscope_workflows_core.graph import DependsOn, DependsOnSequence, Graph, Node
+from ecoscope_workflows_core.tasks.analysis import (
+    dataframe_column_nunique,
+    dataframe_column_sum,
+)
 from ecoscope_workflows_core.tasks.config import set_workflow_details
 from ecoscope_workflows_core.tasks.filter import set_time_range
-from ecoscope_workflows_core.tasks.groupby import set_groupers
-from ecoscope_workflows_core.tasks.io import set_er_connection
-from ecoscope_workflows_ext_ecoscope.tasks.results import set_base_maps
-from ecoscope_workflows_ext_ecoscope.tasks.io import get_subjectgroup_observations
-from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import process_relocations
-from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
-    relocations_to_trajectory,
+from ecoscope_workflows_core.tasks.groupby import set_groupers, split_groups
+from ecoscope_workflows_core.tasks.io import persist_text, set_er_connection
+from ecoscope_workflows_core.tasks.results import (
+    create_map_widget_single_view,
+    create_single_value_widget_single_view,
+    gather_dashboard,
+    merge_widget_views,
+)
+from ecoscope_workflows_core.tasks.skip import (
+    any_dependency_skipped,
+    any_is_empty_df,
+    never,
 )
 from ecoscope_workflows_core.tasks.transformation import add_temporal_index
-from ecoscope_workflows_core.tasks.groupby import split_groups
-from ecoscope_workflows_ext_lion_guardians.tasks import load_map_files
-from ecoscope_workflows_ext_lion_guardians.tasks import create_map_layers
+from ecoscope_workflows_ext_custom.tasks import html_to_png
 from ecoscope_workflows_ext_ecoscope.tasks.analysis import (
     calculate_elliptical_time_density,
+    summarize_df,
 )
+from ecoscope_workflows_ext_ecoscope.tasks.io import (
+    get_subjectgroup_observations,
+    persist_df,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
+    process_relocations,
+    relocations_to_trajectory,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.results import set_base_maps
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import apply_color_map
-from ecoscope_workflows_ext_ecoscope.tasks.results import create_polygon_layer
-from ecoscope_workflows_core.tasks.skip import any_is_empty_df
-from ecoscope_workflows_core.tasks.skip import any_dependency_skipped
-from ecoscope_workflows_ext_lion_guardians.tasks import combine_map_layers
-from ecoscope_workflows_ext_lion_guardians.tasks import create_view_state_from_gdf
-from ecoscope_workflows_ext_lion_guardians.tasks import zip_grouped_by_key
-from ecoscope_workflows_ext_ecoscope.tasks.results import draw_ecomap
-from ecoscope_workflows_core.tasks.io import persist_text
-from ecoscope_workflows_core.tasks.results import create_map_widget_single_view
-from ecoscope_workflows_core.tasks.skip import never
-from ecoscope_workflows_core.tasks.results import merge_widget_views
-from ecoscope_workflows_core.tasks.results import gather_dashboard
-from ecoscope_workflows_ext_custom.tasks import html_to_png
-from ecoscope_workflows_ext_custom.tasks import create_doc_figure
-from ecoscope_workflows_ext_lion_guardians.tasks import prepare_widget_list
-from ecoscope_workflows_ext_lion_guardians.tasks import gather_document
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    add_totals_row,
+    combine_docx_files,
+    create_cover_context_page,
+    create_geojson_layer,
+    create_map_layers,
+    create_report_context,
+    download_file_and_persist,
+    draw_custom_map,
+    load_geospatial_files,
+    make_text_layer,
+    merge_static_and_grouped_layers,
+    round_off_values,
+    view_state_deck_gdf,
+    zip_grouped_by_key,
+)
 
 from ..params import Params
 
@@ -51,46 +67,83 @@ def main(params: Params):
         "groupers": [],
         "er_client_name": [],
         "base_map_defs": [],
+        "persist_ambo_gpkg": [],
+        "persist_cover_page": [],
+        "persist_indv_subject_page": [],
+        "load_local_shapefiles": [],
+        "create_custom_map_layers": ["load_local_shapefiles"],
+        "custom_text_layer": ["load_local_shapefiles"],
         "subject_obs": ["er_client_name", "time_range"],
         "subject_reloc": ["subject_obs"],
         "subject_traj": ["subject_reloc"],
         "traj_add_temporal_index": ["subject_traj", "groupers"],
         "split_subject_traj_groups": ["traj_add_temporal_index", "groupers"],
-        "load_local_shapefiles": [],
-        "create_custom_map_layers": ["load_local_shapefiles"],
         "td": ["split_subject_traj_groups"],
         "td_colormap": ["td"],
         "td_map_layer": ["td_colormap"],
-        "combine_custom_map_layers": ["create_custom_map_layers", "td_map_layer"],
+        "combine_custom_map_layers": [
+            "create_custom_map_layers",
+            "custom_text_layer",
+            "td_map_layer",
+        ],
         "zoom_view_state": ["td_colormap"],
         "zip_layers_view": ["combine_custom_map_layers", "zoom_view_state"],
         "td_ecomap": ["base_map_defs", "zip_layers_view"],
         "td_ecomap_html_url": ["td_ecomap"],
         "td_map_widget": ["td_ecomap_html_url"],
         "td_grouped_map_widget": ["td_map_widget"],
+        "summary_table": ["split_subject_traj_groups"],
+        "add_total_events_row": ["summary_table"],
+        "persist_summary_table": ["add_total_events_row"],
+        "collared_html_png": ["td_ecomap_html_url"],
+        "unique_subjects": ["subject_reloc"],
+        "create_cover_context": ["time_range", "unique_subjects", "persist_cover_page"],
+        "zip_metrics_etd": ["summary_table", "collared_html_png"],
+        "subject_context_doc": ["persist_indv_subject_page", "zip_metrics_etd"],
+        "generate_mapbook_report": ["create_cover_context", "subject_context_doc"],
+        "calc_mean_speed": ["summary_table"],
+        "round_mean_speed": ["calc_mean_speed"],
+        "calc_min_speed": ["summary_table"],
+        "round_min_speed": ["calc_min_speed"],
+        "calc_max_speed": ["summary_table"],
+        "round_max_speed": ["calc_max_speed"],
+        "total_distance_covered": ["summary_table"],
+        "round_total_distance": ["total_distance_covered"],
+        "total_mean_speed_widgets": ["round_mean_speed"],
+        "total_mean_speed_sv_widget": ["total_mean_speed_widgets"],
+        "total_min_speed_widgets": ["round_min_speed"],
+        "total_min_speed_sv_widget": ["total_min_speed_widgets"],
+        "total_max_speed_widgets": ["round_max_speed"],
+        "total_max_speed_sv_widget": ["total_max_speed_widgets"],
+        "total_distance_widgets": ["round_total_distance"],
+        "total_distance_sv_widget": ["total_distance_widgets"],
         "lg_dashboard": [
             "workflow_details",
+            "total_mean_speed_sv_widget",
+            "total_min_speed_sv_widget",
+            "total_max_speed_sv_widget",
+            "total_distance_sv_widget",
             "td_grouped_map_widget",
             "time_range",
             "groupers",
         ],
-        "collared_html_png": ["td_ecomap_html_url"],
-        "collared_subject_doc_widget": ["collared_html_png"],
-        "normalized_doc_widgets": ["collared_subject_doc_widget"],
-        "create_report": ["time_range", "normalized_doc_widgets"],
     }
 
     nodes = {
         "workflow_details": Node(
             async_task=set_workflow_details.validate()
-            .handle_errors(task_instance_id="workflow_details")
+            .set_task_instance_id("workflow_details")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial=(params_dict.get("workflow_details") or {}),
             method="call",
         ),
         "time_range": Node(
             async_task=set_time_range.validate()
-            .handle_errors(task_instance_id="time_range")
+            .set_task_instance_id("time_range")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
                 "time_format": "%d %b %Y %H:%M:%S %Z",
@@ -100,28 +153,154 @@ def main(params: Params):
         ),
         "groupers": Node(
             async_task=set_groupers.validate()
-            .handle_errors(task_instance_id="groupers")
+            .set_task_instance_id("groupers")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial=(params_dict.get("groupers") or {}),
             method="call",
         ),
         "er_client_name": Node(
             async_task=set_er_connection.validate()
-            .handle_errors(task_instance_id="er_client_name")
+            .set_task_instance_id("er_client_name")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial=(params_dict.get("er_client_name") or {}),
             method="call",
         ),
         "base_map_defs": Node(
             async_task=set_base_maps.validate()
-            .handle_errors(task_instance_id="base_map_defs")
+            .set_task_instance_id("base_map_defs")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial=(params_dict.get("base_map_defs") or {}),
             method="call",
         ),
+        "persist_ambo_gpkg": Node(
+            async_task=download_file_and_persist.validate()
+            .set_task_instance_id("persist_ambo_gpkg")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "url": "https://www.dropbox.com/scl/fi/phlc488gxqpcvr6ua3vk7/amboseli_group_ranch_boundaries.gpkg?rlkey=p5ztypwmj4ndjova9xe2ssiun&st=pknuicus&dl=0",
+                "output_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "overwrite_existing": False,
+                "retries": 3,
+                "unzip": False,
+            }
+            | (params_dict.get("persist_ambo_gpkg") or {}),
+            method="call",
+        ),
+        "persist_cover_page": Node(
+            async_task=download_file_and_persist.validate()
+            .set_task_instance_id("persist_cover_page")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "url": "https://www.dropbox.com/scl/fi/1cbilbjq8625gsd5bb45m/collared_lions_cover_page.docx?rlkey=j6aq1bjrrsiv0qj4bghwywe1d&st=eqttsiau&dl=0",
+                "output_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "overwrite_existing": False,
+                "retries": 3,
+                "unzip": False,
+            }
+            | (params_dict.get("persist_cover_page") or {}),
+            method="call",
+        ),
+        "persist_indv_subject_page": Node(
+            async_task=download_file_and_persist.validate()
+            .set_task_instance_id("persist_indv_subject_page")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "url": "https://www.dropbox.com/scl/fi/rdjej0c0dva7y8czw82de/collared_lion_subject_template.docx?rlkey=479h5pmpvjncgn314hd2r80yh&st=iuuc1o6t&dl=0",
+                "output_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "overwrite_existing": False,
+                "retries": 3,
+                "unzip": False,
+            }
+            | (params_dict.get("persist_indv_subject_page") or {}),
+            method="call",
+        ),
+        "load_local_shapefiles": Node(
+            async_task=load_geospatial_files.validate()
+            .set_task_instance_id("load_local_shapefiles")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "config": {
+                    "path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                },
+            }
+            | (params_dict.get("load_local_shapefiles") or {}),
+            method="call",
+        ),
+        "create_custom_map_layers": Node(
+            async_task=create_map_layers.validate()
+            .set_task_instance_id("create_custom_map_layers")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "file_dict": DependsOn("load_local_shapefiles"),
+                "style_config": {
+                    "styles": {
+                        "amboseli_group_ranch_boundaries": {
+                            "stroked": True,
+                            "filled": False,
+                            "get_elevation": 50,
+                            "opacity": 0.55,
+                            "get_line_color": [105, 105, 105, 200],
+                            "get_line_width": 3.5,
+                        }
+                    },
+                    "legend": {
+                        "label": ["Group ranch boundaries"],
+                        "color": ["#696969"],
+                    },
+                },
+            }
+            | (params_dict.get("create_custom_map_layers") or {}),
+            method="call",
+        ),
+        "custom_text_layer": Node(
+            async_task=make_text_layer.validate()
+            .set_task_instance_id("custom_text_layer")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "txt_gdf": DependsOn("load_local_shapefiles"),
+                "label_column": "R_NAME",
+                "fallback_columns": None,
+                "use_centroid": True,
+                "color": [0, 0, 0, 255],
+                "size": 75,
+                "font_family": "Calibri",
+                "font_weight": "bold",
+                "background": False,
+                "background_color": None,
+                "background_padding": None,
+                "text_anchor": "start",
+                "alignment_baseline": "bottom",
+                "billboard": True,
+                "pickable": True,
+                "tooltip_columns": ["label"],
+                "target_crs": "epsg:4326",
+            }
+            | (params_dict.get("custom_text_layer") or {}),
+            method="call",
+        ),
         "subject_obs": Node(
             async_task=get_subjectgroup_observations.validate()
-            .handle_errors(task_instance_id="subject_obs")
+            .set_task_instance_id("subject_obs")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
                 "client": DependsOn("er_client_name"),
@@ -135,7 +314,9 @@ def main(params: Params):
         ),
         "subject_reloc": Node(
             async_task=process_relocations.validate()
-            .handle_errors(task_instance_id="subject_reloc")
+            .set_task_instance_id("subject_reloc")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
                 "observations": DependsOn("subject_obs"),
@@ -159,7 +340,9 @@ def main(params: Params):
         ),
         "subject_traj": Node(
             async_task=relocations_to_trajectory.validate()
-            .handle_errors(task_instance_id="subject_traj")
+            .set_task_instance_id("subject_traj")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
                 "relocations": DependsOn("subject_reloc"),
@@ -169,7 +352,9 @@ def main(params: Params):
         ),
         "traj_add_temporal_index": Node(
             async_task=add_temporal_index.validate()
-            .handle_errors(task_instance_id="traj_add_temporal_index")
+            .set_task_instance_id("traj_add_temporal_index")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("subject_traj"),
@@ -183,7 +368,9 @@ def main(params: Params):
         ),
         "split_subject_traj_groups": Node(
             async_task=split_groups.validate()
-            .handle_errors(task_instance_id="split_subject_traj_groups")
+            .set_task_instance_id("split_subject_traj_groups")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("traj_add_temporal_index"),
@@ -192,26 +379,11 @@ def main(params: Params):
             | (params_dict.get("split_subject_traj_groups") or {}),
             method="call",
         ),
-        "load_local_shapefiles": Node(
-            async_task=load_map_files.validate()
-            .handle_errors(task_instance_id="load_local_shapefiles")
-            .set_executor("lithops"),
-            partial=(params_dict.get("load_local_shapefiles") or {}),
-            method="call",
-        ),
-        "create_custom_map_layers": Node(
-            async_task=create_map_layers.validate()
-            .handle_errors(task_instance_id="create_custom_map_layers")
-            .set_executor("lithops"),
-            partial={
-                "file_dict": DependsOn("load_local_shapefiles"),
-            }
-            | (params_dict.get("create_custom_map_layers") or {}),
-            method="call",
-        ),
         "td": Node(
             async_task=calculate_elliptical_time_density.validate()
-            .handle_errors(task_instance_id="td")
+            .set_task_instance_id("td")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
                 "crs": "ESRI:53042",
@@ -228,7 +400,9 @@ def main(params: Params):
         ),
         "td_colormap": Node(
             async_task=apply_color_map.validate()
-            .handle_errors(task_instance_id="td_colormap")
+            .set_task_instance_id("td_colormap")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
                 "input_column_name": "percentile",
@@ -243,8 +417,10 @@ def main(params: Params):
             },
         ),
         "td_map_layer": Node(
-            async_task=create_polygon_layer.validate()
-            .handle_errors(task_instance_id="td_map_layer")
+            async_task=create_geojson_layer.validate()
+            .set_task_instance_id("td_map_layer")
+            .handle_errors()
+            .with_tracing()
             .skipif(
                 conditions=[
                     any_is_empty_df,
@@ -255,8 +431,10 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "layer_style": {
-                    "fill_color_column": "percentile_colormap",
+                    "get_fill_color": "percentile_colormap",
                     "opacity": 0.45,
+                    "get_line_width": 0.75,
+                    "stroked": True,
                 },
                 "legend": {
                     "label_column": "percentile",
@@ -272,11 +450,18 @@ def main(params: Params):
             },
         ),
         "combine_custom_map_layers": Node(
-            async_task=combine_map_layers.validate()
-            .handle_errors(task_instance_id="combine_custom_map_layers")
+            async_task=merge_static_and_grouped_layers.validate()
+            .set_task_instance_id("combine_custom_map_layers")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
-                "static_layers": DependsOn("create_custom_map_layers"),
+                "static_layers": DependsOnSequence(
+                    [
+                        DependsOn("create_custom_map_layers"),
+                        DependsOn("custom_text_layer"),
+                    ],
+                ),
             }
             | (params_dict.get("combine_custom_map_layers") or {}),
             method="mapvalues",
@@ -286,8 +471,10 @@ def main(params: Params):
             },
         ),
         "zoom_view_state": Node(
-            async_task=create_view_state_from_gdf.validate()
-            .handle_errors(task_instance_id="zoom_view_state")
+            async_task=view_state_deck_gdf.validate()
+            .set_task_instance_id("zoom_view_state")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
                 "pitch": 0,
@@ -302,7 +489,9 @@ def main(params: Params):
         ),
         "zip_layers_view": Node(
             async_task=zip_grouped_by_key.validate()
-            .handle_errors(task_instance_id="zip_layers_view")
+            .set_task_instance_id("zip_layers_view")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
                 "left": DependsOn("combine_custom_map_layers"),
@@ -312,19 +501,17 @@ def main(params: Params):
             method="call",
         ),
         "td_ecomap": Node(
-            async_task=draw_ecomap.validate()
-            .handle_errors(task_instance_id="td_ecomap")
+            async_task=draw_custom_map.validate()
+            .set_task_instance_id("td_ecomap")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
                 "tile_layers": DependsOn("base_map_defs"),
-                "north_arrow_style": {"placement": "top-left"},
-                "legend_style": {
-                    "placement": "bottom-right",
-                    "title": "Home Range Metrics",
-                },
                 "static": False,
                 "title": None,
-                "max_zoom": 20,
+                "max_zoom": 15,
+                "legend_style": {"placement": "bottom-right", "title": "ETD Metrics"},
             }
             | (params_dict.get("td_ecomap") or {}),
             method="mapvalues",
@@ -335,7 +522,9 @@ def main(params: Params):
         ),
         "td_ecomap_html_url": Node(
             async_task=persist_text.validate()
-            .handle_errors(task_instance_id="td_ecomap_html_url")
+            .set_task_instance_id("td_ecomap_html_url")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -349,7 +538,9 @@ def main(params: Params):
         ),
         "td_map_widget": Node(
             async_task=create_map_widget_single_view.validate()
-            .handle_errors(task_instance_id="td_map_widget")
+            .set_task_instance_id("td_map_widget")
+            .handle_errors()
+            .with_tracing()
             .skipif(
                 conditions=[
                     never,
@@ -358,7 +549,7 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "title": "Collared Lions Home Range Ecomap",
+                "title": "Home Range Metrics",
             }
             | (params_dict.get("td_map_widget") or {}),
             method="map",
@@ -369,7 +560,9 @@ def main(params: Params):
         ),
         "td_grouped_map_widget": Node(
             async_task=merge_widget_views.validate()
-            .handle_errors(task_instance_id="td_grouped_map_widget")
+            .set_task_instance_id("td_grouped_map_widget")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
                 "widgets": DependsOn("td_map_widget"),
@@ -377,26 +570,90 @@ def main(params: Params):
             | (params_dict.get("td_grouped_map_widget") or {}),
             method="call",
         ),
-        "lg_dashboard": Node(
-            async_task=gather_dashboard.validate()
-            .handle_errors(task_instance_id="lg_dashboard")
+        "summary_table": Node(
+            async_task=summarize_df.validate()
+            .set_task_instance_id("summary_table")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
-                "details": DependsOn("workflow_details"),
-                "widgets": DependsOn("td_grouped_map_widget"),
-                "time_range": DependsOn("time_range"),
-                "groupers": DependsOn("groupers"),
+                "groupby_cols": ["extra__name"],
+                "summary_params": [
+                    {
+                        "display_name": "mean_speed",
+                        "aggregator": "mean",
+                        "column": "speed_kmhr",
+                    },
+                    {
+                        "display_name": "min_speed",
+                        "aggregator": "min",
+                        "column": "speed_kmhr",
+                    },
+                    {
+                        "display_name": "max_speed",
+                        "aggregator": "max",
+                        "column": "speed_kmhr",
+                    },
+                    {
+                        "display_name": "total_distance",
+                        "aggregator": "sum",
+                        "columnn": "dist_meters",
+                        "original_unit": "m",
+                        "new_unit": "km",
+                    },
+                ],
+                "reset_index": True,
             }
-            | (params_dict.get("lg_dashboard") or {}),
-            method="call",
+            | (params_dict.get("summary_table") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("split_subject_traj_groups"),
+            },
+        ),
+        "add_total_events_row": Node(
+            async_task=add_totals_row.validate()
+            .set_task_instance_id("add_total_events_row")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "label_col": ["extra__name"],
+                "label": "Total",
+            }
+            | (params_dict.get("add_total_events_row") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("summary_table"),
+            },
+        ),
+        "persist_summary_table": Node(
+            async_task=persist_df.validate()
+            .set_task_instance_id("persist_summary_table")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "filetype": "csv",
+            }
+            | (params_dict.get("persist_summary_table") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("add_total_events_row"),
+            },
         ),
         "collared_html_png": Node(
             async_task=html_to_png.validate()
-            .handle_errors(task_instance_id="collared_html_png")
+            .set_task_instance_id("collared_html_png")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
                 "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "config": {"wait_for_timeout": 50000},
+                "config": {"wait_for_timeout": 25000},
             }
             | (params_dict.get("collared_html_png") or {}),
             method="mapvalues",
@@ -405,43 +662,374 @@ def main(params: Params):
                 "argvalues": DependsOn("td_ecomap_html_url"),
             },
         ),
-        "collared_subject_doc_widget": Node(
-            async_task=create_doc_figure.validate()
-            .handle_errors(task_instance_id="collared_subject_doc_widget")
+        "unique_subjects": Node(
+            async_task=dataframe_column_nunique.validate()
+            .set_task_instance_id("unique_subjects")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
-                "heading": "Home Range Ecomap",
-                "level": 3,
+                "df": DependsOn("subject_reloc"),
+                "column_name": "extra__subject__name",
             }
-            | (params_dict.get("collared_subject_doc_widget") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["filepath"],
-                "argvalues": DependsOn("collared_html_png"),
-            },
-        ),
-        "normalized_doc_widgets": Node(
-            async_task=prepare_widget_list.validate()
-            .handle_errors(task_instance_id="normalized_doc_widgets")
-            .set_executor("lithops"),
-            partial={
-                "widgets": DependsOn("collared_subject_doc_widget"),
-            }
-            | (params_dict.get("normalized_doc_widgets") or {}),
+            | (params_dict.get("unique_subjects") or {}),
             method="call",
         ),
-        "create_report": Node(
-            async_task=gather_document.validate()
-            .handle_errors(task_instance_id="create_report")
+        "create_cover_context": Node(
+            async_task=create_cover_context_page.validate()
+            .set_task_instance_id("create_cover_context")
+            .handle_errors()
+            .with_tracing()
             .set_executor("lithops"),
             partial={
-                "title": "Report",
-                "time_range": DependsOn("time_range"),
-                "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "filename": "collared_report",
-                "doc_widgets": DependsOn("normalized_doc_widgets"),
+                "report_period": DependsOn("time_range"),
+                "prepared_by": "Ecoscope",
+                "count": DependsOn("unique_subjects"),
+                "template_path": DependsOn("persist_cover_page"),
+                "output_directory": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "filename": "cover_page.docx",
             }
-            | (params_dict.get("create_report") or {}),
+            | (params_dict.get("create_cover_context") or {}),
+            method="call",
+        ),
+        "zip_metrics_etd": Node(
+            async_task=zip_grouped_by_key.validate()
+            .set_task_instance_id("zip_metrics_etd")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "left": DependsOn("summary_table"),
+                "right": DependsOn("collared_html_png"),
+            }
+            | (params_dict.get("zip_metrics_etd") or {}),
+            method="call",
+        ),
+        "subject_context_doc": Node(
+            async_task=create_report_context.validate()
+            .set_task_instance_id("subject_context_doc")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "template_path": DependsOn("persist_indv_subject_page"),
+                "output_directory": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "filename": None,
+                "validate_images": True,
+                "box_h_cm": 9.0,
+                "box_w_cm": 15.0,
+            }
+            | (params_dict.get("subject_context_doc") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["subject_metrics", "home_range_ecomap"],
+                "argvalues": DependsOn("zip_metrics_etd"),
+            },
+        ),
+        "generate_mapbook_report": Node(
+            async_task=combine_docx_files.validate()
+            .set_task_instance_id("generate_mapbook_report")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "cover_page_path": DependsOn("create_cover_context"),
+                "output_directory": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "context_page_items": DependsOn("subject_context_doc"),
+                "filename": "overall_report.docx",
+            }
+            | (params_dict.get("generate_mapbook_report") or {}),
+            method="call",
+        ),
+        "calc_mean_speed": Node(
+            async_task=dataframe_column_sum.validate()
+            .set_task_instance_id("calc_mean_speed")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "column_name": "mean_speed",
+            }
+            | (params_dict.get("calc_mean_speed") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("summary_table"),
+            },
+        ),
+        "round_mean_speed": Node(
+            async_task=round_off_values.validate()
+            .set_task_instance_id("round_mean_speed")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "dp": 2,
+            }
+            | (params_dict.get("round_mean_speed") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["value"],
+                "argvalues": DependsOn("calc_mean_speed"),
+            },
+        ),
+        "calc_min_speed": Node(
+            async_task=dataframe_column_sum.validate()
+            .set_task_instance_id("calc_min_speed")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "column_name": "min_speed",
+            }
+            | (params_dict.get("calc_min_speed") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("summary_table"),
+            },
+        ),
+        "round_min_speed": Node(
+            async_task=round_off_values.validate()
+            .set_task_instance_id("round_min_speed")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "dp": 2,
+            }
+            | (params_dict.get("round_min_speed") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["value"],
+                "argvalues": DependsOn("calc_min_speed"),
+            },
+        ),
+        "calc_max_speed": Node(
+            async_task=dataframe_column_sum.validate()
+            .set_task_instance_id("calc_max_speed")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "column_name": "max_speed",
+            }
+            | (params_dict.get("calc_max_speed") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("summary_table"),
+            },
+        ),
+        "round_max_speed": Node(
+            async_task=round_off_values.validate()
+            .set_task_instance_id("round_max_speed")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "dp": 2,
+            }
+            | (params_dict.get("round_max_speed") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["value"],
+                "argvalues": DependsOn("calc_max_speed"),
+            },
+        ),
+        "total_distance_covered": Node(
+            async_task=dataframe_column_sum.validate()
+            .set_task_instance_id("total_distance_covered")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "column_name": "total_distance",
+            }
+            | (params_dict.get("total_distance_covered") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("summary_table"),
+            },
+        ),
+        "round_total_distance": Node(
+            async_task=round_off_values.validate()
+            .set_task_instance_id("round_total_distance")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "dp": 2,
+            }
+            | (params_dict.get("round_total_distance") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["value"],
+                "argvalues": DependsOn("total_distance_covered"),
+            },
+        ),
+        "total_mean_speed_widgets": Node(
+            async_task=create_single_value_widget_single_view.validate()
+            .set_task_instance_id("total_mean_speed_widgets")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    never,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "title": "Mean Speed",
+                "decimal_places": 1,
+            }
+            | (params_dict.get("total_mean_speed_widgets") or {}),
+            method="map",
+            kwargs={
+                "argnames": ["view", "data"],
+                "argvalues": DependsOn("round_mean_speed"),
+            },
+        ),
+        "total_mean_speed_sv_widget": Node(
+            async_task=merge_widget_views.validate()
+            .set_task_instance_id("total_mean_speed_sv_widget")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "widgets": DependsOn("total_mean_speed_widgets"),
+            }
+            | (params_dict.get("total_mean_speed_sv_widget") or {}),
+            method="call",
+        ),
+        "total_min_speed_widgets": Node(
+            async_task=create_single_value_widget_single_view.validate()
+            .set_task_instance_id("total_min_speed_widgets")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    never,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "title": "Min Speed",
+                "decimal_places": 1,
+            }
+            | (params_dict.get("total_min_speed_widgets") or {}),
+            method="map",
+            kwargs={
+                "argnames": ["view", "data"],
+                "argvalues": DependsOn("round_min_speed"),
+            },
+        ),
+        "total_min_speed_sv_widget": Node(
+            async_task=merge_widget_views.validate()
+            .set_task_instance_id("total_min_speed_sv_widget")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "widgets": DependsOn("total_min_speed_widgets"),
+            }
+            | (params_dict.get("total_min_speed_sv_widget") or {}),
+            method="call",
+        ),
+        "total_max_speed_widgets": Node(
+            async_task=create_single_value_widget_single_view.validate()
+            .set_task_instance_id("total_max_speed_widgets")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    never,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "title": "Max Speed",
+                "decimal_places": 1,
+            }
+            | (params_dict.get("total_max_speed_widgets") or {}),
+            method="map",
+            kwargs={
+                "argnames": ["view", "data"],
+                "argvalues": DependsOn("round_max_speed"),
+            },
+        ),
+        "total_max_speed_sv_widget": Node(
+            async_task=merge_widget_views.validate()
+            .set_task_instance_id("total_max_speed_sv_widget")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "widgets": DependsOn("total_max_speed_widgets"),
+            }
+            | (params_dict.get("total_max_speed_sv_widget") or {}),
+            method="call",
+        ),
+        "total_distance_widgets": Node(
+            async_task=create_single_value_widget_single_view.validate()
+            .set_task_instance_id("total_distance_widgets")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    never,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "title": "Distance covered",
+                "decimal_places": 1,
+            }
+            | (params_dict.get("total_distance_widgets") or {}),
+            method="map",
+            kwargs={
+                "argnames": ["view", "data"],
+                "argvalues": DependsOn("round_total_distance"),
+            },
+        ),
+        "total_distance_sv_widget": Node(
+            async_task=merge_widget_views.validate()
+            .set_task_instance_id("total_distance_sv_widget")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "widgets": DependsOn("total_distance_widgets"),
+            }
+            | (params_dict.get("total_distance_sv_widget") or {}),
+            method="call",
+        ),
+        "lg_dashboard": Node(
+            async_task=gather_dashboard.validate()
+            .set_task_instance_id("lg_dashboard")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "details": DependsOn("workflow_details"),
+                "widgets": DependsOnSequence(
+                    [
+                        DependsOn("total_mean_speed_sv_widget"),
+                        DependsOn("total_min_speed_sv_widget"),
+                        DependsOn("total_max_speed_sv_widget"),
+                        DependsOn("total_distance_sv_widget"),
+                        DependsOn("td_grouped_map_widget"),
+                    ],
+                ),
+                "time_range": DependsOn("time_range"),
+                "groupers": DependsOn("groupers"),
+            }
+            | (params_dict.get("lg_dashboard") or {}),
             method="call",
         ),
     }
