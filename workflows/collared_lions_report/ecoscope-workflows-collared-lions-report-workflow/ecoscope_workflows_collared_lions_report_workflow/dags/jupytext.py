@@ -648,7 +648,6 @@ td_map_layer = (
             "stroked": True,
         },
         legend={"label_column": "percentile", "color_column": "percentile_colormap"},
-        tooltip_columns=["percentile"],
         **td_map_layer_params,
     )
     .mapvalues(argnames=["geodataframe"], argvalues=td_colormap)

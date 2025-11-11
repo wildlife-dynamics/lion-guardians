@@ -379,7 +379,6 @@ def main(params: Params):
                 "label_column": "percentile",
                 "color_column": "percentile_colormap",
             },
-            tooltip_columns=["percentile"],
             **(params_dict.get("td_map_layer") or {}),
         )
         .mapvalues(argnames=["geodataframe"], argvalues=td_colormap)

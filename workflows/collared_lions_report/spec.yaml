@@ -255,8 +255,6 @@ workflow:
           legend:
             label_column: percentile
             color_column: percentile_colormap
-          tooltip_columns:
-            - percentile
         mapvalues:
           argnames: geodataframe
           argvalues: ${{ workflow.td_colormap.return }}
