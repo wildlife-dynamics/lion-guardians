@@ -141,12 +141,12 @@ class BaseMaps6(BaseModel):
         title="Custom Layer Opacity",
     )
     max_zoom: Optional[int] = Field(
-        None,
+        20,
         description="Set the maximum zoom level to fetch tiles for.",
         title="Custom Layer Max Zoom",
     )
     min_zoom: Optional[int] = Field(
-        None,
+        0,
         description="Set the minimum zoom level to fetch tiles for.",
         title="Custom Layer Min Zoom",
     )
@@ -173,10 +173,12 @@ class BaseMapDefs(BaseModel):
             {
                 "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
                 "opacity": 1,
+                "max_zoom": 20,
             },
             {
                 "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
                 "opacity": 0.5,
+                "max_zoom": 20,
             },
         ],
         description="Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",

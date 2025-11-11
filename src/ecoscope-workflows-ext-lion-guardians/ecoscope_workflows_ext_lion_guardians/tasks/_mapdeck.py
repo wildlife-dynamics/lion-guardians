@@ -31,7 +31,8 @@ from ecoscope_workflows_ext_custom.tasks.results._map import (
     view_state_from_layers,
     create_path_layer,
     create_scatterplot_layer,
-    PydeckAnnotation
+    PydeckAnnotation,
+    TileLayerPresets
 )
 
 logger = logging.getLogger(__name__)
@@ -768,3 +769,63 @@ def merge_static_and_grouped_layers(
             other_layers.append(layer)
     
     return other_layers + text_layers
+
+def _custom_tile_layer_json_schema() -> dict:
+    schema = TileLayer.model_json_schema()
+    schema["properties"]["url"]["title"] = "Custom Layer URL"
+    schema["properties"]["opacity"]["title"] = "Custom Layer Opacity"
+    schema["properties"]["max_zoom"]["title"] = "Custom Layer Max Zoom"
+    schema["properties"]["min_zoom"]["title"] = "Custom Layer Min Zoom"
+    schema["title"] = "Custom Layer (Advanced)"
+    return schema
+
+def _preset_tile_layer_json_schema(preset_name: str) -> dict:
+    schema = TileLayer.model_json_schema()
+    url = TileLayerPresets.get(preset_name, {}).get("url")
+    title = TileLayerPresets.get(preset_name, {}).get("title")
+    schema["properties"]["url"] |= {
+        "const": url,
+        "default": url,
+        "enum": [url],
+        "title": "Preset Layer URL",
+    }
+    schema["properties"]["url"].pop("description")
+    schema["properties"]["url"].pop("pattern")
+    schema["properties"].pop("max_zoom")
+    schema["properties"].pop("min_zoom")
+    schema["title"] = title
+    return schema
+
+
+def _preset_or_custom_json_schema_extra(schema: dict) -> None:
+    schema["items"]["title"] = "Base Layer"
+    schema["items"]["anyOf"] = [
+        _preset_tile_layer_json_schema(preset) for preset in TileLayerPresets.keys()
+    ]
+    schema["items"]["anyOf"].append(_custom_tile_layer_json_schema())
+    schema["default"] = [
+        TileLayer(layer_name="TERRAIN")._as_json_schema_default(),
+        TileLayer(layer_name="SATELLITE", opacity=0.5)._as_json_schema_default(),
+    ]
+    schema["ecoscope:advanced"] = True
+    schema["items"].pop("$ref")
+
+
+
+@task
+def set_custom_base_maps(
+    base_maps: Annotated[
+        list[TileLayer] | SkipJsonSchema[None],
+        Field(
+            json_schema_extra=_preset_or_custom_json_schema_extra,
+            title=" ",
+            description="Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
+        ),
+    ] = None,
+) -> Annotated[list[TileLayer], Field()]:
+    if base_maps is None:
+        base_maps = [
+            TileLayer(layer_name="USGS HILLSHADE", opacity=0.55),
+            TileLayer(layer_name="ROADMAP", opacity=0.55),
+        ]
+    return base_maps

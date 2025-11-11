@@ -36,10 +36,10 @@ from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
     process_relocations,
     relocations_to_trajectory,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.results import set_base_maps
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import apply_color_map
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     add_totals_row,
+    clean_file_keys,
     combine_docx_files,
     create_cover_context_page,
     create_geojson_layer,
@@ -51,6 +51,8 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
     make_text_layer,
     merge_static_and_grouped_layers,
     round_off_values,
+    select_koi,
+    set_custom_base_maps,
     view_state_deck_gdf,
     zip_grouped_by_key,
 )
@@ -71,7 +73,9 @@ def main(params: Params):
         "persist_cover_page": [],
         "persist_indv_subject_page": [],
         "load_local_shapefiles": [],
-        "create_custom_map_layers": ["load_local_shapefiles"],
+        "clean_local_geo_files": ["load_local_shapefiles"],
+        "filter_aoi": ["clean_local_geo_files"],
+        "create_custom_map_layers": ["filter_aoi"],
         "custom_text_layer": ["load_local_shapefiles"],
         "subject_obs": ["er_client_name", "time_range"],
         "subject_reloc": ["subject_obs"],
@@ -170,7 +174,7 @@ def main(params: Params):
             method="call",
         ),
         "base_map_defs": Node(
-            async_task=set_base_maps.validate()
+            async_task=set_custom_base_maps.validate()
             .set_task_instance_id("base_map_defs")
             .handle_errors()
             .with_tracing()
@@ -240,6 +244,31 @@ def main(params: Params):
             | (params_dict.get("load_local_shapefiles") or {}),
             method="call",
         ),
+        "clean_local_geo_files": Node(
+            async_task=clean_file_keys.validate()
+            .set_task_instance_id("clean_local_geo_files")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "file_dict": DependsOn("load_local_shapefiles"),
+            }
+            | (params_dict.get("clean_local_geo_files") or {}),
+            method="call",
+        ),
+        "filter_aoi": Node(
+            async_task=select_koi.validate()
+            .set_task_instance_id("filter_aoi")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "file_dict": DependsOn("clean_local_geo_files"),
+                "key_value": "amboseli_group_ranch_boundaries",
+            }
+            | (params_dict.get("filter_aoi") or {}),
+            method="call",
+        ),
         "create_custom_map_layers": Node(
             async_task=create_map_layers.validate()
             .set_task_instance_id("create_custom_map_layers")
@@ -247,7 +276,7 @@ def main(params: Params):
             .with_tracing()
             .set_executor("lithops"),
             partial={
-                "file_dict": DependsOn("load_local_shapefiles"),
+                "file_dict": DependsOn("filter_aoi"),
                 "style_config": {
                     "styles": {
                         "amboseli_group_ranch_boundaries": {

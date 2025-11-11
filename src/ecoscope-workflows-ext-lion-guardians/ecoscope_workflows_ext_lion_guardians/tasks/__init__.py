@@ -18,7 +18,8 @@ from ._mapdeck import (
     load_geospatial_files,
     remove_invalid_geometries,
     remove_invalid_point_geometries,
-    merge_static_and_grouped_layers
+    merge_static_and_grouped_layers,
+    set_custom_base_maps
 )
 
 from ._zip import zip_grouped_by_key,flatten_tuple
@@ -33,6 +34,7 @@ __all__ = [
     "create_report_context",
     "combine_docx_files",
 
+    "set_custom_base_maps",
     "draw_custom_map",
     "make_text_layer",
     "create_map_layers",

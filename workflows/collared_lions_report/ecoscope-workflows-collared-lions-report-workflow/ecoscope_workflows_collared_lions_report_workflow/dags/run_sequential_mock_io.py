@@ -16,12 +16,14 @@ from ecoscope_workflows_core.tasks.filter import set_time_range
 from ecoscope_workflows_core.tasks.groupby import set_groupers
 from ecoscope_workflows_core.tasks.io import set_er_connection
 from ecoscope_workflows_core.testing import create_task_magicmock  # 🧪
-from ecoscope_workflows_ext_ecoscope.tasks.results import set_base_maps
 from ecoscope_workflows_ext_lion_guardians.tasks import (
+    clean_file_keys,
     create_map_layers,
     download_file_and_persist,
     load_geospatial_files,
     make_text_layer,
+    select_koi,
+    set_custom_base_maps,
 )
 
 get_subjectgroup_observations = create_task_magicmock(  # 🧪
@@ -117,7 +119,7 @@ def main(params: Params):
     )
 
     base_map_defs = (
-        set_base_maps.validate()
+        set_custom_base_maps.validate()
         .set_task_instance_id("base_map_defs")
         .handle_errors()
         .with_tracing()
@@ -185,13 +187,38 @@ def main(params: Params):
         .call()
     )
 
+    clean_local_geo_files = (
+        clean_file_keys.validate()
+        .set_task_instance_id("clean_local_geo_files")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            file_dict=load_local_shapefiles,
+            **(params_dict.get("clean_local_geo_files") or {}),
+        )
+        .call()
+    )
+
+    filter_aoi = (
+        select_koi.validate()
+        .set_task_instance_id("filter_aoi")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            file_dict=clean_local_geo_files,
+            key_value="amboseli_group_ranch_boundaries",
+            **(params_dict.get("filter_aoi") or {}),
+        )
+        .call()
+    )
+
     create_custom_map_layers = (
         create_map_layers.validate()
         .set_task_instance_id("create_custom_map_layers")
         .handle_errors()
         .with_tracing()
         .partial(
-            file_dict=load_local_shapefiles,
+            file_dict=filter_aoi,
             style_config={
                 "styles": {
                     "amboseli_group_ranch_boundaries": {

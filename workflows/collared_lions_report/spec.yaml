@@ -42,7 +42,7 @@ workflow:
   # Set base maps
   - name: Base Maps
     id: base_map_defs
-    task: set_base_maps
+    task: set_custom_base_maps
 
   # Download amboseli group ranches and the collared lions templates
   - name: Download amboseli group ranches
@@ -75,7 +75,6 @@ workflow:
       retries: 3
       unzip: false
 
-
  #Load custom shapefiles
   - name : Load downloaded shapefiles
     id: load_local_shapefiles 
@@ -84,12 +83,25 @@ workflow:
       config: 
         path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
 
+  - name: Clean file keys from initially loaded geospatial files
+    id: clean_local_geo_files
+    task: clean_file_keys 
+    partial: 
+      file_dict: ${{ workflow.load_local_shapefiles.return }}
+
+  - name: Select Key of Interest to annotate text layers on the map
+    id: filter_aoi
+    task: select_koi
+    partial:
+      file_dict: ${{ workflow.clean_local_geo_files.return }}
+      key_value: amboseli_group_ranch_boundaries
+
   # Create community conservancy map layers 
   - name: Create Map Layers
     id: create_custom_map_layers
     task: create_map_layers
     partial:
-      file_dict: ${{ workflow.load_local_shapefiles.return }}
+      file_dict: ${{ workflow.filter_aoi.return }}
       style_config:
         styles:
           amboseli_group_ranch_boundaries: 

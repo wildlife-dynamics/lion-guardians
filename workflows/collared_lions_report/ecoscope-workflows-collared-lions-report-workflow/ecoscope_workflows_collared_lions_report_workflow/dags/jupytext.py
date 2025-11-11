@@ -45,10 +45,10 @@ from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
     process_relocations,
     relocations_to_trajectory,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.results import set_base_maps
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import apply_color_map
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     add_totals_row,
+    clean_file_keys,
     combine_docx_files,
     create_cover_context_page,
     create_geojson_layer,
@@ -60,6 +60,8 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
     make_text_layer,
     merge_static_and_grouped_layers,
     round_off_values,
+    select_koi,
+    set_custom_base_maps,
     view_state_deck_gdf,
     zip_grouped_by_key,
 )
@@ -175,7 +177,7 @@ base_map_defs_params = dict(
 
 
 base_map_defs = (
-    set_base_maps.set_task_instance_id("base_map_defs")
+    set_custom_base_maps.set_task_instance_id("base_map_defs")
     .handle_errors()
     .with_tracing()
     .partial(**base_map_defs_params)
@@ -292,6 +294,52 @@ load_local_shapefiles = (
 
 
 # %% [markdown]
+# ## Clean file keys from initially loaded geospatial files
+
+# %%
+# parameters
+
+clean_local_geo_files_params = dict()
+
+# %%
+# call the task
+
+
+clean_local_geo_files = (
+    clean_file_keys.set_task_instance_id("clean_local_geo_files")
+    .handle_errors()
+    .with_tracing()
+    .partial(file_dict=load_local_shapefiles, **clean_local_geo_files_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Select Key of Interest to annotate text layers on the map
+
+# %%
+# parameters
+
+filter_aoi_params = dict()
+
+# %%
+# call the task
+
+
+filter_aoi = (
+    select_koi.set_task_instance_id("filter_aoi")
+    .handle_errors()
+    .with_tracing()
+    .partial(
+        file_dict=clean_local_geo_files,
+        key_value="amboseli_group_ranch_boundaries",
+        **filter_aoi_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
 # ## Create Map Layers
 
 # %%
@@ -308,7 +356,7 @@ create_custom_map_layers = (
     .handle_errors()
     .with_tracing()
     .partial(
-        file_dict=load_local_shapefiles,
+        file_dict=filter_aoi,
         style_config={
             "styles": {
                 "amboseli_group_ranch_boundaries": {
