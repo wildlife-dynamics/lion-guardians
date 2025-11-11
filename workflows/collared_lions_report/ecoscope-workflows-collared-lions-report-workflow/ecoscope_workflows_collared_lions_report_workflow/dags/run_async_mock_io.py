@@ -100,7 +100,6 @@ def main(params: Params):
         "subject_traj": ["subject_reloc"],
         "traj_add_temporal_index": ["subject_traj", "groupers"],
         "persist_trajs": ["traj_add_temporal_index"],
-        "persist_trajs_csv": ["traj_add_temporal_index"],
         "split_subject_traj_groups": ["traj_add_temporal_index", "groupers"],
         "td": ["split_subject_traj_groups"],
         "td_colormap": ["td"],
@@ -120,7 +119,7 @@ def main(params: Params):
         "add_total_events_row": ["summary_table"],
         "persist_summary_table": ["add_total_events_row"],
         "collared_html_png": ["td_ecomap_html_url"],
-        "unique_subjects": ["summary_table"],
+        "unique_subjects": ["traj_add_temporal_index"],
         "create_cover_context": ["time_range", "unique_subjects", "persist_cover_page"],
         "zip_metrics_etd": ["summary_table", "collared_html_png"],
         "subject_context_doc": ["persist_indv_subject_page", "zip_metrics_etd"],
@@ -429,20 +428,6 @@ def main(params: Params):
             | (params_dict.get("persist_trajs") or {}),
             method="call",
         ),
-        "persist_trajs_csv": Node(
-            async_task=persist_df.validate()
-            .set_task_instance_id("persist_trajs_csv")
-            .handle_errors()
-            .with_tracing()
-            .set_executor("lithops"),
-            partial={
-                "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "filetype": "csv",
-                "df": DependsOn("traj_add_temporal_index"),
-            }
-            | (params_dict.get("persist_trajs_csv") or {}),
-            method="call",
-        ),
         "split_subject_traj_groups": Node(
             async_task=split_groups.validate()
             .set_task_instance_id("split_subject_traj_groups")
@@ -749,8 +734,8 @@ def main(params: Params):
             .with_tracing()
             .set_executor("lithops"),
             partial={
-                "df": DependsOn("summary_table"),
-                "column_name": "mean_speed",
+                "df": DependsOn("traj_add_temporal_index"),
+                "column_name": "groupby_col",
             }
             | (params_dict.get("unique_subjects") or {}),
             method="call",

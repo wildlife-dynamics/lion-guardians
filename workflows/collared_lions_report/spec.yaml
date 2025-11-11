@@ -201,14 +201,6 @@ workflow:
       filetype: gpkg
       df: ${{ workflow.traj_add_temporal_index.return }}
 
-  - name: Persist trajectories 
-    id: persist_trajs_csv
-    task: persist_df 
-    partial:
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      filetype: csv
-      df: ${{ workflow.traj_add_temporal_index.return }}
-
   # Split subjects trajectories by group
   - name: Split Subject Trajectories by Group
     id: split_subject_traj_groups
@@ -425,8 +417,8 @@ workflow:
     id: unique_subjects
     task: dataframe_column_nunique
     partial:
-      df: ${{ workflow.summary_table.return }}
-      column_name: mean_speed
+      df: ${{ workflow.traj_add_temporal_index.return }}
+      column_name: groupby_col
 
   # Create context and persist subject report 
   - name: Create and persist cover page context

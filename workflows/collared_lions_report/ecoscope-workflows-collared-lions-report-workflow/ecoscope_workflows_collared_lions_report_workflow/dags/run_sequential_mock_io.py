@@ -346,20 +346,6 @@ def main(params: Params):
         .call()
     )
 
-    persist_trajs_csv = (
-        persist_df.validate()
-        .set_task_instance_id("persist_trajs_csv")
-        .handle_errors()
-        .with_tracing()
-        .partial(
-            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            filetype="csv",
-            df=traj_add_temporal_index,
-            **(params_dict.get("persist_trajs_csv") or {}),
-        )
-        .call()
-    )
-
     split_subject_traj_groups = (
         split_groups.validate()
         .set_task_instance_id("split_subject_traj_groups")
@@ -604,8 +590,8 @@ def main(params: Params):
         .handle_errors()
         .with_tracing()
         .partial(
-            df=summary_table,
-            column_name="mean_speed",
+            df=traj_add_temporal_index,
+            column_name="groupby_col",
             **(params_dict.get("unique_subjects") or {}),
         )
         .call()

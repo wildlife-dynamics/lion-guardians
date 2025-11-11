@@ -564,34 +564,6 @@ persist_trajs = (
 
 
 # %% [markdown]
-# ## Persist trajectories
-
-# %%
-# parameters
-
-persist_trajs_csv_params = dict(
-    filename=...,
-)
-
-# %%
-# call the task
-
-
-persist_trajs_csv = (
-    persist_df.set_task_instance_id("persist_trajs_csv")
-    .handle_errors()
-    .with_tracing()
-    .partial(
-        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        filetype="csv",
-        df=traj_add_temporal_index,
-        **persist_trajs_csv_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
 # ## Split Subject Trajectories by Group
 
 # %%
@@ -1024,7 +996,9 @@ unique_subjects = (
     dataframe_column_nunique.set_task_instance_id("unique_subjects")
     .handle_errors()
     .with_tracing()
-    .partial(df=summary_table, column_name="mean_speed", **unique_subjects_params)
+    .partial(
+        df=traj_add_temporal_index, column_name="groupby_col", **unique_subjects_params
+    )
     .call()
 )
 
