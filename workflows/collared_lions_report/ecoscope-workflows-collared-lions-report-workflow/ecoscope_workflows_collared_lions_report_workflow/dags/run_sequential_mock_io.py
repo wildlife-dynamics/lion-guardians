@@ -516,7 +516,7 @@ def main(params: Params):
                 {
                     "display_name": "total_distance",
                     "aggregator": "sum",
-                    "columnn": "dist_meters",
+                    "column": "dist_meters",
                     "original_unit": "m",
                     "new_unit": "km",
                 },
