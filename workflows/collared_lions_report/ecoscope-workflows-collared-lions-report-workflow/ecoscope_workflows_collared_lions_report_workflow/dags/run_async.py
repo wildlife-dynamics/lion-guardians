@@ -103,7 +103,7 @@ def main(params: Params):
         "collared_html_png": ["td_ecomap_html_url"],
         "unique_subjects": ["traj_add_temporal_index"],
         "create_cover_context": ["time_range", "unique_subjects", "persist_cover_page"],
-        "zip_metrics_etd": ["summary_table", "collared_html_png"],
+        "zip_metrics_etd": ["persist_summary_table", "collared_html_png"],
         "subject_context_doc": ["persist_indv_subject_page", "zip_metrics_etd"],
         "generate_mapbook_report": ["create_cover_context", "subject_context_doc"],
         "calc_mean_speed": ["summary_table"],
@@ -746,7 +746,7 @@ def main(params: Params):
             .with_tracing()
             .set_executor("lithops"),
             partial={
-                "left": DependsOn("summary_table"),
+                "left": DependsOn("persist_summary_table"),
                 "right": DependsOn("collared_html_png"),
             }
             | (params_dict.get("zip_metrics_etd") or {}),

@@ -602,7 +602,7 @@ def main(params: Params):
         .handle_errors()
         .with_tracing()
         .partial(
-            left=summary_table,
+            left=persist_summary_table,
             right=collared_html_png,
             **(params_dict.get("zip_metrics_etd") or {}),
         )

@@ -1048,7 +1048,9 @@ zip_metrics_etd = (
     zip_grouped_by_key.set_task_instance_id("zip_metrics_etd")
     .handle_errors()
     .with_tracing()
-    .partial(left=summary_table, right=collared_html_png, **zip_metrics_etd_params)
+    .partial(
+        left=persist_summary_table, right=collared_html_png, **zip_metrics_etd_params
+    )
     .call()
 )
 

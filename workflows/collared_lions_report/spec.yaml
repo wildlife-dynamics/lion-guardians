@@ -436,7 +436,7 @@ workflow:
     id: zip_metrics_etd
     task: zip_grouped_by_key
     partial:
-      left: ${{ workflow.summary_table.return }}
+      left: ${{ workflow.persist_summary_table.return }}
       right: ${{ workflow.collared_html_png.return }}
 
   - name: Create individual subject context and persist
