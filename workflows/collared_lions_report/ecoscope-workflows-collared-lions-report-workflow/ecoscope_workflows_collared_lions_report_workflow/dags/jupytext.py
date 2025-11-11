@@ -395,7 +395,7 @@ custom_text_layer = (
     .partial(
         txt_gdf=filter_aoi,
         label_column="R_NAME",
-        fallback_columns=None,
+        fallback_columns=["name", "title"],
         use_centroid=True,
         color=[0, 0, 0, 255],
         size=75,

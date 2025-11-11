@@ -123,7 +123,9 @@ workflow:
     partial:
       txt_gdf: ${{ workflow.filter_aoi.return }}
       label_column: "R_NAME"
-      fallback_columns: null
+      fallback_columns:
+        - name
+        - title
       use_centroid: true 
       color: [0,0,0,255]
       size: 75
