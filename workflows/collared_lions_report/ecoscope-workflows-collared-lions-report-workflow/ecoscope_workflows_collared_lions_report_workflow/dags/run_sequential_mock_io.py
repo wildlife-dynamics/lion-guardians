@@ -199,26 +199,13 @@ def main(params: Params):
         .call()
     )
 
-    filter_aoi = (
-        select_koi.validate()
-        .set_task_instance_id("filter_aoi")
-        .handle_errors()
-        .with_tracing()
-        .partial(
-            file_dict=clean_local_geo_files,
-            key_value="amboseli_group_ranch_boundaries",
-            **(params_dict.get("filter_aoi") or {}),
-        )
-        .call()
-    )
-
     create_custom_map_layers = (
         create_map_layers.validate()
         .set_task_instance_id("create_custom_map_layers")
         .handle_errors()
         .with_tracing()
         .partial(
-            file_dict=filter_aoi,
+            file_dict=load_local_shapefiles,
             style_config={
                 "styles": {
                     "amboseli_group_ranch_boundaries": {
@@ -237,13 +224,26 @@ def main(params: Params):
         .call()
     )
 
+    filter_aoi = (
+        select_koi.validate()
+        .set_task_instance_id("filter_aoi")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            file_dict=clean_local_geo_files,
+            key_value="amboseli_group_ranch_boundaries",
+            **(params_dict.get("filter_aoi") or {}),
+        )
+        .call()
+    )
+
     custom_text_layer = (
         make_text_layer.validate()
         .set_task_instance_id("custom_text_layer")
         .handle_errors()
         .with_tracing()
         .partial(
-            txt_gdf=load_local_shapefiles,
+            txt_gdf=filter_aoi,
             label_column="R_NAME",
             fallback_columns=None,
             use_centroid=True,

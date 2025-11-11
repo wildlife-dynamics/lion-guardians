@@ -315,6 +315,43 @@ clean_local_geo_files = (
 
 
 # %% [markdown]
+# ## Create Map Layers
+
+# %%
+# parameters
+
+create_custom_map_layers_params = dict()
+
+# %%
+# call the task
+
+
+create_custom_map_layers = (
+    create_map_layers.set_task_instance_id("create_custom_map_layers")
+    .handle_errors()
+    .with_tracing()
+    .partial(
+        file_dict=load_local_shapefiles,
+        style_config={
+            "styles": {
+                "amboseli_group_ranch_boundaries": {
+                    "stroked": True,
+                    "filled": False,
+                    "get_elevation": 50,
+                    "opacity": 0.55,
+                    "get_line_color": [105, 105, 105, 200],
+                    "get_line_width": 3.5,
+                }
+            },
+            "legend": {"label": ["Group ranch boundaries"], "color": ["#696969"]},
+        },
+        **create_custom_map_layers_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
 # ## Select Key of Interest to annotate text layers on the map
 
 # %%
@@ -340,43 +377,6 @@ filter_aoi = (
 
 
 # %% [markdown]
-# ## Create Map Layers
-
-# %%
-# parameters
-
-create_custom_map_layers_params = dict()
-
-# %%
-# call the task
-
-
-create_custom_map_layers = (
-    create_map_layers.set_task_instance_id("create_custom_map_layers")
-    .handle_errors()
-    .with_tracing()
-    .partial(
-        file_dict=filter_aoi,
-        style_config={
-            "styles": {
-                "amboseli_group_ranch_boundaries": {
-                    "stroked": True,
-                    "filled": False,
-                    "get_elevation": 50,
-                    "opacity": 0.55,
-                    "get_line_color": [105, 105, 105, 200],
-                    "get_line_width": 3.5,
-                }
-            },
-            "legend": {"label": ["Group ranch boundaries"], "color": ["#696969"]},
-        },
-        **create_custom_map_layers_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
 # ## Create text layer
 
 # %%
@@ -393,7 +393,7 @@ custom_text_layer = (
     .handle_errors()
     .with_tracing()
     .partial(
-        txt_gdf=load_local_shapefiles,
+        txt_gdf=filter_aoi,
         label_column="R_NAME",
         fallback_columns=None,
         use_centroid=True,

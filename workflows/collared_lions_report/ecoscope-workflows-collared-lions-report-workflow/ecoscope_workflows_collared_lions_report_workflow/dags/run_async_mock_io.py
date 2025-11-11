@@ -92,9 +92,9 @@ def main(params: Params):
         "persist_indv_subject_page": [],
         "load_local_shapefiles": [],
         "clean_local_geo_files": ["load_local_shapefiles"],
+        "create_custom_map_layers": ["load_local_shapefiles"],
         "filter_aoi": ["clean_local_geo_files"],
-        "create_custom_map_layers": ["filter_aoi"],
-        "custom_text_layer": ["load_local_shapefiles"],
+        "custom_text_layer": ["filter_aoi"],
         "subject_obs": ["er_client_name", "time_range"],
         "subject_reloc": ["subject_obs"],
         "subject_traj": ["subject_reloc"],
@@ -274,19 +274,6 @@ def main(params: Params):
             | (params_dict.get("clean_local_geo_files") or {}),
             method="call",
         ),
-        "filter_aoi": Node(
-            async_task=select_koi.validate()
-            .set_task_instance_id("filter_aoi")
-            .handle_errors()
-            .with_tracing()
-            .set_executor("lithops"),
-            partial={
-                "file_dict": DependsOn("clean_local_geo_files"),
-                "key_value": "amboseli_group_ranch_boundaries",
-            }
-            | (params_dict.get("filter_aoi") or {}),
-            method="call",
-        ),
         "create_custom_map_layers": Node(
             async_task=create_map_layers.validate()
             .set_task_instance_id("create_custom_map_layers")
@@ -294,7 +281,7 @@ def main(params: Params):
             .with_tracing()
             .set_executor("lithops"),
             partial={
-                "file_dict": DependsOn("filter_aoi"),
+                "file_dict": DependsOn("load_local_shapefiles"),
                 "style_config": {
                     "styles": {
                         "amboseli_group_ranch_boundaries": {
@@ -315,6 +302,19 @@ def main(params: Params):
             | (params_dict.get("create_custom_map_layers") or {}),
             method="call",
         ),
+        "filter_aoi": Node(
+            async_task=select_koi.validate()
+            .set_task_instance_id("filter_aoi")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "file_dict": DependsOn("clean_local_geo_files"),
+                "key_value": "amboseli_group_ranch_boundaries",
+            }
+            | (params_dict.get("filter_aoi") or {}),
+            method="call",
+        ),
         "custom_text_layer": Node(
             async_task=make_text_layer.validate()
             .set_task_instance_id("custom_text_layer")
@@ -322,7 +322,7 @@ def main(params: Params):
             .with_tracing()
             .set_executor("lithops"),
             partial={
-                "txt_gdf": DependsOn("load_local_shapefiles"),
+                "txt_gdf": DependsOn("filter_aoi"),
                 "label_column": "R_NAME",
                 "fallback_columns": None,
                 "use_centroid": True,

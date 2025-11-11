@@ -89,19 +89,12 @@ workflow:
     partial: 
       file_dict: ${{ workflow.load_local_shapefiles.return }}
 
-  - name: Select Key of Interest to annotate text layers on the map
-    id: filter_aoi
-    task: select_koi
-    partial:
-      file_dict: ${{ workflow.clean_local_geo_files.return }}
-      key_value: amboseli_group_ranch_boundaries
-
   # Create community conservancy map layers 
   - name: Create Map Layers
     id: create_custom_map_layers
     task: create_map_layers
     partial:
-      file_dict: ${{ workflow.filter_aoi.return }}
+      file_dict: ${{ workflow.load_local_shapefiles.return }}
       style_config:
         styles:
           amboseli_group_ranch_boundaries: 
@@ -117,11 +110,18 @@ workflow:
           color:
             - "#696969"
 
+  - name: Select Key of Interest to annotate text layers on the map
+    id: filter_aoi
+    task: select_koi
+    partial:
+      file_dict: ${{ workflow.clean_local_geo_files.return }}
+      key_value: amboseli_group_ranch_boundaries
+
   - name: Create text layer 
     id: custom_text_layer
     task: make_text_layer
     partial:
-      txt_gdf: ${{ workflow.load_local_shapefiles.return }}
+      txt_gdf: ${{ workflow.filter_aoi.return }}
       label_column: "R_NAME"
       fallback_columns: null
       use_centroid: true 
@@ -139,7 +139,6 @@ workflow:
       tooltip_columns:
         - label 
       target_crs: epsg:4326
-
 
   #Get subject group observations
   - name: Get Subject Group Observations from EarthRanger
@@ -200,7 +199,6 @@ workflow:
       df: ${{ workflow.traj_add_temporal_index.return }}
       groupers: ${{ workflow.groupers.return }}
   
-
   # Calculate Time Density
   - title: Time Density Map
     type: task-group
@@ -626,7 +624,3 @@ workflow:
 
       time_range: ${{ workflow.time_range.return}}
       groupers: ${{ workflow.groupers.return }}
-
-
-  
-      
