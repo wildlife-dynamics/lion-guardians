@@ -347,20 +347,24 @@ workflow:
         - display_name: mean_speed
           aggregator: mean
           column: speed_kmhr
+          decimal_places: 2
 
         - display_name: min_speed
           aggregator: min
           column: speed_kmhr
+          decimal_places: 2
 
         - display_name: max_speed
           aggregator: max
           column: speed_kmhr
+          decimal_places: 2
         
         - display_name: total_distance
           aggregator: sum 
           column: dist_meters
           original_unit: m
-          new_unit: km 
+          new_unit: km
+          decimal_places: 2
 
       reset_index: true 
     mapvalues:
@@ -401,12 +405,12 @@ workflow:
       argvalues: ${{ workflow.td_ecomap_html_url.return }}
 
   # Retrieve unique subjects extracted from relocs
-  - name: Unique subjects on relocs
+  - name: Unique subjects on trajs 
     id: unique_subjects
     task: dataframe_column_nunique
     partial:
       df: ${{ workflow.summary_table.return }}
-      column_name: extra__name
+      column_name: mean_speed
 
   # Create context and persist subject report 
   - name: Create and persist cover page context

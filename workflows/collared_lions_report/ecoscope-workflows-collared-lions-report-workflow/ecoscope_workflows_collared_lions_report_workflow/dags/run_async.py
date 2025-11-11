@@ -611,16 +611,19 @@ def main(params: Params):
                         "display_name": "mean_speed",
                         "aggregator": "mean",
                         "column": "speed_kmhr",
+                        "decimal_places": 2,
                     },
                     {
                         "display_name": "min_speed",
                         "aggregator": "min",
                         "column": "speed_kmhr",
+                        "decimal_places": 2,
                     },
                     {
                         "display_name": "max_speed",
                         "aggregator": "max",
                         "column": "speed_kmhr",
+                        "decimal_places": 2,
                     },
                     {
                         "display_name": "total_distance",
@@ -628,6 +631,7 @@ def main(params: Params):
                         "column": "dist_meters",
                         "original_unit": "m",
                         "new_unit": "km",
+                        "decimal_places": 2,
                     },
                 ],
                 "reset_index": True,
@@ -698,7 +702,7 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("summary_table"),
-                "column_name": "extra__name",
+                "column_name": "mean_speed",
             }
             | (params_dict.get("unique_subjects") or {}),
             method="call",

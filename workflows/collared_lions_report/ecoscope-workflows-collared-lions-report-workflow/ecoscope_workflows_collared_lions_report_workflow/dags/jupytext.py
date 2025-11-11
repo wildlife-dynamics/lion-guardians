@@ -849,15 +849,27 @@ summary_table = (
                 "display_name": "mean_speed",
                 "aggregator": "mean",
                 "column": "speed_kmhr",
+                "decimal_places": 2,
             },
-            {"display_name": "min_speed", "aggregator": "min", "column": "speed_kmhr"},
-            {"display_name": "max_speed", "aggregator": "max", "column": "speed_kmhr"},
+            {
+                "display_name": "min_speed",
+                "aggregator": "min",
+                "column": "speed_kmhr",
+                "decimal_places": 2,
+            },
+            {
+                "display_name": "max_speed",
+                "aggregator": "max",
+                "column": "speed_kmhr",
+                "decimal_places": 2,
+            },
             {
                 "display_name": "total_distance",
                 "aggregator": "sum",
                 "column": "dist_meters",
                 "original_unit": "m",
                 "new_unit": "km",
+                "decimal_places": 2,
             },
         ],
         reset_index=True,
@@ -941,7 +953,7 @@ collared_html_png = (
 
 
 # %% [markdown]
-# ## Unique subjects on relocs
+# ## Unique subjects on trajs
 
 # %%
 # parameters
@@ -956,7 +968,7 @@ unique_subjects = (
     dataframe_column_nunique.set_task_instance_id("unique_subjects")
     .handle_errors()
     .with_tracing()
-    .partial(df=summary_table, column_name="extra__name", **unique_subjects_params)
+    .partial(df=summary_table, column_name="mean_speed", **unique_subjects_params)
     .call()
 )
 
