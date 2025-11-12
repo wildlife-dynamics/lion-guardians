@@ -131,7 +131,7 @@ def main(params: Params):
         .handle_errors()
         .with_tracing()
         .partial(
-            url="https://www.dropbox.com/scl/fi/1cbilbjq8625gsd5bb45m/collared_lions_cover_page.docx?rlkey=j6aq1bjrrsiv0qj4bghwywe1d&st=eqttsiau&dl=0",
+            url="https://www.dropbox.com/scl/fi/kyjd9ii9nul1osbkezl5w/collared_lions_cover_page.docx?rlkey=4nl68thyqzd0n49wnr1770u0x&st=bf5fi1ke&dl=0",
             output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             overwrite_existing=False,
             retries=3,
@@ -147,7 +147,7 @@ def main(params: Params):
         .handle_errors()
         .with_tracing()
         .partial(
-            url="https://www.dropbox.com/scl/fi/rdjej0c0dva7y8czw82de/collared_lion_subject_template.docx?rlkey=479h5pmpvjncgn314hd2r80yh&st=iuuc1o6t&dl=0",
+            url="https://www.dropbox.com/scl/fi/9prdjesjteb1gmfkt3i0a/collared_lion_subject_template.docx?rlkey=frad2hcak3rdc7h1gzo2f9xn3&st=19a8vr55&dl=0",
             output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             overwrite_existing=False,
             retries=3,
@@ -560,7 +560,7 @@ def main(params: Params):
         .with_tracing()
         .partial(
             output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            config={"wait_for_timeout": 25000},
+            config={"wait_for_timeout": 20000},
             **(params_dict.get("collared_html_png") or {}),
         )
         .mapvalues(argnames=["html_path"], argvalues=td_ecomap_html_url)
@@ -731,7 +731,7 @@ def main(params: Params):
         )
         .partial(
             title="Mean Speed",
-            decimal_places=1,
+            decimal_places=2,
             **(params_dict.get("total_mean_speed_widgets") or {}),
         )
         .map(argnames=["view", "data"], argvalues=round_mean_speed)
@@ -762,7 +762,7 @@ def main(params: Params):
         )
         .partial(
             title="Min Speed",
-            decimal_places=1,
+            decimal_places=2,
             **(params_dict.get("total_min_speed_widgets") or {}),
         )
         .map(argnames=["view", "data"], argvalues=round_min_speed)
@@ -793,7 +793,7 @@ def main(params: Params):
         )
         .partial(
             title="Max Speed",
-            decimal_places=1,
+            decimal_places=2,
             **(params_dict.get("total_max_speed_widgets") or {}),
         )
         .map(argnames=["view", "data"], argvalues=round_max_speed)
@@ -824,7 +824,7 @@ def main(params: Params):
         )
         .partial(
             title="Distance covered",
-            decimal_places=1,
+            decimal_places=2,
             **(params_dict.get("total_distance_widgets") or {}),
         )
         .map(argnames=["view", "data"], argvalues=round_total_distance)

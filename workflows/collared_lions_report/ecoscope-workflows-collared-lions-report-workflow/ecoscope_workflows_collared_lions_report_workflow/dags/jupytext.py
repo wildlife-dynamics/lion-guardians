@@ -230,7 +230,7 @@ persist_cover_page = (
     .handle_errors()
     .with_tracing()
     .partial(
-        url="https://www.dropbox.com/scl/fi/1cbilbjq8625gsd5bb45m/collared_lions_cover_page.docx?rlkey=j6aq1bjrrsiv0qj4bghwywe1d&st=eqttsiau&dl=0",
+        url="https://www.dropbox.com/scl/fi/kyjd9ii9nul1osbkezl5w/collared_lions_cover_page.docx?rlkey=4nl68thyqzd0n49wnr1770u0x&st=bf5fi1ke&dl=0",
         output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         overwrite_existing=False,
         retries=3,
@@ -258,7 +258,7 @@ persist_indv_subject_page = (
     .handle_errors()
     .with_tracing()
     .partial(
-        url="https://www.dropbox.com/scl/fi/rdjej0c0dva7y8czw82de/collared_lion_subject_template.docx?rlkey=479h5pmpvjncgn314hd2r80yh&st=iuuc1o6t&dl=0",
+        url="https://www.dropbox.com/scl/fi/9prdjesjteb1gmfkt3i0a/collared_lion_subject_template.docx?rlkey=frad2hcak3rdc7h1gzo2f9xn3&st=19a8vr55&dl=0",
         output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         overwrite_existing=False,
         retries=3,
@@ -973,7 +973,7 @@ collared_html_png = (
     .with_tracing()
     .partial(
         output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        config={"wait_for_timeout": 25000},
+        config={"wait_for_timeout": 20000},
         **collared_html_png_params,
     )
     .mapvalues(argnames=["html_path"], argvalues=td_ecomap_html_url)
@@ -1305,7 +1305,7 @@ total_mean_speed_widgets = (
         ],
         unpack_depth=1,
     )
-    .partial(title="Mean Speed", decimal_places=1, **total_mean_speed_widgets_params)
+    .partial(title="Mean Speed", decimal_places=2, **total_mean_speed_widgets_params)
     .map(argnames=["view", "data"], argvalues=round_mean_speed)
 )
 
@@ -1355,7 +1355,7 @@ total_min_speed_widgets = (
         ],
         unpack_depth=1,
     )
-    .partial(title="Min Speed", decimal_places=1, **total_min_speed_widgets_params)
+    .partial(title="Min Speed", decimal_places=2, **total_min_speed_widgets_params)
     .map(argnames=["view", "data"], argvalues=round_min_speed)
 )
 
@@ -1405,7 +1405,7 @@ total_max_speed_widgets = (
         ],
         unpack_depth=1,
     )
-    .partial(title="Max Speed", decimal_places=1, **total_max_speed_widgets_params)
+    .partial(title="Max Speed", decimal_places=2, **total_max_speed_widgets_params)
     .map(argnames=["view", "data"], argvalues=round_max_speed)
 )
 
@@ -1456,7 +1456,7 @@ total_distance_widgets = (
         unpack_depth=1,
     )
     .partial(
-        title="Distance covered", decimal_places=1, **total_distance_widgets_params
+        title="Distance covered", decimal_places=2, **total_distance_widgets_params
     )
     .map(argnames=["view", "data"], argvalues=round_total_distance)
 )
