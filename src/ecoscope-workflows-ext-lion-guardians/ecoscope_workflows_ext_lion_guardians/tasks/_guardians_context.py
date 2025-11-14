@@ -132,7 +132,6 @@ def validate_and_prepare_image(
 def create_cover_context_page(
     report_period: TimeRange,
     prepared_by: str,
-    count: int,
     template_path: Annotated[
         str,
         Field(
@@ -197,13 +196,11 @@ def create_cover_context_page(
     logger.info(f"Report period: {formatted_time_range}")
     logger.info(f"Report date generated: {formatted_date_str}")
     logger.info(f"Report prepared by: {prepared_by}")
-    logger.info(f"Report count: {count}")
     logger.info(f"Report ID: REP-{uuid.uuid4().hex[:8].upper()}")
     
 
     cover_page_context = {
          "report_id": f"REP-{uuid.uuid4().hex[:8].upper()}",
-         "subject_count": str(count),
          "time_generated": formatted_date_str,
          "report_period": formatted_time_range,
          "prepared_by": prepared_by

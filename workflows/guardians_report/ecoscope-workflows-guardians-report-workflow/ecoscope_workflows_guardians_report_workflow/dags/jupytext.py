@@ -3000,9 +3000,7 @@ persist_month_patrol_efforts = (
 # %%
 # parameters
 
-context_cover_page_params = dict(
-    count=...,
-)
+context_cover_page_params = dict()
 
 # %%
 # call the task
