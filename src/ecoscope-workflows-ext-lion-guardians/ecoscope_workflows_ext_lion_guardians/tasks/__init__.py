@@ -16,6 +16,7 @@ from ._mapdeck import (
 
 from ._zip import zip_grouped_by_key,flatten_tuple
 from ._download_file import download_file_and_persist
+from ._guardians_context import create_cover_context_page,create_report_context,combine_docx_files
 from ._tabular import add_totals_row , rename_columns, extract_date_parts
 from ._retrieve_patrols import (
     get_patrol_observations_from_patrols_dataframe,
@@ -55,5 +56,9 @@ __all__ = [
     "get_patrol_observations_from_patrols_dataframe",
     "get_patrols_from_combined_parameters",
     "get_patrol_observations_from_patrols_dataframe_and_combined_params",
-    "get_event_type_display_names_from_events_aliased"
+    "get_event_type_display_names_from_events_aliased",
+
+    "create_cover_context_page",
+    "create_report_context",
+    "combine_docx_files"
 ]

@@ -469,6 +469,33 @@
       "required": [],
       "type": "object",
       "title": ""
+    },
+    "context_cover_page": {
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "title": "Count",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "count"
+      ],
+      "type": "object",
+      "title": "Create context cover page"
+    },
+    "individual_report_context": {
+      "additionalProperties": false,
+      "properties": {
+        "validate_images": {
+          "default": true,
+          "title": "Validate Images",
+          "type": "boolean"
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Create individual report context"
     }
   },
   "$defs": {
@@ -742,7 +769,9 @@
       "patrol_traj",
       "filter_patrol_events",
       "patrol_events_bar_chart",
-      "ltd_meshgrid"
+      "ltd_meshgrid",
+      "context_cover_page",
+      "individual_report_context"
     ]
   },
   "additionalProperties": false

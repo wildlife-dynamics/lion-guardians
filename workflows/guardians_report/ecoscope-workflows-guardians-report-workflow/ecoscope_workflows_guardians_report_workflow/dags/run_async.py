@@ -69,12 +69,17 @@ from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
     drop_nan_values_by_column,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
+    add_totals_row,
     clean_file_keys,
+    combine_docx_files,
+    create_cover_context_page,
     create_geojson_layer,
     create_map_layers,
+    create_report_context,
     download_file_and_persist,
     draw_custom_map,
     extract_date_parts,
+    flatten_tuple,
     get_event_type_display_names_from_events_aliased,
     get_patrol_observations_from_patrols_dataframe_and_combined_params,
     load_geospatial_files,
@@ -223,7 +228,8 @@ def main(params: Params):
         "summarize_ranger_patrol": ["split_patrol_traj_groups"],
         "persist_ranger_patrol_efforts": ["summarize_ranger_patrol"],
         "summarized_patrol_types": ["split_patrol_traj_groups"],
-        "persist_patrol_types": ["summarized_patrol_types"],
+        "add_total_patrol_summary": ["summarized_patrol_types"],
+        "persist_patrol_types": ["add_total_patrol_summary"],
         "summarize_guardian_events": ["pe_rename_display_columns"],
         "persist_gua_patrol_efforts": ["summarize_guardian_events"],
         "summarized_event_types": ["pe_rename_display_columns"],
@@ -231,6 +237,17 @@ def main(params: Params):
         "add_month_name": ["split_patrol_traj_groups"],
         "summarize_month_patrol": ["add_month_name"],
         "persist_month_patrol_efforts": ["summarize_month_patrol"],
+        "context_cover_page": ["time_range", "persist_cover_page"],
+        "zip_pte_petmp": ["persist_ranger_patrol_efforts", "patrol_html_png"],
+        "zip_patrol_density_map": ["zip_pte_petmp", "td_html_png"],
+        "zip_events_pie_chart": ["zip_patrol_density_map", "patrol_pie_chart_png"],
+        "zip_events_time_series": ["zip_events_pie_chart", "patrol_bar_chart_png"],
+        "zip_patrol_events": ["zip_events_time_series", "persist_patrol_types"],
+        "zip_event_efforts": ["zip_patrol_events", "persist_event_tefforts"],
+        "zip_month_stats": ["zip_event_efforts", "persist_month_patrol_efforts"],
+        "flatten_context": ["zip_month_stats"],
+        "individual_report_context": ["persist_indv_subject_page", "flatten_context"],
+        "generate_report": ["context_cover_page", "individual_report_context"],
         "patrol_dashboard": [
             "workflow_details",
             "traj_pe_grouped_map_widget",
@@ -331,7 +348,7 @@ def main(params: Params):
             .with_tracing()
             .set_executor("lithops"),
             partial={
-                "url": "https://www.dropbox.com/scl/fi/xd2qmy3yru6a9ig5bd9gu/patrol_guardians_cover_page.docx?rlkey=jvbhnmwxh6dhgasgu7sfrik64&st=7rc1aebj&dl=0",
+                "url": "https://www.dropbox.com/scl/fi/p1xk9no77w9ctpc4mnn6p/patrol_guardians_cover_page.docx?rlkey=tc5oo54s29wu7cz47glvlbcaj&st=9ivtf2k6&dl=0",
                 "output_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "overwrite_existing": False,
                 "retries": 3,
@@ -347,7 +364,7 @@ def main(params: Params):
             .with_tracing()
             .set_executor("lithops"),
             partial={
-                "url": "https://www.dropbox.com/scl/fi/k83vbilr34m6mcuksyye9/individual_patrol_template.docx?rlkey=0z52jp2521zhxlm0cwd8j0opk&st=tekcbxcy&dl=0",
+                "url": "https://www.dropbox.com/scl/fi/5v48ioquh9hzqd3em3h25/individual_patrol_template.docx?rlkey=bn7sqiu6sk7a879poed2d9bzc&st=hs1ph1d6&dl=0",
                 "output_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "overwrite_existing": False,
                 "retries": 3,
@@ -1910,11 +1927,6 @@ def main(params: Params):
                         "column": "speed_kmhr",
                     },
                     {
-                        "display_name": "average_speed",
-                        "aggregator": "mean",
-                        "column": "speed_kmhr",
-                    },
-                    {
                         "display_name": "max_speed",
                         "aggregator": "max",
                         "column": "speed_kmhr",
@@ -1980,11 +1992,6 @@ def main(params: Params):
                         "column": "speed_kmhr",
                     },
                     {
-                        "display_name": "average_speed",
-                        "aggregator": "mean",
-                        "column": "speed_kmhr",
-                    },
-                    {
                         "display_name": "max_speed",
                         "aggregator": "max",
                         "column": "speed_kmhr",
@@ -1996,6 +2003,23 @@ def main(params: Params):
             kwargs={
                 "argnames": ["df"],
                 "argvalues": DependsOn("split_patrol_traj_groups"),
+            },
+        ),
+        "add_total_patrol_summary": Node(
+            async_task=add_totals_row.validate()
+            .set_task_instance_id("add_total_patrol_summary")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "label_col": "patrol_type",
+                "label": "Total",
+            }
+            | (params_dict.get("add_total_patrol_summary") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("summarized_patrol_types"),
             },
         ),
         "persist_patrol_types": Node(
@@ -2012,7 +2036,7 @@ def main(params: Params):
             method="mapvalues",
             kwargs={
                 "argnames": ["df"],
-                "argvalues": DependsOn("summarized_patrol_types"),
+                "argvalues": DependsOn("add_total_patrol_summary"),
             },
         ),
         "summarize_guardian_events": Node(
@@ -2149,11 +2173,6 @@ def main(params: Params):
                         "column": "speed_kmhr",
                     },
                     {
-                        "display_name": "average_speed",
-                        "aggregator": "mean",
-                        "column": "speed_kmhr",
-                    },
-                    {
                         "display_name": "max_speed",
                         "aggregator": "max",
                         "column": "speed_kmhr",
@@ -2183,6 +2202,170 @@ def main(params: Params):
                 "argnames": ["df"],
                 "argvalues": DependsOn("summarize_month_patrol"),
             },
+        ),
+        "context_cover_page": Node(
+            async_task=create_cover_context_page.validate()
+            .set_task_instance_id("context_cover_page")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "report_period": DependsOn("time_range"),
+                "prepared_by": "Ecoscope",
+                "template_path": DependsOn("persist_cover_page"),
+                "output_directory": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "filename": "cover_page.docx",
+            }
+            | (params_dict.get("context_cover_page") or {}),
+            method="call",
+        ),
+        "zip_pte_petmp": Node(
+            async_task=zip_grouped_by_key.validate()
+            .set_task_instance_id("zip_pte_petmp")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "left": DependsOn("persist_ranger_patrol_efforts"),
+                "right": DependsOn("patrol_html_png"),
+            }
+            | (params_dict.get("zip_pte_petmp") or {}),
+            method="call",
+        ),
+        "zip_patrol_density_map": Node(
+            async_task=zip_grouped_by_key.validate()
+            .set_task_instance_id("zip_patrol_density_map")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "left": DependsOn("zip_pte_petmp"),
+                "right": DependsOn("td_html_png"),
+            }
+            | (params_dict.get("zip_patrol_density_map") or {}),
+            method="call",
+        ),
+        "zip_events_pie_chart": Node(
+            async_task=zip_grouped_by_key.validate()
+            .set_task_instance_id("zip_events_pie_chart")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "left": DependsOn("zip_patrol_density_map"),
+                "right": DependsOn("patrol_pie_chart_png"),
+            }
+            | (params_dict.get("zip_events_pie_chart") or {}),
+            method="call",
+        ),
+        "zip_events_time_series": Node(
+            async_task=zip_grouped_by_key.validate()
+            .set_task_instance_id("zip_events_time_series")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "left": DependsOn("zip_events_pie_chart"),
+                "right": DependsOn("patrol_bar_chart_png"),
+            }
+            | (params_dict.get("zip_events_time_series") or {}),
+            method="call",
+        ),
+        "zip_patrol_events": Node(
+            async_task=zip_grouped_by_key.validate()
+            .set_task_instance_id("zip_patrol_events")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "left": DependsOn("zip_events_time_series"),
+                "right": DependsOn("persist_patrol_types"),
+            }
+            | (params_dict.get("zip_patrol_events") or {}),
+            method="call",
+        ),
+        "zip_event_efforts": Node(
+            async_task=zip_grouped_by_key.validate()
+            .set_task_instance_id("zip_event_efforts")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "left": DependsOn("zip_patrol_events"),
+                "right": DependsOn("persist_event_tefforts"),
+            }
+            | (params_dict.get("zip_event_efforts") or {}),
+            method="call",
+        ),
+        "zip_month_stats": Node(
+            async_task=zip_grouped_by_key.validate()
+            .set_task_instance_id("zip_month_stats")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "left": DependsOn("zip_event_efforts"),
+                "right": DependsOn("persist_month_patrol_efforts"),
+            }
+            | (params_dict.get("zip_month_stats") or {}),
+            method="call",
+        ),
+        "flatten_context": Node(
+            async_task=flatten_tuple.validate()
+            .set_task_instance_id("flatten_context")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial=(params_dict.get("flatten_context") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["nested"],
+                "argvalues": DependsOn("zip_month_stats"),
+            },
+        ),
+        "individual_report_context": Node(
+            async_task=create_report_context.validate()
+            .set_task_instance_id("individual_report_context")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "filename": None,
+                "box_h_cm": 9.0,
+                "box_w_cm": 15.0,
+                "template_path": DependsOn("persist_indv_subject_page"),
+                "output_directory": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            }
+            | (params_dict.get("individual_report_context") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": [
+                    "patrol_type_effort_path",
+                    "patrol_events_track_map",
+                    "patrol_time_density_map",
+                    "events_pie_chart",
+                    "events_time_series_bar_chart",
+                    "patrol_events",
+                    "event_efforts",
+                    "month_stats",
+                ],
+                "argvalues": DependsOn("flatten_context"),
+            },
+        ),
+        "generate_report": Node(
+            async_task=combine_docx_files.validate()
+            .set_task_instance_id("generate_report")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "cover_page_path": DependsOn("context_cover_page"),
+                "output_directory": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "context_page_items": DependsOn("individual_report_context"),
+                "filename": "lg_guardians_report.docx",
+            }
+            | (params_dict.get("generate_report") or {}),
+            method="call",
         ),
         "patrol_dashboard": Node(
             async_task=gather_dashboard.validate()

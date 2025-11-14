@@ -255,6 +255,20 @@ class PatrolEventsBarChart(BaseModel):
     patrol_events_bar_chart: Optional[PatrolEventsBarChart1] = Field(None, title="")
 
 
+class ContextCoverPage(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    count: int = Field(..., title="Count")
+
+
+class IndividualReportContext(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    validate_images: Optional[bool] = Field(True, title="Validate Images")
+
+
 class TimezoneInfo(BaseModel):
     label: str = Field(..., title="Label")
     tzCode: str = Field(..., title="Tzcode")
@@ -465,4 +479,10 @@ class FormData(BaseModel):
         None,
         alias="Time Density Map",
         description="These settings show a grid-based heatmap showing where subjects spent the most time.",
+    )
+    context_cover_page: Optional[ContextCoverPage] = Field(
+        None, title="Create context cover page"
+    )
+    individual_report_context: Optional[IndividualReportContext] = Field(
+        None, title="Create individual report context"
     )
