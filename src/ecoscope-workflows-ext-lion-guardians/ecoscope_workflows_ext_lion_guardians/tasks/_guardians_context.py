@@ -22,8 +22,7 @@ class ReportContext:
     total_patrols: Optional[Union[int,float]] = None
     total_distance: Optional[Union[int,float]]= None 
     total_time: Optional[Union[int,float]] = None
-    
-    average_speed: Optional[Union[int,float]]= None 
+
     min_speed: Optional[Union[int,float]] = None 
     max_speed: Optional[Union[int,float]] = None 
     
@@ -354,10 +353,9 @@ def create_report_context(
             warnings.warn(f"Cannot convert {col_name} value '{value}' to float: {e}. Using {default}")
             return default
             
-    total_patrols = round(safe_float(last_row["no_of_patrols"], col_name="no_of_patrols"), 2)
+    total_patrols = round(safe_float(last_row["no_of_patrols"], col_name="no_of_patrols"), 0)
     total_distance = round(safe_float(last_row["total_distance"], col_name="total_distance"), 2)
     total_time = round(safe_float(last_row["total_time"], col_name="total_time"), 2)
-    average_speed = round(safe_float(last_row["average_speed"], col_name="average_speed"), 2)
     min_speed = round(safe_float(last_row["min_speed"], col_name="min_speed"), 2)
     max_speed = round(safe_float(last_row["max_speed"], col_name="max_speed"), 2)
     
@@ -376,7 +374,6 @@ def create_report_context(
         total_patrols = total_patrols,
         total_distance = total_distance,
         total_time = total_time,
-        average_speed = average_speed,
         min_speed = min_speed,
         max_speed = max_speed,
     
