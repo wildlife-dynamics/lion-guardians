@@ -3038,11 +3038,7 @@ zip_pte_petmp = (
     zip_grouped_by_key.set_task_instance_id("zip_pte_petmp")
     .handle_errors()
     .with_tracing()
-    .partial(
-        left=persist_ranger_patrol_efforts,
-        right=patrol_html_png,
-        **zip_pte_petmp_params,
-    )
+    .partial(left=persist_patrol_types, right=patrol_html_png, **zip_pte_petmp_params)
     .call()
 )
 
@@ -3136,7 +3132,7 @@ zip_patrol_events = (
     .with_tracing()
     .partial(
         left=zip_events_time_series,
-        right=persist_patrol_types,
+        right=persist_gua_patrol_efforts,
         **zip_patrol_events_params,
     )
     .call()
@@ -3192,6 +3188,31 @@ zip_month_stats = (
 
 
 # %% [markdown]
+# ## Zip guardian stats
+
+# %%
+# parameters
+
+zip_guardian_stats_params = dict()
+
+# %%
+# call the task
+
+
+zip_guardian_stats = (
+    zip_grouped_by_key.set_task_instance_id("zip_guardian_stats")
+    .handle_errors()
+    .with_tracing()
+    .partial(
+        left=zip_month_stats,
+        right=persist_ranger_patrol_efforts,
+        **zip_guardian_stats_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
 # ## Flatten zipped  context inputs
 
 # %%
@@ -3208,7 +3229,7 @@ flatten_context = (
     .handle_errors()
     .with_tracing()
     .partial(**flatten_context_params)
-    .mapvalues(argnames=["nested"], argvalues=zip_month_stats)
+    .mapvalues(argnames=["nested"], argvalues=zip_guardian_stats)
 )
 
 
@@ -3248,6 +3269,7 @@ individual_report_context = (
             "patrol_events",
             "event_efforts",
             "month_stats",
+            "guardian_stats",
         ],
         argvalues=flatten_context,
     )

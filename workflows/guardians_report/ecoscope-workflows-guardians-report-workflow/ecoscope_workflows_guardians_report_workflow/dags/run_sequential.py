@@ -1785,7 +1785,7 @@ def main(params: Params):
         .handle_errors()
         .with_tracing()
         .partial(
-            left=persist_ranger_patrol_efforts,
+            left=persist_patrol_types,
             right=patrol_html_png,
             **(params_dict.get("zip_pte_petmp") or {}),
         )
@@ -1838,7 +1838,7 @@ def main(params: Params):
         .with_tracing()
         .partial(
             left=zip_events_time_series,
-            right=persist_patrol_types,
+            right=persist_gua_patrol_efforts,
             **(params_dict.get("zip_patrol_events") or {}),
         )
         .call()
@@ -1870,13 +1870,26 @@ def main(params: Params):
         .call()
     )
 
+    zip_guardian_stats = (
+        zip_grouped_by_key.validate()
+        .set_task_instance_id("zip_guardian_stats")
+        .handle_errors()
+        .with_tracing()
+        .partial(
+            left=zip_month_stats,
+            right=persist_ranger_patrol_efforts,
+            **(params_dict.get("zip_guardian_stats") or {}),
+        )
+        .call()
+    )
+
     flatten_context = (
         flatten_tuple.validate()
         .set_task_instance_id("flatten_context")
         .handle_errors()
         .with_tracing()
         .partial(**(params_dict.get("flatten_context") or {}))
-        .mapvalues(argnames=["nested"], argvalues=zip_month_stats)
+        .mapvalues(argnames=["nested"], argvalues=zip_guardian_stats)
     )
 
     individual_report_context = (
@@ -1902,6 +1915,7 @@ def main(params: Params):
                 "patrol_events",
                 "event_efforts",
                 "month_stats",
+                "guardian_stats",
             ],
             argvalues=flatten_context,
         )

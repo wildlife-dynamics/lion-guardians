@@ -1069,7 +1069,7 @@ workflow:
           argvalues: ${{ workflow.td_ecomap_html_url.return }}
 
   # Create summary tables 
-  # patrol efforts by ranger
+  # guardian stats
   - name: Summarize patrol efforts by ranger
     id: summarize_ranger_patrol
     task: summarize_df
@@ -1105,6 +1105,7 @@ workflow:
       argnames: df
       argvalues: ${{ workflow.split_patrol_traj_groups.return }}
 
+  # guardian stats
   - name: Persist ranger patrol efforts
     id: persist_ranger_patrol_efforts
     task: persist_df
@@ -1115,7 +1116,7 @@ workflow:
       argnames: df
       argvalues: ${{ workflow.summarize_ranger_patrol.return }}
 
-  # Patrol type effort 
+  # Patrol type effort /metrics
   - name: Summarize patrol by type
     id: summarized_patrol_types
     task: summarize_df
@@ -1161,6 +1162,7 @@ workflow:
       argnames: df
       argvalues: ${{ workflow.summarized_patrol_types.return }}
 
+  # patrol metrics
   - name: Persist patrol types
     id: persist_patrol_types
     task: persist_df
@@ -1171,7 +1173,7 @@ workflow:
       argnames: df
       argvalues: ${{ workflow.add_total_patrol_summary.return }}
 
-  # Guardians events
+  # Guardians events -- patrol events
   - name: Summarize events by guardian
     id: summarize_guardian_events
     task: summarize_df
@@ -1197,7 +1199,7 @@ workflow:
       argnames: df
       argvalues: ${{ workflow.summarize_guardian_events.return }}
 
-  # Event types and events
+  # Event types and events --event_efforts
   - name: Event types grouped by events total
     id: summarized_event_types
     task: summarize_df
@@ -1223,7 +1225,7 @@ workflow:
       argnames: df
       argvalues: ${{ workflow.summarized_event_types.return }}
 
-  # add month name , month on trajs 
+  # add month name , month on trajs -- month_stats
   - name: Add month name on trajs
     id: add_month_name
     task: extract_date_parts
@@ -1294,13 +1296,12 @@ workflow:
       output_directory: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: cover_page.docx
 
-
   # zip other inputs to add on the individual templates
   - name: Zip patrol type effort and patrol events track map
     id: zip_pte_petmp
     task: zip_grouped_by_key
     partial:  
-      left: ${{ workflow.persist_ranger_patrol_efforts.return }}
+      left: ${{ workflow.persist_patrol_types.return }}
       right: ${{ workflow.patrol_html_png.return }} 
 
   - name: Zip patrol time density map and existing
@@ -1329,7 +1330,7 @@ workflow:
     task: zip_grouped_by_key
     partial:  
       left: ${{ workflow.zip_events_time_series.return }}
-      right: ${{ workflow.persist_patrol_types.return }} 
+      right: ${{ workflow.persist_gua_patrol_efforts.return }} 
 
   - name: Zip event efforts
     id: zip_event_efforts
@@ -1345,12 +1346,19 @@ workflow:
       left: ${{ workflow.zip_event_efforts.return }}
       right: ${{ workflow.persist_month_patrol_efforts.return }} 
 
+  - name: Zip guardian stats 
+    id: zip_guardian_stats
+    task: zip_grouped_by_key
+    partial:  
+      left: ${{ workflow.zip_month_stats.return }}
+      right: ${{ workflow.persist_ranger_patrol_efforts.return }}
+
   - name: Flatten zipped  context inputs
     id: flatten_context
     task: flatten_tuple
     mapvalues:
       argnames: nested
-      argvalues: ${{ workflow.zip_month_stats.return }}
+      argvalues: ${{ workflow.zip_guardian_stats.return }}
 
   - name: Create individual report context
     id: individual_report_context
@@ -1363,17 +1371,18 @@ workflow:
       output_directory: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
     mapvalues:
       argnames: 
-        - patrol_type_effort_path
-        - patrol_events_track_map
+        - patrol_type_effort_path # persist_patrol_types
+        - patrol_events_track_map # patrol_html_png
 
-        - patrol_time_density_map
-        - events_pie_chart
+        - patrol_time_density_map # td_html_png
+        - events_pie_chart # patrol_pie_chart_png
 
-        - events_time_series_bar_chart
-        - patrol_events 
+        - events_time_series_bar_chart #patrol_bar_chart_png
+        - patrol_events #persist_gua_patrol_efforts
 
-        - event_efforts
-        - month_stats 
+        - event_efforts #persist_event_tefforts
+        - month_stats #works
+        - guardian_stats 
       argvalues: ${{ workflow.flatten_context.return }}
 
   - name: Generate final report

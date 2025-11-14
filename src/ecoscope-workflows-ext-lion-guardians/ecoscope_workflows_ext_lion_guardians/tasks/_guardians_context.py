@@ -22,21 +22,18 @@ class ReportContext:
     total_patrols: Optional[Union[int,float]] = None
     total_distance: Optional[Union[int,float]]= None 
     total_time: Optional[Union[int,float]] = None
-
     min_speed: Optional[Union[int,float]] = None 
     max_speed: Optional[Union[int,float]] = None 
     
     patrol_events_track_map: Optional[str] = None
     patrol_time_density_map: Optional[str] = None 
-
     events_pie_chart: Optional[str] = None
     events_time_series_bar_chart: Optional[str] = None 
     
-    #patrol_type_effort: Optional[str] = None
-    patrol_events: Optional[str] = None
-    
-    event_efforts: Optional[str]= None 
-    month_stats: Optional[str] = None
+    patrol_events: Optional[str] = None  # No of events recorded by guardian
+    event_efforts: Optional[str]= None # No of event types recorded
+    month_stats: Optional[str] = None # Month on month patrol analysis
+    guardian_stats: Optional[str] = None # Guardians patrol analysis
     
 @dataclass
 class GroupedDoc:
@@ -227,7 +224,7 @@ def create_report_context(
     patrol_events: Optional[str] = None,
     event_efforts: Optional[str] = None,
     month_stats: Optional[str] = None,
-    #guardian_stats: Optional[str] = None,
+    guardian_stats: Optional[str] = None,
     filename: Optional[str] = None,
     validate_images: bool = True,
     box_h_cm: float = 6.5,
@@ -338,7 +335,7 @@ def create_report_context(
     
     event_efforts = pd.read_csv(normalized_paths['event_efforts'])
     month_stats = pd.read_csv(normalized_paths['month_stats'])
-    #guardian_stats = pd.read_csv(normalized_paths['guardian_stats'])
+    guardian_stats = pd.read_csv(normalized_paths['guardian_stats'])
 
     last_row = patrol_metrics.iloc[-1]
     
@@ -362,8 +359,7 @@ def create_report_context(
     patrol_events_dict  = patrol_events.to_dict(orient="records")
     event_efforts_dict = event_efforts.to_dict(orient="records")
     month_stats_dict = month_stats.to_dict(orient="records")
-    
-   # guardian_stats_dict = guardian_stats.to_dict(orient="records")
+    guardian_stats_dict = guardian_stats.to_dict(orient="records")
     
     # Initialize template
     tpl = DocxTemplate(template_path)
@@ -386,6 +382,7 @@ def create_report_context(
         patrol_events =patrol_events_dict ,
         event_efforts = event_efforts_dict, 
         month_stats =  month_stats_dict,
+        guardian_stats = guardian_stats_dict
     )    # Prepare result dictionary with image handling
     result: Dict[str, Any] = {}
     for key, value in asdict(ctx).items():

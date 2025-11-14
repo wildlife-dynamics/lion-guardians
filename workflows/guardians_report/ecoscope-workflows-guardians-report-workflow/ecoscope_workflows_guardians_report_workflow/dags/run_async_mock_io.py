@@ -261,14 +261,15 @@ def main(params: Params):
         "summarize_month_patrol": ["add_month_name"],
         "persist_month_patrol_efforts": ["summarize_month_patrol"],
         "context_cover_page": ["time_range", "persist_cover_page"],
-        "zip_pte_petmp": ["persist_ranger_patrol_efforts", "patrol_html_png"],
+        "zip_pte_petmp": ["persist_patrol_types", "patrol_html_png"],
         "zip_patrol_density_map": ["zip_pte_petmp", "td_html_png"],
         "zip_events_pie_chart": ["zip_patrol_density_map", "patrol_pie_chart_png"],
         "zip_events_time_series": ["zip_events_pie_chart", "patrol_bar_chart_png"],
-        "zip_patrol_events": ["zip_events_time_series", "persist_patrol_types"],
+        "zip_patrol_events": ["zip_events_time_series", "persist_gua_patrol_efforts"],
         "zip_event_efforts": ["zip_patrol_events", "persist_event_tefforts"],
         "zip_month_stats": ["zip_event_efforts", "persist_month_patrol_efforts"],
-        "flatten_context": ["zip_month_stats"],
+        "zip_guardian_stats": ["zip_month_stats", "persist_ranger_patrol_efforts"],
+        "flatten_context": ["zip_guardian_stats"],
         "individual_report_context": ["persist_indv_subject_page", "flatten_context"],
         "generate_report": ["context_cover_page", "individual_report_context"],
         "patrol_dashboard": [
@@ -2249,7 +2250,7 @@ def main(params: Params):
             .with_tracing()
             .set_executor("lithops"),
             partial={
-                "left": DependsOn("persist_ranger_patrol_efforts"),
+                "left": DependsOn("persist_patrol_types"),
                 "right": DependsOn("patrol_html_png"),
             }
             | (params_dict.get("zip_pte_petmp") or {}),
@@ -2302,7 +2303,7 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "left": DependsOn("zip_events_time_series"),
-                "right": DependsOn("persist_patrol_types"),
+                "right": DependsOn("persist_gua_patrol_efforts"),
             }
             | (params_dict.get("zip_patrol_events") or {}),
             method="call",
@@ -2333,6 +2334,19 @@ def main(params: Params):
             | (params_dict.get("zip_month_stats") or {}),
             method="call",
         ),
+        "zip_guardian_stats": Node(
+            async_task=zip_grouped_by_key.validate()
+            .set_task_instance_id("zip_guardian_stats")
+            .handle_errors()
+            .with_tracing()
+            .set_executor("lithops"),
+            partial={
+                "left": DependsOn("zip_month_stats"),
+                "right": DependsOn("persist_ranger_patrol_efforts"),
+            }
+            | (params_dict.get("zip_guardian_stats") or {}),
+            method="call",
+        ),
         "flatten_context": Node(
             async_task=flatten_tuple.validate()
             .set_task_instance_id("flatten_context")
@@ -2343,7 +2357,7 @@ def main(params: Params):
             method="mapvalues",
             kwargs={
                 "argnames": ["nested"],
-                "argvalues": DependsOn("zip_month_stats"),
+                "argvalues": DependsOn("zip_guardian_stats"),
             },
         ),
         "individual_report_context": Node(
@@ -2371,6 +2385,7 @@ def main(params: Params):
                     "patrol_events",
                     "event_efforts",
                     "month_stats",
+                    "guardian_stats",
                 ],
                 "argvalues": DependsOn("flatten_context"),
             },
