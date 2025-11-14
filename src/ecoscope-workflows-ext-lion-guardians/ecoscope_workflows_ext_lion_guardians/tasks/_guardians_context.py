@@ -331,8 +331,7 @@ def create_report_context(
     os.makedirs(normalized_paths['output_directory'], exist_ok=True)
     if not filename:
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        patrol_suffix = f"_type_{patrol_type}" if patrol_type else ""
-        filename = f"patrol_report{patrol_suffix}_{timestamp}.docx"
+        filename = f"{uuid.uuid4().hex}.docx"
     
     output_path = Path(normalized_paths['output_directory']) / filename
     patrol_metrics = pd.read_csv(normalized_paths['patrol_type_effort'])
