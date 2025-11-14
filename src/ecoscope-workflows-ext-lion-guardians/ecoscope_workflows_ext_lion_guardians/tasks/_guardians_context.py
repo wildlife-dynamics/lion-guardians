@@ -270,7 +270,7 @@ def create_report_context(
         'patrol_events': patrol_events,
         'event_efforts': event_efforts,
         'month_stats': month_stats,
-       # 'guardian_stats': guardian_stats,
+        'guardian_stats': guardian_stats,
     }
     
     optional_image_paths = {
@@ -326,7 +326,6 @@ def create_report_context(
     # Create output directory
     os.makedirs(normalized_paths['output_directory'], exist_ok=True)
     if not filename:
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"{uuid.uuid4().hex}.docx"
     
     output_path = Path(normalized_paths['output_directory']) / filename
