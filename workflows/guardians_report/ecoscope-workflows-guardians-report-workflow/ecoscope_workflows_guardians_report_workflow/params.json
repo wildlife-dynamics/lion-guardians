@@ -34,6 +34,15 @@
           "title": "Until",
           "type": "string",
           "description": "The end time"
+        },
+        "timezone": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/TimezoneInfo"
+            }
+          ],
+          "default": null,
+          "title": "Timezone"
         }
       },
       "required": [
@@ -91,11 +100,13 @@
           "default": [
             {
               "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
-              "opacity": 1
+              "opacity": 1,
+              "max_zoom": 20
             },
             {
               "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-              "opacity": 0.5
+              "opacity": 0.5,
+              "max_zoom": 20
             }
           ],
           "items": {
@@ -257,13 +268,13 @@
                     "type": "number"
                   },
                   "max_zoom": {
-                    "default": null,
+                    "default": 20,
                     "description": "Set the maximum zoom level to fetch tiles for.",
                     "title": "Custom Layer Max Zoom",
                     "type": "integer"
                   },
                   "min_zoom": {
-                    "default": null,
+                    "default": 0,
                     "description": "Set the minimum zoom level to fetch tiles for.",
                     "title": "Custom Layer Min Zoom",
                     "type": "integer"
@@ -284,49 +295,71 @@
       "required": [],
       "title": "Base Maps"
     },
-    "load_local_shapefiles": {
+    "er_patrol_and_events_params": {
       "additionalProperties": false,
       "properties": {
-        "config": {
-          "$ref": "#/$defs/MapProcessingConfig",
-          "title": "Config"
+        "patrol_types": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Patrol Types",
+          "type": "array",
+          "description": "Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types."
+        },
+        "event_types": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Event Types",
+          "type": "array",
+          "description": "Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types."
+        },
+        "status": {
+          "default": [
+            "done"
+          ],
+          "items": {
+            "enum": [
+              "active",
+              "overdue",
+              "done",
+              "cancelled"
+            ],
+            "type": "string"
+          },
+          "title": "Patrol Status",
+          "type": "array",
+          "description": "Choose to analyze patrols with a certain status. If left empty, patrols of all status will be analyzed",
+          "ecoscope:advanced": true
+        },
+        "include_null_geometry": {
+          "default": true,
+          "title": "Include Events Without a Geometry (point or polygon)",
+          "type": "boolean"
         }
       },
       "required": [
-        "config"
+        "patrol_types",
+        "event_types"
       ],
       "type": "object",
-      "title": "Load local map files"
+      "title": ""
     },
-    "create_custom_map_layers": {
+    "set_patrol_traj_color_column": {
       "additionalProperties": false,
       "properties": {
-        "style_config": {
-          "$ref": "#/$defs/MapStyleConfig",
-          "title": "Style Config"
-        }
-      },
-      "required": [
-        "style_config"
-      ],
-      "type": "object",
-      "title": "Create Map Layers"
-    },
-    "subject_group_observations": {
-      "additionalProperties": false,
-      "properties": {
-        "subject_group_name": {
-          "title": "Subject Group Name",
+        "var": {
+          "title": "",
           "type": "string"
         }
       },
       "required": [
-        "subject_group_name"
+        "var"
       ],
       "type": "object",
-      "title": "Get Subject Group Observations from EarthRanger"
+      "title": ""
     },
-    "subject_trajectory": {
+    "patrol_traj": {
       "additionalProperties": false,
       "properties": {
         "trajectory_segment_filter": {
@@ -350,25 +383,123 @@
       },
       "required": [],
       "type": "object",
-      "title": "Transform Relocations to Trajectories"
+      "title": ""
     },
-    "summary_trajectory_table": {
+    "filter_patrol_events": {
       "additionalProperties": false,
       "properties": {
-        "reset_index": {
-          "default": false,
-          "title": "Reset Index",
-          "type": "boolean",
-          "description": "Whether to reset the dataframe index after summarizing.",
+        "bounding_box": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/BoundingBox"
+            }
+          ],
+          "default": {
+            "min_y": -90.0,
+            "max_y": 90.0,
+            "min_x": -180.0,
+            "max_x": 180.0
+          },
+          "title": "Bounding Box",
+          "description": "Filter events to inside these bounding coordinates.",
+          "ecoscope:advanced": true
+        },
+        "filter_point_coords": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Coordinate"
+          },
+          "title": "Filter Exact Point Coordinates",
+          "type": "array",
+          "description": "By adding a filter, the workflow will not include events recorded at the specified coordinates.",
           "ecoscope:advanced": true
         }
       },
       "required": [],
       "type": "object",
-      "title": "Subject summary table"
+      "title": ""
+    },
+    "patrol_events_bar_chart": {
+      "additionalProperties": false,
+      "properties": {
+        "time_interval": {
+          "enum": [
+            "year",
+            "month",
+            "week",
+            "day",
+            "hour"
+          ],
+          "title": "Time Interval",
+          "type": "string"
+        }
+      },
+      "required": [
+        "time_interval"
+      ],
+      "type": "object",
+      "title": ""
+    },
+    "ltd_meshgrid": {
+      "additionalProperties": false,
+      "properties": {
+        "auto_scale_or_custom_cell_size": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AutoScaleGridCellSize"
+            },
+            {
+              "$ref": "#/$defs/CustomGridCellSize"
+            }
+          ],
+          "default": {
+            "auto_scale_or_custom": "Auto-scale"
+          },
+          "title": "Grid Cell Size",
+          "ecoscope:advanced": true
+        },
+        "crs": {
+          "default": "EPSG:3857",
+          "title": "Coordinate Reference System",
+          "type": "string",
+          "description": "The coordinate reference system in which to perform the density calculation, must be a valid CRS authority code, for example ESRI:53042",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": ""
     }
   },
   "$defs": {
+    "TimezoneInfo": {
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "tzCode": {
+          "title": "Tzcode",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "utc": {
+          "title": "Utc",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "tzCode",
+        "name",
+        "utc"
+      ],
+      "title": "TimezoneInfo",
+      "type": "object"
+    },
     "TemporalGrouper": {
       "oneOf": [
         {
@@ -425,62 +556,6 @@
       "title": "EarthRangerConnection",
       "type": "object"
     },
-    "MapProcessingConfig": {
-      "properties": {
-        "path": {
-          "description": "Directory path to load geospatial files from",
-          "title": "Path",
-          "type": "string"
-        },
-        "target_crs": {
-          "anyOf": [
-            {
-              "type": "integer"
-            },
-            {
-              "type": "string"
-            }
-          ],
-          "default": 4326,
-          "description": "Target CRS to convert maps to",
-          "title": "Target Crs"
-        },
-        "recursive": {
-          "default": false,
-          "description": "Whether to walk folders recursively",
-          "title": "Recursive",
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "path"
-      ],
-      "title": "MapProcessingConfig",
-      "type": "object"
-    },
-    "MapStyleConfig": {
-      "properties": {
-        "styles": {
-          "additionalProperties": {
-            "type": "object"
-          },
-          "title": "Styles",
-          "type": "object"
-        },
-        "legend": {
-          "additionalProperties": {
-            "items": {
-              "type": "string"
-            },
-            "type": "array"
-          },
-          "title": "Legend",
-          "type": "object"
-        }
-      },
-      "title": "MapStyleConfig",
-      "type": "object"
-    },
     "TrajectorySegmentFilter": {
       "properties": {
         "min_length_meters": {
@@ -528,6 +603,98 @@
       },
       "title": "TrajectorySegmentFilter",
       "type": "object"
+    },
+    "BoundingBox": {
+      "properties": {
+        "min_y": {
+          "default": -90.0,
+          "ecoscope:advanced": true,
+          "title": "Min Latitude",
+          "type": "number"
+        },
+        "max_y": {
+          "default": 90.0,
+          "ecoscope:advanced": true,
+          "title": "Max Latitude",
+          "type": "number"
+        },
+        "min_x": {
+          "default": -180.0,
+          "ecoscope:advanced": true,
+          "title": "Min Longitude",
+          "type": "number"
+        },
+        "max_x": {
+          "default": 180.0,
+          "ecoscope:advanced": true,
+          "title": "Max Longitude",
+          "type": "number"
+        }
+      },
+      "title": "BoundingBox",
+      "type": "object"
+    },
+    "Coordinate": {
+      "properties": {
+        "y": {
+          "description": "Example -0.15293",
+          "title": "Latitude",
+          "type": "number"
+        },
+        "x": {
+          "description": "Example 37.30906",
+          "title": "Longitude",
+          "type": "number"
+        }
+      },
+      "required": [
+        "y",
+        "x"
+      ],
+      "title": "Coordinate",
+      "type": "object"
+    },
+    "AutoScaleGridCellSize": {
+      "properties": {
+        "auto_scale_or_custom": {
+          "const": "Auto-scale",
+          "default": "Auto-scale",
+          "ecoscope:advanced": true,
+          "enum": [
+            "Auto-scale"
+          ],
+          "title": "Grid Cell Size",
+          "type": "string"
+        }
+      },
+      "title": "Auto-scale",
+      "type": "object"
+    },
+    "CustomGridCellSize": {
+      "properties": {
+        "auto_scale_or_custom": {
+          "const": "Customize",
+          "default": "Customize",
+          "ecoscope:advanced": true,
+          "enum": [
+            "Customize"
+          ],
+          "title": "Grid Cell Size",
+          "type": "string"
+        },
+        "grid_cell_size": {
+          "default": 5000,
+          "description": "Define the resolution of the raster grid (in the unit of measurement defined by the coordinate reference system set below). A smaller grid cell size provides more detail, while a larger size generalizes the data.",
+          "exclusiveMaximum": 10000,
+          "exclusiveMinimum": 0,
+          "gt": 0,
+          "lt": 10000,
+          "title": "Custom Grid Cell Size",
+          "type": "number"
+        }
+      },
+      "title": "Customize",
+      "type": "object"
     }
   },
   "uiSchema": {
@@ -540,7 +707,28 @@
     "time_range": {
       "ui:order": [
         "since",
-        "until"
+        "until",
+        "timezone"
+      ]
+    },
+    "er_patrol_and_events_params": {
+      "ui:order": [
+        "patrol_types",
+        "event_types",
+        "status",
+        "include_null_geometry"
+      ]
+    },
+    "filter_patrol_events": {
+      "ui:order": [
+        "bounding_box",
+        "filter_point_coords"
+      ]
+    },
+    "ltd_meshgrid": {
+      "ui:order": [
+        "auto_scale_or_custom_cell_size",
+        "crs"
       ]
     },
     "ui:order": [
@@ -549,11 +737,12 @@
       "groupers",
       "er_client_name",
       "base_map_defs",
-      "load_local_shapefiles",
-      "create_custom_map_layers",
-      "subject_group_observations",
-      "subject_trajectory",
-      "summary_trajectory_table"
+      "er_patrol_and_events_params",
+      "set_patrol_traj_color_column",
+      "patrol_traj",
+      "filter_patrol_events",
+      "patrol_events_bar_chart",
+      "ltd_meshgrid"
     ]
   },
   "additionalProperties": false

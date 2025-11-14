@@ -30,6 +30,7 @@ requirements:
     - geopandas
     - shapely
     - python-docx
+    - docxtpl
     - playwright
 
 about:

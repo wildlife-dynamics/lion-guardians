@@ -3,18 +3,11 @@
 
 from __future__ import annotations
 
+from datetime import datetime
 from enum import Enum
-from typing import Any, Dict, List, Literal, Optional, Union
+from typing import List, Literal, Optional, Union
 
-from pydantic import (
-    AwareDatetime,
-    BaseModel,
-    ConfigDict,
-    Field,
-    RootModel,
-    confloat,
-    constr,
-)
+from pydantic import BaseModel, ConfigDict, Field, RootModel, confloat, constr
 
 
 class WorkflowDetails(BaseModel):
@@ -23,14 +16,6 @@ class WorkflowDetails(BaseModel):
     )
     name: str = Field(..., title="Workflow Name")
     description: Optional[str] = Field("", title="Workflow Description")
-
-
-class TimeRange(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    since: AwareDatetime = Field(..., description="The start time", title="Since")
-    until: AwareDatetime = Field(..., description="The end time", title="Until")
 
 
 class Url(str, Enum):
@@ -156,12 +141,12 @@ class BaseMaps6(BaseModel):
         title="Custom Layer Opacity",
     )
     max_zoom: Optional[int] = Field(
-        None,
+        20,
         description="Set the maximum zoom level to fetch tiles for.",
         title="Custom Layer Max Zoom",
     )
     min_zoom: Optional[int] = Field(
-        None,
+        0,
         description="Set the minimum zoom level to fetch tiles for.",
         title="Custom Layer Min Zoom",
     )
@@ -188,10 +173,12 @@ class BaseMapDefs(BaseModel):
             {
                 "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
                 "opacity": 1,
+                "max_zoom": 20,
             },
             {
                 "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
                 "opacity": 0.5,
+                "max_zoom": 20,
             },
         ],
         description="Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
@@ -199,22 +186,80 @@ class BaseMapDefs(BaseModel):
     )
 
 
-class SubjectGroupObservations(BaseModel):
+class StatusEnum(str, Enum):
+    active = "active"
+    overdue = "overdue"
+    done = "done"
+    cancelled = "cancelled"
+
+
+class ErPatrolAndEventsParams(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    subject_group_name: str = Field(..., title="Subject Group Name")
+    patrol_types: List[str] = Field(
+        ...,
+        description="Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types.",
+        title="Patrol Types",
+    )
+    event_types: List[str] = Field(
+        ...,
+        description="Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types.",
+        title="Event Types",
+    )
+    status: Optional[List[StatusEnum]] = Field(
+        ["done"],
+        description="Choose to analyze patrols with a certain status. If left empty, patrols of all status will be analyzed",
+        title="Patrol Status",
+    )
+    include_null_geometry: Optional[bool] = Field(
+        True, title="Include Events Without a Geometry (point or polygon)"
+    )
 
 
-class SummaryTrajectoryTable(BaseModel):
+class PatrolAndEventTypes(BaseModel):
+    er_patrol_and_events_params: Optional[ErPatrolAndEventsParams] = Field(
+        None, title=""
+    )
+
+
+class SetPatrolTrajColorColumn(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    reset_index: Optional[bool] = Field(
-        False,
-        description="Whether to reset the dataframe index after summarizing.",
-        title="Reset Index",
+    var: str = Field(..., title="")
+
+
+class TrajectoryCategory(BaseModel):
+    set_patrol_traj_color_column: Optional[SetPatrolTrajColorColumn] = Field(
+        None, title=""
     )
+
+
+class TimeInterval(str, Enum):
+    year = "year"
+    month = "month"
+    week = "week"
+    day = "day"
+    hour = "hour"
+
+
+class PatrolEventsBarChart1(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    time_interval: TimeInterval = Field(..., title="Time Interval")
+
+
+class PatrolEventsBarChart(BaseModel):
+    patrol_events_bar_chart: Optional[PatrolEventsBarChart1] = Field(None, title="")
+
+
+class TimezoneInfo(BaseModel):
+    label: str = Field(..., title="Label")
+    tzCode: str = Field(..., title="Tzcode")
+    name: str = Field(..., title="Name")
+    utc: str = Field(..., title="Utc")
 
 
 class TemporalGrouper(RootModel[str]):
@@ -227,23 +272,6 @@ class ValueGrouper(RootModel[str]):
 
 class EarthRangerConnection(BaseModel):
     name: str = Field(..., title="Data Source")
-
-
-class MapProcessingConfig(BaseModel):
-    path: str = Field(
-        ..., description="Directory path to load geospatial files from", title="Path"
-    )
-    target_crs: Optional[Union[int, str]] = Field(
-        4326, description="Target CRS to convert maps to", title="Target Crs"
-    )
-    recursive: Optional[bool] = Field(
-        False, description="Whether to walk folders recursively", title="Recursive"
-    )
-
-
-class MapStyleConfig(BaseModel):
-    styles: Optional[Dict[str, Dict[str, Any]]] = Field(None, title="Styles")
-    legend: Optional[Dict[str, List[str]]] = Field(None, title="Legend")
 
 
 class TrajectorySegmentFilter(BaseModel):
@@ -267,6 +295,52 @@ class TrajectorySegmentFilter(BaseModel):
     )
 
 
+class BoundingBox(BaseModel):
+    min_y: Optional[float] = Field(-90.0, title="Min Latitude")
+    max_y: Optional[float] = Field(90.0, title="Max Latitude")
+    min_x: Optional[float] = Field(-180.0, title="Min Longitude")
+    max_x: Optional[float] = Field(180.0, title="Max Longitude")
+
+
+class Coordinate(BaseModel):
+    y: float = Field(..., description="Example -0.15293", title="Latitude")
+    x: float = Field(..., description="Example 37.30906", title="Longitude")
+
+
+class AutoScaleOrCustom(str, Enum):
+    Auto_scale = "Auto-scale"
+
+
+class AutoScaleGridCellSize(BaseModel):
+    auto_scale_or_custom: Literal["Auto-scale"] = Field(
+        "Auto-scale", title="Grid Cell Size"
+    )
+
+
+class AutoScaleOrCustom1(str, Enum):
+    Customize = "Customize"
+
+
+class CustomGridCellSize(BaseModel):
+    auto_scale_or_custom: Literal["Customize"] = Field(
+        "Customize", title="Grid Cell Size"
+    )
+    grid_cell_size: Optional[confloat(lt=10000.0, gt=0.0)] = Field(
+        5000,
+        description="Define the resolution of the raster grid (in the unit of measurement defined by the coordinate reference system set below). A smaller grid cell size provides more detail, while a larger size generalizes the data.",
+        title="Custom Grid Cell Size",
+    )
+
+
+class TimeRange(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    since: datetime = Field(..., description="The start time", title="Since")
+    until: datetime = Field(..., description="The end time", title="Until")
+    timezone: Optional[TimezoneInfo] = Field(None, title="Timezone")
+
+
 class Groupers(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -287,21 +361,7 @@ class ErClientName(BaseModel):
     )
 
 
-class LoadLocalShapefiles(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    config: MapProcessingConfig = Field(..., title="Config")
-
-
-class CreateCustomMapLayers(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    style_config: MapStyleConfig = Field(..., title="Style Config")
-
-
-class SubjectTrajectory(BaseModel):
+class PatrolTraj(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -321,6 +381,50 @@ class SubjectTrajectory(BaseModel):
     )
 
 
+class TrajectorySegmentFilterModel(BaseModel):
+    patrol_traj: Optional[PatrolTraj] = Field(None, title="")
+
+
+class FilterPatrolEvents(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    bounding_box: Optional[BoundingBox] = Field(
+        default_factory=lambda: BoundingBox.model_validate(
+            {"min_y": -90.0, "max_y": 90.0, "min_x": -180.0, "max_x": 180.0}
+        ),
+        description="Filter events to inside these bounding coordinates.",
+        title="Bounding Box",
+    )
+    filter_point_coords: Optional[List[Coordinate]] = Field(
+        [],
+        description="By adding a filter, the workflow will not include events recorded at the specified coordinates.",
+        title="Filter Exact Point Coordinates",
+    )
+
+
+class PatrolEventLocationFilter(BaseModel):
+    filter_patrol_events: Optional[FilterPatrolEvents] = Field(None, title="")
+
+
+class LtdMeshgrid(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    auto_scale_or_custom_cell_size: Optional[
+        Union[AutoScaleGridCellSize, CustomGridCellSize]
+    ] = Field({"auto_scale_or_custom": "Auto-scale"}, title="Grid Cell Size")
+    crs: Optional[str] = Field(
+        "EPSG:3857",
+        description="The coordinate reference system in which to perform the density calculation, must be a valid CRS authority code, for example ESRI:53042",
+        title="Coordinate Reference System",
+    )
+
+
+class TimeDensityMap(BaseModel):
+    ltd_meshgrid: Optional[LtdMeshgrid] = Field(None, title="")
+
+
 class FormData(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -336,18 +440,29 @@ class FormData(BaseModel):
     groupers: Optional[Groupers] = Field(None, title="Set Groupers")
     er_client_name: Optional[ErClientName] = Field(None, title="Data Source")
     base_map_defs: Optional[BaseMapDefs] = Field(None, title="Base Maps")
-    load_local_shapefiles: Optional[LoadLocalShapefiles] = Field(
-        None, title="Load local map files"
+    Patrol_and_Event_Types: Optional[PatrolAndEventTypes] = Field(
+        None, alias="Patrol and Event Types", description=" "
     )
-    create_custom_map_layers: Optional[CreateCustomMapLayers] = Field(
-        None, title="Create Map Layers"
+    Trajectory_Category: Optional[TrajectoryCategory] = Field(
+        None,
+        alias="Trajectory Category",
+        description="Differentiate tracks by color using the selected category.",
     )
-    subject_group_observations: Optional[SubjectGroupObservations] = Field(
-        None, title="Get Subject Group Observations from EarthRanger"
+    Trajectory_Segment_Filter: Optional[TrajectorySegmentFilterModel] = Field(
+        None, alias="Trajectory Segment Filter", description=" "
     )
-    subject_trajectory: Optional[SubjectTrajectory] = Field(
-        None, title="Transform Relocations to Trajectories"
+    Patrol_Event_Location_Filter: Optional[PatrolEventLocationFilter] = Field(
+        None,
+        alias="Patrol Event Location Filter",
+        description="Filter events based on their location.",
     )
-    summary_trajectory_table: Optional[SummaryTrajectoryTable] = Field(
-        None, title="Subject summary table"
+    Patrol_Events_Bar_Chart: Optional[PatrolEventsBarChart] = Field(
+        None,
+        alias="Patrol Events Bar Chart",
+        description="The bar chart shows how many events of different types occurred over time. Choose the time interval for the x-axis to control how event counts are summarized over time.",
+    )
+    Time_Density_Map: Optional[TimeDensityMap] = Field(
+        None,
+        alias="Time Density Map",
+        description="These settings show a grid-based heatmap showing where subjects spent the most time.",
     )
