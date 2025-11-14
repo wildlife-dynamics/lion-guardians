@@ -17,6 +17,12 @@ from ._mapdeck import (
 from ._zip import zip_grouped_by_key,flatten_tuple
 from ._download_file import download_file_and_persist
 from ._tabular import add_totals_row , rename_columns, extract_date_parts
+from ._retrieve_patrols import (
+    get_patrol_observations_from_patrols_dataframe,
+    get_patrols_from_combined_parameters,
+    get_patrol_observations_from_patrols_dataframe_and_combined_params,
+    get_event_type_display_names_from_events_aliased
+)
 
 __all__ = [
     # _mapdeck
@@ -45,4 +51,9 @@ __all__ = [
     "add_totals_row",
     "extract_date_parts",
     "rename_columns",
+
+    "get_patrol_observations_from_patrols_dataframe",
+    "get_patrols_from_combined_parameters",
+    "get_patrol_observations_from_patrols_dataframe_and_combined_params",
+    "get_event_type_display_names_from_events_aliased"
 ]

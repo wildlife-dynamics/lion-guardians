@@ -169,7 +169,7 @@ workflow:
           combined_params: ${{ workflow.er_patrol_and_events_params.return }}
 
       - id: patrol_obs
-        task: get_patrol_observations_from_patrols_df_and_combined_params
+        task: get_patrol_observations_from_patrols_dataframe_and_combined_params
         partial:
           patrols_df: ${{ workflow.prefetch_patrols.return }}
           combined_params: ${{ workflow.er_patrol_and_events_params.return }}
@@ -181,7 +181,7 @@ workflow:
           combined_params: ${{ workflow.er_patrol_and_events_params.return }}
 
       - id: event_type_display_names
-        task: get_event_type_display_names_from_events
+        task: get_event_type_display_names_from_events_aliased
         partial:
           client: ${{ workflow.er_client_name.return }}
           events_gdf: ${{ workflow.patrol_events.return }}

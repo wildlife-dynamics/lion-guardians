@@ -36,20 +36,6 @@ get_patrols_from_combined_params = create_task_magicmock(  # 🧪
     anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
     func_name="get_patrols_from_combined_params",  # 🧪
 )  # 🧪
-get_patrol_observations_from_patrols_df_and_combined_params = (
-    create_task_magicmock(  # 🧪
-        anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
-        func_name="get_patrol_observations_from_patrols_df_and_combined_params",  # 🧪
-    )
-)  # 🧪
-from ecoscope_workflows_ext_ecoscope.tasks.io import (
-    unpack_events_from_patrols_df_and_combined_params,
-)
-
-get_event_type_display_names_from_events = create_task_magicmock(  # 🧪
-    anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
-    func_name="get_event_type_display_names_from_events",  # 🧪
-)  # 🧪
 from ecoscope_workflows_core.tasks.analysis import (
     dataframe_column_max,
     dataframe_column_mean,
@@ -91,7 +77,10 @@ from ecoscope_workflows_ext_ecoscope.tasks.analysis import (
     create_meshgrid,
     summarize_df,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.io import persist_df
+from ecoscope_workflows_ext_ecoscope.tasks.io import (
+    persist_df,
+    unpack_events_from_patrols_df_and_combined_params,
+)
 from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
     process_relocations,
     relocations_to_trajectory,
@@ -110,6 +99,8 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
     create_geojson_layer,
     draw_custom_map,
     extract_date_parts,
+    get_event_type_display_names_from_events_aliased,
+    get_patrol_observations_from_patrols_dataframe_and_combined_params,
     merge_static_and_grouped_layers,
     view_state_deck_gdf,
     zip_grouped_by_key,
@@ -347,7 +338,7 @@ def main(params: Params):
     )
 
     patrol_obs = (
-        get_patrol_observations_from_patrols_df_and_combined_params.validate()
+        get_patrol_observations_from_patrols_dataframe_and_combined_params.validate()
         .set_task_instance_id("patrol_obs")
         .handle_errors()
         .with_tracing()
@@ -373,7 +364,7 @@ def main(params: Params):
     )
 
     event_type_display_names = (
-        get_event_type_display_names_from_events.validate()
+        get_event_type_display_names_from_events_aliased.validate()
         .set_task_instance_id("event_type_display_names")
         .handle_errors()
         .with_tracing()

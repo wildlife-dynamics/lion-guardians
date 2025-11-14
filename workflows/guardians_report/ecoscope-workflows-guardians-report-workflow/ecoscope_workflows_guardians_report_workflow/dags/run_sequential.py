@@ -48,8 +48,6 @@ from ecoscope_workflows_ext_ecoscope.tasks.analysis import (
     summarize_df,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.io import (
-    get_event_type_display_names_from_events,
-    get_patrol_observations_from_patrols_df_and_combined_params,
     get_patrols_from_combined_params,
     persist_df,
     set_patrols_and_patrol_events_params,
@@ -76,6 +74,8 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
     download_file_and_persist,
     draw_custom_map,
     extract_date_parts,
+    get_event_type_display_names_from_events_aliased,
+    get_patrol_observations_from_patrols_dataframe_and_combined_params,
     load_geospatial_files,
     make_text_layer,
     merge_static_and_grouped_layers,
@@ -315,7 +315,7 @@ def main(params: Params):
     )
 
     patrol_obs = (
-        get_patrol_observations_from_patrols_df_and_combined_params.validate()
+        get_patrol_observations_from_patrols_dataframe_and_combined_params.validate()
         .set_task_instance_id("patrol_obs")
         .handle_errors()
         .with_tracing()
@@ -341,7 +341,7 @@ def main(params: Params):
     )
 
     event_type_display_names = (
-        get_event_type_display_names_from_events.validate()
+        get_event_type_display_names_from_events_aliased.validate()
         .set_task_instance_id("event_type_display_names")
         .handle_errors()
         .with_tracing()
