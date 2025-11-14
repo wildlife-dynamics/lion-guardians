@@ -1691,7 +1691,7 @@ def main(params: Params):
         .handle_errors()
         .with_tracing()
         .partial(
-            date_column="fixtime",
+            date_column="extra__patrol_start_time",
             parts=["month", "day", "month_name"],
             **(params_dict.get("add_month_name") or {}),
         )

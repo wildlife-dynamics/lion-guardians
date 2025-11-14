@@ -1226,7 +1226,7 @@ workflow:
     id: add_month_name
     task: extract_date_parts
     partial:
-      date_column: fixtime
+      date_column: extra__patrol_start_time
       parts:
         - month
         - day

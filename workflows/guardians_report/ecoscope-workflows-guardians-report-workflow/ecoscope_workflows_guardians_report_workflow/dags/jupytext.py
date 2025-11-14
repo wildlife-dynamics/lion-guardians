@@ -2895,7 +2895,7 @@ add_month_name = (
     .handle_errors()
     .with_tracing()
     .partial(
-        date_column="fixtime",
+        date_column="extra__patrol_start_time",
         parts=["month", "day", "month_name"],
         **add_month_name_params,
     )
