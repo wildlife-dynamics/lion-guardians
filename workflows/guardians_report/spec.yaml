@@ -517,8 +517,6 @@ workflow:
         task: draw_custom_map
         partial:
           tile_layers: ${{ workflow.base_map_defs.return }}
-          north_arrow_style:
-            placement: top-left
           legend_style:
             title: ${{ workflow.set_patrol_traj_color_column.return }}
             placement: bottom-right
@@ -1016,8 +1014,6 @@ workflow:
         task: draw_custom_map
         partial:
           tile_layers: ${{ workflow.base_map_defs.return }}
-          north_arrow_style:
-            placement: top-left
           legend_style:
             title: Time Spent
             placement: bottom-right

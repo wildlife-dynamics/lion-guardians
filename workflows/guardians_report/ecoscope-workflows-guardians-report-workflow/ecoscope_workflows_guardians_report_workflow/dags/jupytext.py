@@ -1393,7 +1393,6 @@ traj_patrol_events_ecomap = (
     .with_tracing()
     .partial(
         tile_layers=base_map_defs,
-        north_arrow_style={"placement": "top-left"},
         legend_style={
             "title": set_patrol_traj_color_column,
             "placement": "bottom-right",
@@ -2498,7 +2497,6 @@ td_ecomap = (
     .with_tracing()
     .partial(
         tile_layers=base_map_defs,
-        north_arrow_style={"placement": "top-left"},
         legend_style={"title": "Time Spent", "placement": "bottom-right"},
         static=False,
         title=None,

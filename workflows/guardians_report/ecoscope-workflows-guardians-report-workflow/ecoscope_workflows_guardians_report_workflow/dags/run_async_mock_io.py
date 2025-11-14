@@ -1039,7 +1039,6 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "tile_layers": DependsOn("base_map_defs"),
-                "north_arrow_style": {"placement": "top-left"},
                 "legend_style": {
                     "title": DependsOn("set_patrol_traj_color_column"),
                     "placement": "bottom-right",
@@ -1818,7 +1817,6 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "tile_layers": DependsOn("base_map_defs"),
-                "north_arrow_style": {"placement": "top-left"},
                 "legend_style": {"title": "Time Spent", "placement": "bottom-right"},
                 "static": False,
                 "title": None,

@@ -7,24 +7,31 @@ time_range:
 
 er_client_name:
   data_source:
-    name: "lg" # Ecoscope
+    name: "lion_guardians" # Ecoscope
 
-subject_group_observations:
-    subject_group_name: "Guardians"
+# subject_group_observations:
+#     subject_group_name: "Guardians"
 
-subject_trajectory:
-  trajectory_segment_filter:
-    min_length_meters: 0.001
-    max_length_meters: 3000.0
-    max_time_secs: 1800.0
-    min_time_secs: 3.0
-    max_speed_kmhr: 7.5
-    min_speed_kmhr: 0.3
+# subject_trajectory:
+#   trajectory_segment_filter:
+#     min_length_meters: 0.001
+#     max_length_meters: 3000.0
+#     max_time_secs: 1800.0
+#     min_time_secs: 3.0
+#     max_speed_kmhr: 7.5
+#     min_speed_kmhr: 0.3
 
 groupers:
   groupers:
     - "%B"
     #- extra__subject_subtype
 
+set_patrol_traj_color_column:
+  var: patrol_subject
+
+patrol_events_bar_chart:
+  time_interval: day
+  
 er_patrol_and_events_params:
   patrol_types: []
+  event_types: []
