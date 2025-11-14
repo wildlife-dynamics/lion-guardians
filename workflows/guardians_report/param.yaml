@@ -2,8 +2,8 @@ workflow_details:
   name: "Guardians Movement Workflow"
   description: "Workflow intended to monitor guardians movement over time."
 time_range:
-  since: "2025-01-01T00:00:00Z"
-  until: "2025-08-01T23:59:59Z"
+  since: "2025-11-01T00:00:00Z"
+  until: "2025-11-05T23:59:59Z"
 
 er_client_name:
   data_source:
@@ -26,35 +26,5 @@ groupers:
     - "%B"
     #- extra__subject_subtype
 
-base_map_defs:
-  base_maps:
-    - url: "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
-      opacity: 0.7
-    - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
-      opacity: 0.2
-      max_zoom: 8.5
-      min_zoom: null
-
-load_local_shapefiles:
-  config:
-    path: "/home/ttemu/ecoscope-workflows/shp_files"
-
-
-create_custom_map_layers:
-  style_config:
-    styles:
-      GroupRanchBoundary:
-        get_fill_color: [189, 183, 107]
-        get_line_color: [0, 0, 0]
-        opacity: 0.1
-        get_line_width: 1.2
-        stroked: true
-      national_parks_and_reserves:
-        get_fill_color: [77, 102, 0]
-        get_line_color: [0, 0, 0]
-        opacity: 0.15
-        get_line_width: 1
-        stroked: true
-      legend:
-        labels: ["Group Ranch Boundaries","National Parks and Reserves"]
-        colors: ["#bdb76b","#4d6600"]
+er_patrol_and_events_params:
+  patrol_types: []
