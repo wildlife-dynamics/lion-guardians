@@ -243,15 +243,15 @@ def main(params: Params):
         "td_map_widget": ["set_ltd_map_title", "td_ecomap_html_url"],
         "td_grouped_map_widget": ["td_map_widget"],
         "td_html_png": ["td_ecomap_html_url"],
-        "summarize_ranger_patrol": ["traj_rename_grouper_columns"],
+        "summarize_ranger_patrol": ["split_patrol_traj_groups"],
         "persist_ranger_patrol_efforts": ["summarize_ranger_patrol"],
-        "summarized_patrol_types": ["traj_rename_grouper_columns"],
+        "summarized_patrol_types": ["split_patrol_traj_groups"],
         "persist_patrol_types": ["summarized_patrol_types"],
         "summarize_guardian_events": ["pe_rename_display_columns"],
         "persist_gua_patrol_efforts": ["summarize_guardian_events"],
         "summarized_event_types": ["pe_rename_display_columns"],
         "persist_event_tefforts": ["summarized_event_types"],
-        "add_month_name": ["traj_rename_grouper_columns"],
+        "add_month_name": ["split_patrol_traj_groups"],
         "summarize_month_patrol": ["add_month_name"],
         "persist_month_patrol_efforts": ["summarize_month_patrol"],
         "patrol_dashboard": [
@@ -1948,7 +1948,7 @@ def main(params: Params):
             method="mapvalues",
             kwargs={
                 "argnames": ["df"],
-                "argvalues": DependsOn("traj_rename_grouper_columns"),
+                "argvalues": DependsOn("split_patrol_traj_groups"),
             },
         ),
         "persist_ranger_patrol_efforts": Node(
@@ -1960,10 +1960,13 @@ def main(params: Params):
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "filetype": "csv",
-                "df": DependsOn("summarize_ranger_patrol"),
             }
             | (params_dict.get("persist_ranger_patrol_efforts") or {}),
-            method="call",
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("summarize_ranger_patrol"),
+            },
         ),
         "summarized_patrol_types": Node(
             async_task=summarize_df.validate()
@@ -2015,7 +2018,7 @@ def main(params: Params):
             method="mapvalues",
             kwargs={
                 "argnames": ["df"],
-                "argvalues": DependsOn("traj_rename_grouper_columns"),
+                "argvalues": DependsOn("split_patrol_traj_groups"),
             },
         ),
         "persist_patrol_types": Node(
@@ -2027,10 +2030,13 @@ def main(params: Params):
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "filetype": "csv",
-                "df": DependsOn("summarized_patrol_types"),
             }
             | (params_dict.get("persist_patrol_types") or {}),
-            method="call",
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("summarized_patrol_types"),
+            },
         ),
         "summarize_guardian_events": Node(
             async_task=summarize_df.validate()
@@ -2065,10 +2071,13 @@ def main(params: Params):
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "filetype": "csv",
-                "df": DependsOn("summarize_guardian_events"),
             }
             | (params_dict.get("persist_gua_patrol_efforts") or {}),
-            method="call",
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("summarize_guardian_events"),
+            },
         ),
         "summarized_event_types": Node(
             async_task=summarize_df.validate()
@@ -2103,10 +2112,13 @@ def main(params: Params):
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "filetype": "csv",
-                "df": DependsOn("summarized_event_types"),
             }
             | (params_dict.get("persist_event_tefforts") or {}),
-            method="call",
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("summarized_event_types"),
+            },
         ),
         "add_month_name": Node(
             async_task=extract_date_parts.validate()
@@ -2122,7 +2134,7 @@ def main(params: Params):
             method="mapvalues",
             kwargs={
                 "argnames": ["df"],
-                "argvalues": DependsOn("traj_rename_grouper_columns"),
+                "argvalues": DependsOn("split_patrol_traj_groups"),
             },
         ),
         "summarize_month_patrol": Node(
@@ -2187,10 +2199,13 @@ def main(params: Params):
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "filetype": "csv",
-                "df": DependsOn("summarize_month_patrol"),
             }
             | (params_dict.get("persist_month_patrol_efforts") or {}),
-            method="call",
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("summarize_month_patrol"),
+            },
         ),
         "patrol_dashboard": Node(
             async_task=gather_dashboard.validate()

@@ -1541,7 +1541,7 @@ def main(params: Params):
             ],
             **(params_dict.get("summarize_ranger_patrol") or {}),
         )
-        .mapvalues(argnames=["df"], argvalues=traj_rename_grouper_columns)
+        .mapvalues(argnames=["df"], argvalues=split_patrol_traj_groups)
     )
 
     persist_ranger_patrol_efforts = (
@@ -1552,10 +1552,9 @@ def main(params: Params):
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             filetype="csv",
-            df=summarize_ranger_patrol,
             **(params_dict.get("persist_ranger_patrol_efforts") or {}),
         )
-        .call()
+        .mapvalues(argnames=["df"], argvalues=summarize_ranger_patrol)
     )
 
     summarized_patrol_types = (
@@ -1604,7 +1603,7 @@ def main(params: Params):
             ],
             **(params_dict.get("summarized_patrol_types") or {}),
         )
-        .mapvalues(argnames=["df"], argvalues=traj_rename_grouper_columns)
+        .mapvalues(argnames=["df"], argvalues=split_patrol_traj_groups)
     )
 
     persist_patrol_types = (
@@ -1615,10 +1614,9 @@ def main(params: Params):
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             filetype="csv",
-            df=summarized_patrol_types,
             **(params_dict.get("persist_patrol_types") or {}),
         )
-        .call()
+        .mapvalues(argnames=["df"], argvalues=summarized_patrol_types)
     )
 
     summarize_guardian_events = (
@@ -1649,10 +1647,9 @@ def main(params: Params):
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             filetype="csv",
-            df=summarize_guardian_events,
             **(params_dict.get("persist_gua_patrol_efforts") or {}),
         )
-        .call()
+        .mapvalues(argnames=["df"], argvalues=summarize_guardian_events)
     )
 
     summarized_event_types = (
@@ -1683,10 +1680,9 @@ def main(params: Params):
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             filetype="csv",
-            df=summarized_event_types,
             **(params_dict.get("persist_event_tefforts") or {}),
         )
-        .call()
+        .mapvalues(argnames=["df"], argvalues=summarized_event_types)
     )
 
     add_month_name = (
@@ -1699,7 +1695,7 @@ def main(params: Params):
             parts=["month", "day", "month_name"],
             **(params_dict.get("add_month_name") or {}),
         )
-        .mapvalues(argnames=["df"], argvalues=traj_rename_grouper_columns)
+        .mapvalues(argnames=["df"], argvalues=split_patrol_traj_groups)
     )
 
     summarize_month_patrol = (
@@ -1759,10 +1755,9 @@ def main(params: Params):
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             filetype="csv",
-            df=summarize_month_patrol,
             **(params_dict.get("persist_month_patrol_efforts") or {}),
         )
-        .call()
+        .mapvalues(argnames=["df"], argvalues=summarize_month_patrol)
     )
 
     patrol_dashboard = (

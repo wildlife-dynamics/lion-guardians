@@ -2657,7 +2657,7 @@ summarize_ranger_patrol = (
         ],
         **summarize_ranger_patrol_params,
     )
-    .mapvalues(argnames=["df"], argvalues=traj_rename_grouper_columns)
+    .mapvalues(argnames=["df"], argvalues=split_patrol_traj_groups)
 )
 
 
@@ -2682,10 +2682,9 @@ persist_ranger_patrol_efforts = (
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filetype="csv",
-        df=summarize_ranger_patrol,
         **persist_ranger_patrol_efforts_params,
     )
-    .call()
+    .mapvalues(argnames=["df"], argvalues=summarize_ranger_patrol)
 )
 
 
@@ -2738,7 +2737,7 @@ summarized_patrol_types = (
         ],
         **summarized_patrol_types_params,
     )
-    .mapvalues(argnames=["df"], argvalues=traj_rename_grouper_columns)
+    .mapvalues(argnames=["df"], argvalues=split_patrol_traj_groups)
 )
 
 
@@ -2763,10 +2762,9 @@ persist_patrol_types = (
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filetype="csv",
-        df=summarized_patrol_types,
         **persist_patrol_types_params,
     )
-    .call()
+    .mapvalues(argnames=["df"], argvalues=summarized_patrol_types)
 )
 
 
@@ -2819,10 +2817,9 @@ persist_gua_patrol_efforts = (
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filetype="csv",
-        df=summarize_guardian_events,
         **persist_gua_patrol_efforts_params,
     )
-    .call()
+    .mapvalues(argnames=["df"], argvalues=summarize_guardian_events)
 )
 
 
@@ -2875,10 +2872,9 @@ persist_event_tefforts = (
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filetype="csv",
-        df=summarized_event_types,
         **persist_event_tefforts_params,
     )
-    .call()
+    .mapvalues(argnames=["df"], argvalues=summarized_event_types)
 )
 
 
@@ -2903,7 +2899,7 @@ add_month_name = (
         parts=["month", "day", "month_name"],
         **add_month_name_params,
     )
-    .mapvalues(argnames=["df"], argvalues=traj_rename_grouper_columns)
+    .mapvalues(argnames=["df"], argvalues=split_patrol_traj_groups)
 )
 
 
@@ -2981,10 +2977,9 @@ persist_month_patrol_efforts = (
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filetype="csv",
-        df=summarize_month_patrol,
         **persist_month_patrol_efforts_params,
     )
-    .call()
+    .mapvalues(argnames=["df"], argvalues=summarize_month_patrol)
 )
 
 

@@ -1107,7 +1107,7 @@ workflow:
           column: speed_kmhr
     mapvalues:
       argnames: df
-      argvalues: ${{ workflow.traj_rename_grouper_columns.return }}
+      argvalues: ${{ workflow.split_patrol_traj_groups.return }}
 
   - name: Persist ranger patrol efforts
     id: persist_ranger_patrol_efforts
@@ -1115,7 +1115,9 @@ workflow:
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filetype: csv
-      df: ${{ workflow.summarize_ranger_patrol.return }}
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summarize_ranger_patrol.return }}
 
   # Patrol type effort 
   - name: Summarize patrol by type
@@ -1155,7 +1157,7 @@ workflow:
           column: speed_kmhr
     mapvalues:
       argnames: df
-      argvalues: ${{ workflow.traj_rename_grouper_columns.return }}
+      argvalues: ${{ workflow.split_patrol_traj_groups.return }}
 
   - name: Persist patrol types
     id: persist_patrol_types
@@ -1163,7 +1165,9 @@ workflow:
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filetype: csv
-      df: ${{ workflow.summarized_patrol_types.return }}
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summarized_patrol_types.return }}
 
   # Guardians events
   - name: Summarize events by guardian
@@ -1187,7 +1191,9 @@ workflow:
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filetype: csv
-      df: ${{ workflow.summarize_guardian_events.return }}
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summarize_guardian_events.return }}
 
   # Event types and events
   - name: Event types grouped by events total
@@ -1211,7 +1217,9 @@ workflow:
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filetype: csv
-      df: ${{ workflow.summarized_event_types.return }}
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summarized_event_types.return }}
 
   # add month name , month on trajs 
   - name: Add month name on trajs
@@ -1225,7 +1233,7 @@ workflow:
         - month_name
     mapvalues:
       argnames: df
-      argvalues: ${{ workflow.traj_rename_grouper_columns.return }}
+      argvalues: ${{ workflow.split_patrol_traj_groups.return }}
 
   # patrol efforts by month name
   - name: Summarize patrol efforts by month name
@@ -1273,7 +1281,9 @@ workflow:
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filetype: csv
-      df: ${{ workflow.summarize_month_patrol.return }}
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summarize_month_patrol.return }}
 
   - name: Create Dashboard with Patrol Map Widgets
     id: patrol_dashboard
