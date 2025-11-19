@@ -65,6 +65,7 @@ geopandas="*"
 shapely = "*"
 docxtpl="*"
 playwright = "*"
+ecoscope-workflows-ext-custom = "*"
 ecoscope-workflows-core = ">=0.17.0"
 ecoscope-workflows-ext-ecoscope=">=0.17.0"
 
