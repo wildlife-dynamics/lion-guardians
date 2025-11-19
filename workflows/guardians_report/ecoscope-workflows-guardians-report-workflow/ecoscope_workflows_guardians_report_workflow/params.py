@@ -181,7 +181,7 @@ class BaseMapDefs(BaseModel):
                 "max_zoom": 20,
             },
         ],
-        description="Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
+        description="Select tile layers to use as base layers in map outputs.",
         title=" ",
     )
 

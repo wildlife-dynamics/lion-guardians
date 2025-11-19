@@ -11,18 +11,18 @@ from ._mapdeck import (
     remove_invalid_geometries,
     remove_invalid_point_geometries,
     merge_static_and_grouped_layers,
-    set_custom_base_maps
+    set_custom_base_maps,
 )
 
-from ._zip import zip_grouped_by_key,flatten_tuple
+from ._zip import zip_grouped_by_key, flatten_tuple
 from ._download_file import download_file_and_persist
-from ._guardians_context import create_cover_context_page,create_report_context,combine_docx_files
-from ._tabular import add_totals_row , rename_columns, extract_date_parts
+from ._guardians_context import create_cover_context_page, create_report_context, combine_docx_files
+from ._tabular import add_totals_row, rename_columns, extract_date_parts
 from ._retrieve_patrols import (
     get_patrol_observations_from_patrols_dataframe,
     get_patrols_from_combined_parameters,
     get_patrol_observations_from_patrols_dataframe_and_combined_params,
-    get_event_type_display_names_from_events_aliased
+    get_event_type_display_names_from_events_aliased,
 )
 
 __all__ = [
@@ -40,25 +40,20 @@ __all__ = [
     "select_koi",
     "set_custom_base_maps",
     "view_state_deck_gdf",
-
     # _zip
     "flatten_tuple",
     "zip_grouped_by_key",
-
     # _download_file
     "download_file_and_persist",
-
     # _tabular
     "add_totals_row",
     "extract_date_parts",
     "rename_columns",
-
     "get_patrol_observations_from_patrols_dataframe",
     "get_patrols_from_combined_parameters",
     "get_patrol_observations_from_patrols_dataframe_and_combined_params",
     "get_event_type_display_names_from_events_aliased",
-
     "create_cover_context_page",
     "create_report_context",
-    "combine_docx_files"
+    "combine_docx_files",
 ]

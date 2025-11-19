@@ -19,6 +19,7 @@ pip ="*"
 
 [feature.compile.dependencies]
 # Include this if you add new tasks and the package has been built
+
 ecoscope-workflows-ext-lion-guardians = "*"
 ecoscope-workflows-ext-custom = "*"
 

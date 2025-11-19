@@ -1,5 +1,5 @@
 from ecoscope_workflows_core.decorators import task
-from typing import Sequence, TypeVar,Tuple,Union
+from typing import Sequence, TypeVar, Tuple, Union
 
 GroupKey = Tuple  # normalized group key as a tuple
 V = Union[tuple, list, str, int, float, object]
@@ -10,6 +10,7 @@ R = TypeVar("R")
 T = TypeVar("T")
 
 JsonPrimitive = Union[str, int, float, bool, None]
+
 
 @task
 def flatten_tuple(nested: tuple) -> Tuple[JsonPrimitive, ...]:
@@ -45,6 +46,7 @@ def flatten_tuple(nested: tuple) -> Tuple[JsonPrimitive, ...]:
             "Allowed leaf types: str, int, float, bool, None."
         )
     return tuple(flat_list)
+
 
 @task
 def zip_grouped_by_key(

@@ -1,30 +1,24 @@
-from typing import cast,Annotated,Literal
+from typing import cast, Annotated, Literal
 from ecoscope_workflows_core.decorators import task
+from ecoscope_workflows_core.annotations import AdvancedField
 from ecoscope_workflows_ext_ecoscope.connections import EarthRangerClient
 from ecoscope_workflows_ext_ecoscope.tasks.io._earthranger import (
     CombinedPatrolAndEventsParams,
-    PatrolsDF,EmptyDataFrame,get_patrols,
+    PatrolsDF,
+    EmptyDataFrame,
+    get_patrols,
     PatrolObservationsGDF,
     IncludePatrolDetailsAnnotation,
     RaiseOnEmptyAnnotation,
-    SubPageSizeAnnotation
+    SubPageSizeAnnotation,
 )
 
-from ecoscope_workflows_ext_ecoscope.schemas import (
-    EventGDF,
-    EventsWithDisplayNamesGDF,
-    PatrolObservationsGDF,
-    PatrolsDF,
-)
-from ecoscope_workflows_core.annotations import (
-    AdvancedField,
-    EmptyDataFrame,
-)
+from ecoscope_workflows_ext_ecoscope.schemas import EventGDF, EventsWithDisplayNamesGDF
+
 
 AppendCategorySelection = Literal["duplicates", "always", "never"]
-AppendCategorySelectionAnnotation = Annotated[
-    AppendCategorySelection, AdvancedField(default="duplicates")
-]
+AppendCategorySelectionAnnotation = Annotated[AppendCategorySelection, AdvancedField(default="duplicates")]
+
 
 @task
 def get_patrol_observations_from_patrols_dataframe(
@@ -46,17 +40,15 @@ def get_patrol_observations_from_patrols_dataframe(
         patrol_obs_relocs = patrol_obs_relocs.gdf
 
     if raise_on_empty and patrol_obs_relocs.empty:
-        raise ValueError(
-            "No data returned from EarthRanger for get_patrol_observations_with_patrol_filter"
-        )
+        raise ValueError("No data returned from EarthRanger for get_patrol_observations_with_patrol_filter")
 
     return cast(PatrolObservationsGDF, patrol_obs_relocs)
 
-@task 
-def get_patrols_from_combined_parameters(
-    combined_params: CombinedPatrolAndEventsParams
-)-> PatrolsDF | EmptyDataFrame:
+
+@task
+def get_patrols_from_combined_parameters(combined_params: CombinedPatrolAndEventsParams) -> PatrolsDF | EmptyDataFrame:
     return get_patrols.validate().call(**combined_params.get_patrols_params())
+
 
 @task
 def get_patrol_observations_from_patrols_dataframe_and_combined_params(
@@ -67,6 +59,7 @@ def get_patrol_observations_from_patrols_dataframe_and_combined_params(
         patrols_df=patrols_df,
         **combined_params.get_patrol_observations_from_patrols_df_params(),
     )
+
 
 @task
 def get_event_type_display_names_from_events_aliased(
