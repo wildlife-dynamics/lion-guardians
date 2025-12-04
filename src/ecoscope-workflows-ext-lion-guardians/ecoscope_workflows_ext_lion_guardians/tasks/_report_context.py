@@ -1,6 +1,6 @@
 import os
 import uuid
-import logging 
+import logging
 import warnings
 import pandas as pd
 from pathlib import Path
@@ -8,17 +8,18 @@ from docx import Document
 from pydantic import Field
 from docx.shared import Cm
 from datetime import datetime
-from dataclasses import asdict,dataclass
+from dataclasses import asdict, dataclass
 from docxcompose.composer import Composer
-from docxtpl import DocxTemplate,InlineImage
+from docxtpl import DocxTemplate, InlineImage
 from ecoscope_workflows_core.decorators import task
-from typing import Annotated, Optional, Dict,Union,Any
+from typing import Annotated, Optional, Dict, Union, Any
 from ecoscope_workflows_core.indexes import CompositeFilter
-from ecoscope_workflows_core.tasks.filter._filter import TimeRange 
-from ecoscope_workflows_core.skip import SkippedDependencyFallback, SkipSentinel
+from ecoscope_workflows_core.tasks.filter._filter import TimeRange
+from ecoscope_workflows_core.skip import SkipSentinel
 
 logger = logging.getLogger(__name__)
 warnings.filterwarnings("ignore")
+
 
 @dataclass
 class ReportContext:
@@ -32,44 +33,42 @@ class ReportContext:
     total_distance: Optional[Union[int, float]] = None
     home_range_ecomap: Optional[str] = None
 
+
 def normalize_file_url(path: str) -> str:
     """Convert file:// URL to local path, handling malformed Windows URLs."""
     if not path.startswith("file://"):
         return path
 
     path = path[7:]  # Remove "file://"
-    
-    if os.name == 'nt':
+
+    if os.name == "nt":
         # Remove leading slash before drive letter: /C:/path -> C:/path
-        if path.startswith('/') and len(path) > 2 and path[2] in (':', '|'):
+        if path.startswith("/") and len(path) > 2 and path[2] in (":", "|"):
             path = path[1:]
 
-        path = path.replace('/', '\\')
-        path = path.replace('|', ':')
+        path = path.replace("/", "\\")
+        path = path.replace("|", ":")
     else:
         # Unix paths should start with / after removing file://
         # file:///home/user -> /home/user (already has /)
         # file://home/user -> /home/user (needs /)
-        if not path.startswith('/'):
-            path = '/' + path
-    
+        if not path.startswith("/"):
+            path = "/" + path
+
     return path
 
+
 def validate_and_prepare_image(
-    tpl: DocxTemplate,
-    value: Any,
-    box_w_cm: float,
-    box_h_cm: float,
-    validate: bool = True
+    tpl: DocxTemplate, value: Any, box_w_cm: float, box_h_cm: float, validate: bool = True
 ) -> Any:
     """Validate image path and return InlineImage or original value."""
     if not isinstance(value, str):
         return value
-    
+
     path = Path(value)
     if path.suffix.lower() not in (".png", ".jpg", ".jpeg", ".gif", ".bmp"):
         return value
-    
+
     if validate:
         if not path.exists():
             warnings.warn(f"Image file not found: {value}")
@@ -77,14 +76,15 @@ def validate_and_prepare_image(
         if not path.is_file():
             warnings.warn(f"Image path is not a file: {value}")
             return None
-    
+
     try:
         img = InlineImage(tpl, str(path), width=Cm(box_w_cm), height=Cm(box_h_cm))
         return img
     except Exception as e:
         warnings.warn(f"Failed to create InlineImage for {value}: {e}")
         return None
-    
+
+
 @task
 def create_cover_context_page(
     report_period: TimeRange,
@@ -129,7 +129,7 @@ def create_cover_context_page(
 
     Returns:
         str: Full path to the generated .docx file.
-    """    
+    """
     # Normalize paths
     template_path = normalize_file_url(template_path)
     output_directory = normalize_file_url(output_directory)
@@ -147,34 +147,31 @@ def create_cover_context_page(
     formatted_date = datetime.now()
     formatted_date_str = formatted_date.strftime("%Y-%m-%d %H:%M:%S")
     fmt = getattr(report_period, "time_format", "%Y-%m-%d")
-    formatted_time_range = (
-        f"{report_period.since.strftime(fmt)} to {report_period.until.strftime(fmt)}"
-    )
+    formatted_time_range = f"{report_period.since.strftime(fmt)} to {report_period.until.strftime(fmt)}"
 
     logger.info(f"Report period: {formatted_time_range}")
     logger.info(f"Report date generated: {formatted_date_str}")
     logger.info(f"Report prepared by: {prepared_by}")
     logger.info(f"Report count: {count}")
     logger.info(f"Report ID: REP-{uuid.uuid4().hex[:8].upper()}")
-    
 
     cover_page_context = {
-         "report_id": f"REP-{uuid.uuid4().hex[:8].upper()}",
-         "subject_count": str(count),
-         "time_generated": formatted_date_str,
-         "report_period": formatted_time_range,
-         "prepared_by": prepared_by
-     }
+        "report_id": f"REP-{uuid.uuid4().hex[:8].upper()}",
+        "subject_count": str(count),
+        "time_generated": formatted_date_str,
+        "report_period": formatted_time_range,
+        "prepared_by": prepared_by,
+    }
 
-    
     if not filename:
-        filename = f"context_page.docx"
+        filename = "context_page.docx"
     output_path = Path(output_directory) / filename
 
     doc = DocxTemplate(template_path)
     doc.render(cover_page_context)
     doc.save(output_path)
     return str(output_path)
+
 
 @task
 def create_report_context(
@@ -191,14 +188,14 @@ def create_report_context(
     box_w_cm: float = 11.11,
 ) -> str:
     """Generate a DOCX report from a template with subject metrics and images."""
-    
+
     # Normalize paths
     template_path = normalize_file_url(template_path)
     output_directory = normalize_file_url(output_directory)
     subject_metrics = normalize_file_url(subject_metrics)
     if home_range_ecomap:
         home_range_ecomap = normalize_file_url(home_range_ecomap)
-    
+
     # Validate paths
     if not template_path.strip():
         raise ValueError("template_path is empty after normalization")
@@ -208,37 +205,31 @@ def create_report_context(
         raise FileNotFoundError(f"Template file not found: {template_path}")
     if not os.path.exists(subject_metrics):
         raise FileNotFoundError(f"Subject metrics CSV not found: {subject_metrics}")
-    
+
     # Validate image path exists
     if home_range_ecomap and not os.path.exists(home_range_ecomap):
         raise FileNotFoundError(f"Home range ecomap not found: {home_range_ecomap}")
-    
+
     os.makedirs(output_directory, exist_ok=True)
-    
+
     # Load and validate CSV
     try:
         df = pd.read_csv(subject_metrics)
     except Exception as e:
         raise ValueError(f"Failed to read CSV {subject_metrics}: {e}")
-    
+
     if df.empty:
         raise ValueError("Subject metrics CSV is empty")
-    
+
     # Validate required columns
     required_cols = ["mean_speed", "min_speed", "max_speed", "total_distance", "subject_name"]
     missing_cols = [col for col in required_cols if col not in df.columns]
     if missing_cols:
-        raise ValueError(
-            f"Missing required columns in CSV: {missing_cols}. "
-            f"Available columns: {list(df.columns)}"
-        )
-    
+        raise ValueError(f"Missing required columns in CSV: {missing_cols}. " f"Available columns: {list(df.columns)}")
+
     # Derive subject_name from extra__name column
-    unique_names = [
-        f for f in df["subject_name"].unique() 
-        if pd.notna(f) and str(f).lower() != "total"
-    ]
-    
+    unique_names = [f for f in df["subject_name"].unique() if pd.notna(f) and str(f).lower() != "total"]
+
     if len(unique_names) > 1:
         subject_name = "Overall"
     elif len(unique_names) == 1:
@@ -246,16 +237,16 @@ def create_report_context(
     else:
         warnings.warn("No valid subject names found in subject_name column, using 'Unknown'")
         subject_name = "Unknown"
-    
+
     # Generate output filename based on grouper values if not provided
     if not filename:
         filename = f"report_{uuid.uuid4().hex[:4]}.docx"
-    
+
     output_path = Path(output_directory) / filename
-    
+
     # Extract metrics from last row
     last_row = df.iloc[-1]
-    
+
     def safe_float(value: Any, default: float = 0.0, col_name: str = "") -> float:
         """Safely convert value to float with fallback."""
         if pd.isna(value):
@@ -266,15 +257,15 @@ def create_report_context(
         except (ValueError, TypeError) as e:
             warnings.warn(f"Cannot convert {col_name} value '{value}' to float: {e}. Using {default}")
             return default
-    
+
     mean_speed = round(safe_float(last_row["mean_speed"], col_name="mean_speed"), 2)
     max_speed = round(safe_float(last_row["max_speed"], col_name="max_speed"), 2)
     min_speed = round(safe_float(last_row["min_speed"], col_name="min_speed"), 2)
     total_distance = round(safe_float(last_row["total_distance"], col_name="total_distance"), 2)
-    
+
     # Initialize template
     tpl = DocxTemplate(template_path)
-    
+
     # Create context with grouper information
     ctx = ReportContext(
         subject_name=subject_name,
@@ -287,40 +278,42 @@ def create_report_context(
         total_distance=total_distance,
         home_range_ecomap=home_range_ecomap,
     )
-    
+
     # Prepare result dictionary with image handling
     result: Dict[str, Any] = {}
     for key, value in asdict(ctx).items():
-        processed_value = validate_and_prepare_image(
-            tpl, value, box_w_cm, box_h_cm, validate_images
-        )
+        processed_value = validate_and_prepare_image(tpl, value, box_w_cm, box_h_cm, validate_images)
         result[key] = processed_value
-    
+
     # Render and save
     try:
         tpl.render(result)
         tpl.save(str(output_path))
-        
+
         # Verify file was created
         if not output_path.exists():
             raise RuntimeError(f"File was not created at {output_path}")
-        
+
     except Exception as e:
         logger.warning(f"ERROR during render/save: {type(e).__name__}: {e}")
         import traceback
+
         traceback.print_exc()
         raise RuntimeError(f"Failed to render/save template: {e}")
-    
+
     return str(output_path)
 
+
 def _fallback_to_none_doc(
-    obj: tuple[CompositeFilter | None, str] | SkipSentinel
-    ) -> tuple[CompositeFilter | None, str] | None:
+    obj: tuple[CompositeFilter | None, str] | SkipSentinel,
+) -> tuple[CompositeFilter | None, str] | None:
     return None if isinstance(obj, SkipSentinel) else obj
+
 
 @dataclass
 class GroupedDoc:
     """Analogous to GroupedWidget but for document pages."""
+
     views: dict[CompositeFilter | None, Optional[str]]
 
     @classmethod
@@ -350,13 +343,11 @@ class GroupedDoc:
         self.views.update(other.views)
         return self
 
+
 @task
 def merge_docx_files(
     cover_page_path: Annotated[str, Field(description="Path to the cover page .docx file")],
-    context_page_items: Annotated[
-        list[Any],
-        Field(description="List of context page document paths to merge.")
-    ],
+    context_page_items: Annotated[list[Any], Field(description="List of context page document paths to merge.")],
     output_directory: Annotated[str, Field(description="Directory where combined docx will be written")],
     filename: Annotated[Optional[str], Field(description="Optional output filename")] = None,
 ) -> Annotated[str, Field(description="Path to the combined .docx file")]:
@@ -366,6 +357,7 @@ def merge_docx_files(
       - a string path, or
       - a tuple/list containing one or more strings (path is inferred).
     """
+
     def extract_path(item, idx):
         if isinstance(item, str):
             return item
@@ -416,14 +408,18 @@ def merge_docx_files(
     composer.save(str(output_path))
     return str(output_path)
 
+
 @task
 def round_off_values(value: float, dp: int) -> float:
     return round(value, dp)
 
+
 @task
 def get_split_group_names(
-    split_data: Annotated[list[tuple[CompositeFilter, Any]],
-    Field(description="Output from split_groups: [(CompositeFilter, df), ...]"),],
+    split_data: Annotated[
+        list[tuple[CompositeFilter, Any]],
+        Field(description="Output from split_groups: [(CompositeFilter, df), ...]"),
+    ],
 ) -> list[str]:
     """
     Extract the first grouper value from each split group.

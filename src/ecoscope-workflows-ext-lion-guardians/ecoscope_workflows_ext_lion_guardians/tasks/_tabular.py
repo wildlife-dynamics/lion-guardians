@@ -1,13 +1,12 @@
 import pandas as pd
-from typing import Union, List, Optional
+from typing import Union, List
 from ecoscope_workflows_core.decorators import task
 from ecoscope_workflows_core.annotations import AnyDataFrame
 
+
 @task
 def add_totals_row(
-    df: AnyDataFrame,
-    label_col: Union[str, List[str], None] = None,
-    label: str = "Total"
+    df: AnyDataFrame, label_col: Union[str, List[str], None] = None, label: str = "Total"
 ) -> AnyDataFrame:
     totals = df.select_dtypes(include="number").sum(numeric_only=True)
 

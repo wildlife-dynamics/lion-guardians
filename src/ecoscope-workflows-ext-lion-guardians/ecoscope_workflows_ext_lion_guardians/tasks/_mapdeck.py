@@ -1,4 +1,3 @@
-
 import os
 import re
 import math
@@ -7,10 +6,10 @@ import warnings
 from enum import Enum
 import geopandas as gpd
 from pathlib import Path
-from pydantic import BaseModel,Field
+from pydantic import BaseModel, Field
 from pydantic.json_schema import SkipJsonSchema
 from ecoscope_workflows_core.decorators import task
-from typing import Annotated,Literal, Union,List,Dict,TypedDict,Optional
+from typing import Annotated, Literal, Union, List, Dict, TypedDict, Optional
 from ecoscope_workflows_core.annotations import AdvancedField, AnyGeoDataFrame
 from ecoscope_workflows_ext_custom.tasks.results._map import (
     UnitType,
@@ -32,7 +31,7 @@ from ecoscope_workflows_ext_custom.tasks.results._map import (
     create_path_layer,
     create_scatterplot_layer,
     PydeckAnnotation,
-    TileLayerPresets
+    TileLayerPresets,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,50 +44,46 @@ PYDECK_CUSTOM_LIBRARIES = [
     }
 ]
 
-# load gpkg 
+
+# load gpkg
 class SupportedFormat(str, Enum):
     GPKG = ".gpkg"
     GEOJSON = ".geojson"
     SHP = ".shp"
 
+
 SUPPORTED_FORMATS = [f.value for f in SupportedFormat]
+
 
 class MapStyleConfig(BaseModel):
     styles: Dict[str, Dict] = Field(default_factory=dict)
     legend: Dict[str, List[str]] = Field(default_factory=dict)
 
+
 class GeometrySummary(TypedDict):
     primary_type: Literal["Polygon", "Point", "LineString", "Other", "Mixed", "Line"]
-    
+
+
 class MapProcessingConfig(BaseModel):
     path: str = Field(..., description="Directory path to load geospatial files from")
     target_crs: Union[int, str] = Field(default=4326, description="Target CRS to convert maps to")
     recursive: bool = Field(default=False, description="Whether to walk folders recursively")
+
 
 class GeoJsonLayerStyle(LayerStyleBase):
     stroked: Annotated[bool, AdvancedField(default=True)] = True
     filled: Annotated[bool, AdvancedField(default=True)] = True
     extruded: Annotated[bool, AdvancedField(default=False)] = False
     wireframe: Annotated[bool, AdvancedField(default=True)] = True
-    get_fill_color: Annotated[
-        ColorAccessor | SkipJsonSchema[None], AdvancedField(default=None)
-    ] = None
-    get_line_color: Annotated[
-        ColorAccessor | SkipJsonSchema[None], AdvancedField(default=None)
-    ] = None
-    get_line_width: Annotated[
-        FloatAccessor | SkipJsonSchema[None], AdvancedField(default=3)
-    ] = 3
-    get_elevation: Annotated[
-        FloatAccessor | SkipJsonSchema[None], AdvancedField(default=0)
-    ] = 0
+    get_fill_color: Annotated[ColorAccessor | SkipJsonSchema[None], AdvancedField(default=None)] = None
+    get_line_color: Annotated[ColorAccessor | SkipJsonSchema[None], AdvancedField(default=None)] = None
+    get_line_width: Annotated[FloatAccessor | SkipJsonSchema[None], AdvancedField(default=3)] = 3
+    get_elevation: Annotated[FloatAccessor | SkipJsonSchema[None], AdvancedField(default=0)] = 0
 
     line_width_units: Annotated[UnitType, AdvancedField(default="pixels")] = "pixels"
     line_width_scale: Annotated[float, AdvancedField(default=1)] = 1
     line_width_min_pixels: Annotated[float, AdvancedField(default=0)] = 0
-    line_width_max_pixels: Annotated[
-        float | SkipJsonSchema[None], AdvancedField(default=None)
-    ] = None
+    line_width_max_pixels: Annotated[float | SkipJsonSchema[None], AdvancedField(default=None)] = None
 
 
 LayerStyle = Union[
@@ -97,8 +92,9 @@ LayerStyle = Union[
     PolygonLayerStyle,
     TextLayerStyle,
     IconLayerStyle,
-    GeoJsonLayerStyle,  
+    GeoJsonLayerStyle,
 ]
+
 
 @task
 def create_geojson_layer(
@@ -128,7 +124,8 @@ def create_geojson_layer(
         layer_style=layer_style or GeoJsonLayerStyle(),
         legend=legend,
     )
-    
+
+
 def _model_dump_with_pydeck_literals(model: LayerStyleBase):
     """
     Utility function to convert our annotated "PydeckStrings" to pdk.types.Strings at runtime
@@ -140,6 +137,7 @@ def _model_dump_with_pydeck_literals(model: LayerStyleBase):
         if PydeckAnnotation in field_info.metadata and model_dump[field]:
             model_dump[field] = pdk.types.String(model_dump[field])
     return model_dump
+
 
 @task
 def draw_custom_map(
@@ -177,7 +175,6 @@ def draw_custom_map(
     - Legend, title, widgets, depthTest, repeat → exactly as before
     """
     import pydeck as pdk
-    import json
 
     pdk.settings.custom_libraries = PYDECK_CUSTOM_LIBRARIES
     DEFAULT_WIDGETS = [
@@ -212,18 +209,16 @@ def draw_custom_map(
     for layer_def in geo_layers:
         gdf = layer_def.geodataframe.to_crs("EPSG:4326")
         layer = pdk.Layer(
-                type=layer_def.layer_type,
-                data=gdf,
-                **_model_dump_with_pydeck_literals(layer_def.layer_style),
-            )
+            type=layer_def.layer_type,
+            data=gdf,
+            **_model_dump_with_pydeck_literals(layer_def.layer_style),
+        )
         map_layers.append(layer)
         if layer_def.legend:
             if isinstance(layer_def.legend, list):
                 legend_values.extend(layer_def.legend)
             elif isinstance(layer_def.legend, LegendFromDataframe):
-                legend_values.extend(
-                    layer_def.legend.build_legend_from_dataframe(layer_def.geodataframe)
-                )
+                legend_values.extend(layer_def.legend.build_legend_from_dataframe(layer_def.geodataframe))
 
     if legend_values:
         map_widgets.append(
@@ -241,20 +236,19 @@ def draw_custom_map(
     deck = pdk.Deck(
         layers=map_layers,
         widgets=map_widgets,
-        initial_view_state=view_state
-        or view_state_from_layers(layers=geo_layers, max_zoom=current_max_zoom),
+        initial_view_state=view_state or view_state_from_layers(layers=geo_layers, max_zoom=current_max_zoom),
         views=pdk.View("MapView", controller=not static, repeat=True),
         map_style=pdk.map_styles.LIGHT_NO_LABELS,
         parameters={
             "depthTest": any(
-                getattr(l, "extruded", False) or getattr(l, "getElevation", 0) > 0
-                for l in map_layers
+                getattr(layer, "extruded", False) or getattr(layer, "getElevation", 0) > 0 for layer in map_layers
             )
         },
     )
 
     html = deck.to_html(as_string=True)
-    return html.replace("@9.1.7", "@9.2.1", 2)  
+    return html.replace("@9.1.7", "@9.2.1", 2)
+
 
 def normalize_file_url(path: str) -> str:
     """Convert file:// URL to local path, handling malformed Windows URLs."""
@@ -262,19 +256,20 @@ def normalize_file_url(path: str) -> str:
         return path
 
     path = path[7:]
-    
-    if os.name == 'nt':
+
+    if os.name == "nt":
         # Remove leading slash before drive letter: /C:/path -> C:/path
-        if path.startswith('/') and len(path) > 2 and path[2] in (':', '|'):
+        if path.startswith("/") and len(path) > 2 and path[2] in (":", "|"):
             path = path[1:]
 
-        path = path.replace('/', '\\')
-        path = path.replace('|', ':')
+        path = path.replace("/", "\\")
+        path = path.replace("|", ":")
     else:
-        if not path.startswith('/'):
-            path = '/' + path
-    
+        if not path.startswith("/"):
+            path = "/" + path
+
     return path
+
 
 @task
 def load_geospatial_files(config: MapProcessingConfig) -> Dict[str, AnyGeoDataFrame]:
@@ -285,22 +280,19 @@ def load_geospatial_files(config: MapProcessingConfig) -> Dict[str, AnyGeoDataFr
     # Convert to Path object
     base_path_str = normalize_file_url(config.path)
     base_path = Path(base_path_str)
-    
+
     # Validate path exists
     if not base_path.exists():
         raise FileNotFoundError(f"Path does not exist: {base_path}")
-    
+
     if not base_path.is_dir():
         raise NotADirectoryError(f"Path is not a directory: {base_path}")
 
     target_crs = config.target_crs
 
     loaded_files: Dict[str, AnyGeoDataFrame] = {}
-    normalized_suffixes = {
-        s.lower() if s.startswith(".") else f".{s.lower()}" 
-        for s in SUPPORTED_FORMATS
-    }
-    
+    normalized_suffixes = {s.lower() if s.startswith(".") else f".{s.lower()}" for s in SUPPORTED_FORMATS}
+
     # Use correct iterator method
     iterator = base_path.rglob("*") if config.recursive else base_path.iterdir()
 
@@ -332,7 +324,7 @@ def load_geospatial_files(config: MapProcessingConfig) -> Dict[str, AnyGeoDataFr
 
             # Remove invalid geometries
             cleaned = remove_invalid_geometries(gdf)
-            
+
             # Create relative path key
             key = str(p.relative_to(base_path))
             loaded_files[key] = cleaned
@@ -343,28 +335,24 @@ def load_geospatial_files(config: MapProcessingConfig) -> Dict[str, AnyGeoDataFr
     logger.info("Loaded %d vector files from %s", len(loaded_files), base_path)
     return loaded_files
 
+
 def _build_legend_values(style_cfg: "MapStyleConfig") -> List[dict]:
     """Convert {"label": [...], "color": [...]} → [{"label":…, "color":…}]"""
     labels = style_cfg.legend.get("label", [])
     colors = style_cfg.legend.get("color", [])
     return [{"label": lbl, "color": col} for lbl, col in zip(labels, colors)]
 
-@task 
+
+@task
 def remove_invalid_geometries(
-    gdf: Annotated[
-        AnyGeoDataFrame, 
-        Field(description="GeoDataFrame to filter for valid geometries.", 
-              exclude=True)
-              ],
+    gdf: Annotated[AnyGeoDataFrame, Field(description="GeoDataFrame to filter for valid geometries.", exclude=True)],
 ) -> AnyGeoDataFrame:
     return gdf.loc[(~gdf.geometry.isna()) & (~gdf.geometry.is_empty)]
 
+
 @task
 def remove_invalid_point_geometries(
-    gdf: Annotated[
-        AnyGeoDataFrame, 
-        Field(description="GeoDataFrame to filter for valid geometries.", exclude=True)
-        ],
+    gdf: Annotated[AnyGeoDataFrame, Field(description="GeoDataFrame to filter for valid geometries.", exclude=True)],
 ) -> AnyGeoDataFrame:
     if gdf.empty:
         logger.warning("Warning: Input dataframe is empty")
@@ -374,28 +362,21 @@ def remove_invalid_point_geometries(
         raise ValueError("DataFrame must have a 'geometry' column")
 
     # 1. Remove null/empty geometries
-    mask_null = (
-        gdf.geometry.is_empty | 
-        gdf.geometry.isna() |
-        gdf.geometry.isnull()
-    )
+    mask_null = gdf.geometry.is_empty | gdf.geometry.isna() | gdf.geometry.isnull()
 
     # 2. Remove (0, 0) points
-    mask_zero = (
-        (gdf.geometry.x == 0) & 
-        (gdf.geometry.y == 0)
-    )
+    mask_zero = (gdf.geometry.x == 0) & (gdf.geometry.y == 0)
 
     # Combine masks
     mask_remove = mask_null | mask_zero
 
     if mask_remove.any():
         removed = mask_remove.sum()
-        logger.info(f"Removing {removed} invalid records: "
-              f"{mask_null.sum()} null + {mask_zero.sum()} at (0,0)")
+        logger.info(f"Removing {removed} invalid records: " f"{mask_null.sum()} null + {mask_zero.sum()} at (0,0)")
         gdf = gdf[~mask_remove].reset_index(drop=True)
 
     return gdf
+
 
 @task
 def custom_deckgl_layer(
@@ -452,6 +433,7 @@ def custom_deckgl_layer(
     logger.warning("Unsupported geometry %s in %s", primary_type, filename)
     return None
 
+
 def _zoom_from_bbox(minx, miny, maxx, maxy, map_width_px=800, map_height_px=600) -> float:
     width_deg = abs(maxx - minx)
     height_deg = abs(maxy - miny)
@@ -470,13 +452,13 @@ def _zoom_from_bbox(minx, miny, maxx, maxy, map_width_px=800, map_height_px=600)
     zoom = round(max(0, min(20, zoom)), 2)
     return zoom
 
+
 @task
 def view_state_deck_gdf(
-    gdf, 
-    pitch: int = 0, 
+    gdf,
+    pitch: int = 0,
     bearing: int = 0,
 ) -> ViewState:
-
     if gdf.empty:
         raise ValueError("GeoDataFrame is empty. Cannot compute ViewState.")
 
@@ -487,13 +469,9 @@ def view_state_deck_gdf(
     center_lon = (minx + maxx) / 2.0
     center_lat = (miny + maxy) / 2.0
     zoom = _zoom_from_bbox(minx, miny, maxx, maxy)
-    return ViewState(
-        longitude=center_lon, 
-        latitude=center_lat, 
-        zoom=zoom, 
-        pitch=pitch, 
-        bearing=bearing
-        )
+    return ViewState(longitude=center_lon, latitude=center_lat, zoom=zoom, pitch=pitch, bearing=bearing)
+
+
 @task
 def clean_file_keys(file_dict: Dict[str, AnyGeoDataFrame]) -> Dict[str, AnyGeoDataFrame]:
     """
@@ -503,23 +481,27 @@ def clean_file_keys(file_dict: Dict[str, AnyGeoDataFrame]) -> Dict[str, AnyGeoDa
     Returns:
         A new dictionary with standardized, lowercase keys suitable for map layer identifiers.
     """
+
     def clean_key(key: str) -> str:
         for ext in SUPPORTED_FORMATS:
             if key.lower().endswith(ext):
                 key = key[: -len(ext)]
                 break
 
-        key = re.sub(r'\band\b', '_', key, flags=re.IGNORECASE)
-        key = re.sub(r'[^A-Za-z0-9_]+', '_', key)
-        key = re.sub(r'_+', '_', key)  # collapse multiple underscores
-        return key.strip('_').lower()
+        key = re.sub(r"\band\b", "_", key, flags=re.IGNORECASE)
+        key = re.sub(r"[^A-Za-z0-9_]+", "_", key)
+        key = re.sub(r"_+", "_", key)  # collapse multiple underscores
+        return key.strip("_").lower()
+
     return {clean_key(k): v for k, v in file_dict.items()}
 
-@task 
-def select_koi(file_dict: Dict[str,AnyGeoDataFrame],key_value:str)->  AnyGeoDataFrame:
+
+@task
+def select_koi(file_dict: Dict[str, AnyGeoDataFrame], key_value: str) -> AnyGeoDataFrame:
     if key_value not in file_dict.keys():
         raise ValueError(f"Key '{key_value}' not found. Available keys: {list(file_dict.keys())}")
     return file_dict[key_value]
+
 
 def detect_geometry_type(gdf: AnyGeoDataFrame) -> GeometrySummary:
     """
@@ -552,10 +534,7 @@ def detect_geometry_type(gdf: AnyGeoDataFrame) -> GeometrySummary:
 
 
 @task
-def create_map_layers(
-    file_dict: Dict[str, AnyGeoDataFrame], 
-    style_config: MapStyleConfig
-    ) -> List[LayerDefinition]:
+def create_map_layers(file_dict: Dict[str, AnyGeoDataFrame], style_config: MapStyleConfig) -> List[LayerDefinition]:
     """
     Create styled map layers from a dictionary of GeoDataFrames using the provided style config.
 
@@ -579,7 +558,7 @@ def create_map_layers(
             gdf_geom_type = geom_analysis["primary_type"]
             gdf_counts = geom_analysis.get("counts", {})
             logger.info("%s geometry type: %s counts: %s", filename, gdf_geom_type, gdf_counts)
-            layer =custom_deckgl_layer(filename, gdf, style_config, gdf_geom_type)
+            layer = custom_deckgl_layer(filename, gdf, style_config, gdf_geom_type)
 
             if layer is not None:
                 layers.append(layer)
@@ -588,6 +567,7 @@ def create_map_layers(
             logger.error("Error processing layer for '%s': %s", filename, e, exc_info=True)
     logger.info("Successfully created %d map layers", len(layers))
     return layers
+
 
 @task
 def make_text_layer(
@@ -683,8 +663,7 @@ def make_text_layer(
             break
     if not label_col:
         raise ValueError(
-            f"No label column found. Tried: {label_column}, {fallback_columns}. "
-            f"Available: {list(gdf.columns)}"
+            f"No label column found. Tried: {label_column}, {fallback_columns}. " f"Available: {list(gdf.columns)}"
         )
     if label_col != "label":
         gdf = gdf.rename(columns={label_col: "label"})
@@ -724,11 +703,12 @@ def make_text_layer(
         legend=None,  # Add legend support later if needed
     )
 
+
 @task
 def merge_static_and_grouped_layers(
     static_layers: Annotated[
-        Union[LayerDefinition, List[LayerDefinition | List[LayerDefinition]]], 
-        Field(description="Static layers from local files or base maps.")
+        Union[LayerDefinition, List[LayerDefinition | List[LayerDefinition]]],
+        Field(description="Static layers from local files or base maps."),
     ] = [],
     grouped_layers: Annotated[
         Union[LayerDefinition, List[LayerDefinition | List[LayerDefinition]]],
@@ -739,11 +719,12 @@ def merge_static_and_grouped_layers(
     Combine static and grouped map layers into a single list for rendering in `draw_ecomap`.
     Automatically flattens nested lists to handle cases where layer generation tasks return lists.
     """
+
     def flatten_layers(layers):
         """Recursively flatten nested lists of LayerDefinition objects."""
         if not isinstance(layers, list):
             return [layers]
-        
+
         flattened = []
         for item in layers:
             if isinstance(item, list):
@@ -753,25 +734,26 @@ def merge_static_and_grouped_layers(
                 # Add individual LayerDefinition objects
                 flattened.append(item)
         return flattened
-    
+
     # Flatten both static and grouped layers
     flat_static = flatten_layers(static_layers) if static_layers else []
     flat_grouped = flatten_layers(grouped_layers) if grouped_layers else []
-    
-        # Combine all layers
+
+    # Combine all layers
     all_layers = flat_static + flat_grouped
-    
+
     # Separate text layers from other layers
     text_layers = []
     other_layers = []
-    
+
     for layer in all_layers:
         if isinstance(layer.layer_style, TextLayerStyle):
             text_layers.append(layer)
         else:
             other_layers.append(layer)
-    
+
     return other_layers + text_layers
+
 
 def _custom_tile_layer_json_schema() -> dict:
     schema = TileLayer.model_json_schema()
@@ -781,6 +763,7 @@ def _custom_tile_layer_json_schema() -> dict:
     schema["properties"]["min_zoom"]["title"] = "Custom Layer Min Zoom"
     schema["title"] = "Custom Layer (Advanced)"
     return schema
+
 
 def _preset_tile_layer_json_schema(preset_name: str) -> dict:
     schema = TileLayer.model_json_schema()
@@ -802,9 +785,7 @@ def _preset_tile_layer_json_schema(preset_name: str) -> dict:
 
 def _preset_or_custom_json_schema_extra(schema: dict) -> None:
     schema["items"]["title"] = "Base Layer"
-    schema["items"]["anyOf"] = [
-        _preset_tile_layer_json_schema(preset) for preset in TileLayerPresets.keys()
-    ]
+    schema["items"]["anyOf"] = [_preset_tile_layer_json_schema(preset) for preset in TileLayerPresets.keys()]
     schema["items"]["anyOf"].append(_custom_tile_layer_json_schema())
     schema["default"] = [
         TileLayer(layer_name="TERRAIN")._as_json_schema_default(),
