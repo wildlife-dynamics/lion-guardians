@@ -32,6 +32,7 @@ requirements:
     - python-docx
     - docxtpl # for word document template generation
     - playwright
+    - docxcompose
 
 about:
   license: BSD-3-Clause

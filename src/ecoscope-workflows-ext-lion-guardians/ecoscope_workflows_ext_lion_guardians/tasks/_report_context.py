@@ -9,7 +9,6 @@ from pydantic import Field
 from docx.shared import Cm
 from datetime import datetime
 from dataclasses import asdict, dataclass
-from docxcompose.composer import Composer
 from docxtpl import DocxTemplate, InlineImage
 from ecoscope_workflows_core.decorators import task
 from typing import Annotated, Optional, Dict, Union, Any
@@ -357,6 +356,7 @@ def merge_docx_files(
       - a string path, or
       - a tuple/list containing one or more strings (path is inferred).
     """
+    from docxcompose.composer import Composer
 
     def extract_path(item, idx):
         if isinstance(item, str):
