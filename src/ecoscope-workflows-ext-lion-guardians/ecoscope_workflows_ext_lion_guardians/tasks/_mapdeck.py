@@ -552,7 +552,10 @@ def detect_geometry_type(gdf: AnyGeoDataFrame) -> GeometrySummary:
 
 
 @task
-def create_map_layers(file_dict: Dict[str, AnyGeoDataFrame], style_config: MapStyleConfig) -> List[LayerDefinition]:
+def create_map_layers(
+    file_dict: Dict[str, AnyGeoDataFrame], 
+    style_config: MapStyleConfig
+    ) -> List[LayerDefinition]:
     """
     Create styled map layers from a dictionary of GeoDataFrames using the provided style config.
 
@@ -811,7 +814,6 @@ def _preset_or_custom_json_schema_extra(schema: dict) -> None:
     schema["items"].pop("$ref")
 
 
-
 @task
 def set_custom_base_maps(
     base_maps: Annotated[
@@ -819,7 +821,7 @@ def set_custom_base_maps(
         Field(
             json_schema_extra=_preset_or_custom_json_schema_extra,
             title=" ",
-            description="Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
+            description="Select tile layers to use as base layers in map outputs.",
         ),
     ] = None,
 ) -> Annotated[list[TileLayer], Field()]:

@@ -18,6 +18,14 @@ class WorkflowDetails(BaseModel):
     description: Optional[str] = Field("", title="Workflow Description")
 
 
+class TimeRange(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    since: datetime = Field(..., description="The start time", title="Since")
+    until: datetime = Field(..., description="The end time", title="Until")
+
+
 class Url(str, Enum):
     https___tile_openstreetmap_org__z___x___y__png = (
         "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -181,7 +189,7 @@ class BaseMapDefs(BaseModel):
                 "max_zoom": 20,
             },
         ],
-        description="Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
+        description="Select tile layers to use as base layers in map outputs.",
         title=" ",
     )
 
@@ -195,13 +203,6 @@ class SubjectObs(BaseModel):
         description="⚠️ The use of a group with mixed subtypes could lead to unexpected results",
         title="Subject Group Name",
     )
-
-
-class TimezoneInfo(BaseModel):
-    label: str = Field(..., title="Label")
-    tzCode: str = Field(..., title="Tzcode")
-    name: str = Field(..., title="Name")
-    utc: str = Field(..., title="Utc")
 
 
 class TemporalGrouper(RootModel[str]):
@@ -260,15 +261,6 @@ class CustomGridCellSize(BaseModel):
         description="Define the resolution of the raster grid (in the unit of measurement defined by the coordinate reference system set below). A smaller grid cell size provides more detail, while a larger size generalizes the data.",
         title="Custom Grid Cell Size",
     )
-
-
-class TimeRange(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    since: datetime = Field(..., description="The start time", title="Since")
-    until: datetime = Field(..., description="The end time", title="Until")
-    timezone: Optional[TimezoneInfo] = Field(None, title="Timezone")
 
 
 class Groupers(BaseModel):
@@ -344,7 +336,9 @@ class FormData(BaseModel):
         title="Set Workflow Details",
     )
     time_range: Optional[TimeRange] = Field(
-        None, description="Choose the period of time to analyze.", title="Time Range"
+        None,
+        description="Choose the period of time to analyze.",
+        title="Define time range",
     )
     groupers: Optional[Groupers] = Field(None, title="Set Groupers")
     er_client_name: Optional[ErClientName] = Field(None, title="Data Source")

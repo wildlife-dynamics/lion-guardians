@@ -23,13 +23,14 @@ warnings.filterwarnings("ignore")
 @dataclass
 class ReportContext:
     subject_name: Optional[str] = None
+    grouper_type: Optional[str] = None
+    grouper_eq: Optional[str] = None
+    grouper_name: Optional[str] = None
     mean_speed: Optional[Union[int, float]] = None
-    min_speed: Optional[Union[int, float]] = None
     min_speed: Optional[Union[int, float]] = None
     max_speed: Optional[Union[int, float]] = None
     total_distance: Optional[Union[int, float]] = None
     home_range_ecomap: Optional[str] = None
-
 
 def normalize_file_url(path: str) -> str:
     """Convert file:// URL to local path, handling malformed Windows URLs."""
@@ -167,7 +168,7 @@ def create_cover_context_page(
 
     
     if not filename:
-        filename = f"context_page_{uuid.uuid4().hex}.docx"
+        filename = f"context_page.docx"
     output_path = Path(output_directory) / filename
 
     doc = DocxTemplate(template_path)
@@ -179,9 +180,12 @@ def create_cover_context_page(
 def create_report_context(
     template_path: str,
     output_directory: str,
+    grouper_type: str,
+    grouper_eq: str,
+    grouper_value: str,
     subject_metrics: str,
-    filename: Optional[str] = None,
     home_range_ecomap: Optional[str] = None,
+    filename: Optional[str] = None,
     validate_images: bool = True,
     box_h_cm: float = 6.5,
     box_w_cm: float = 11.11,
@@ -221,7 +225,7 @@ def create_report_context(
         raise ValueError("Subject metrics CSV is empty")
     
     # Validate required columns
-    required_cols = ["mean_speed", "min_speed", "max_speed", "total_distance", "extra__name"]
+    required_cols = ["mean_speed", "min_speed", "max_speed", "total_distance", "subject_name"]
     missing_cols = [col for col in required_cols if col not in df.columns]
     if missing_cols:
         raise ValueError(
@@ -231,7 +235,7 @@ def create_report_context(
     
     # Derive subject_name from extra__name column
     unique_names = [
-        f for f in df["extra__name"].unique() 
+        f for f in df["subject_name"].unique() 
         if pd.notna(f) and str(f).lower() != "total"
     ]
     
@@ -240,12 +244,12 @@ def create_report_context(
     elif len(unique_names) == 1:
         subject_name = unique_names[0]
     else:
-        warnings.warn("No valid subject names found in extra__name column, using 'Unknown'")
+        warnings.warn("No valid subject names found in subject_name column, using 'Unknown'")
         subject_name = "Unknown"
     
-    # Generate output filename
+    # Generate output filename based on grouper values if not provided
     if not filename:
-        filename = f"report_{uuid.uuid4().hex}.docx"
+        filename = f"report_{uuid.uuid4().hex[:4]}.docx"
     
     output_path = Path(output_directory) / filename
     
@@ -271,9 +275,12 @@ def create_report_context(
     # Initialize template
     tpl = DocxTemplate(template_path)
     
-    # Create context
+    # Create context with grouper information
     ctx = ReportContext(
         subject_name=subject_name,
+        grouper_type=grouper_type,
+        grouper_eq=grouper_eq,
+        grouper_name=grouper_value,
         mean_speed=mean_speed,
         max_speed=max_speed,
         min_speed=min_speed,
@@ -344,67 +351,96 @@ class GroupedDoc:
         return self
 
 @task
-def combine_docx_files(
+def merge_docx_files(
     cover_page_path: Annotated[str, Field(description="Path to the cover page .docx file")],
     context_page_items: Annotated[
-        list[
-            Annotated[
-                tuple[CompositeFilter | None, str],
-                SkippedDependencyFallback(_fallback_to_none_doc),
-            ]
-        ],
-        Field(description="List of context pages. Items can be SkipSentinel and will be filtered out.", exclude=True),
+        list[Any],
+        Field(description="List of context page document paths to merge.")
     ],
     output_directory: Annotated[str, Field(description="Directory where combined docx will be written")],
     filename: Annotated[Optional[str], Field(description="Optional output filename")] = None,
 ) -> Annotated[str, Field(description="Path to the combined .docx file")]:
     """
-    Combine cover + grouped context pages into a single DOCX.
+    Combine cover + context pages into a single DOCX.
+    Accepts context_page_items entries that are:
+      - a string path, or
+      - a tuple/list containing one or more strings (path is inferred).
     """
+    def extract_path(item, idx):
+        if isinstance(item, str):
+            return item
+        if isinstance(item, (list, tuple)):
+            for x in item:
+                if isinstance(x, str) and os.path.exists(x):
+                    return x
+            for x in reversed(item):
+                if isinstance(x, str):
+                    return x
+            raise ValueError(f"context_page_items[{idx}] is a list/tuple but contains no string path: {item!r}")
+        raise ValueError(f"context_page_items[{idx}] has unsupported type {type(item)}; expected str or tuple/list")
 
-    
-    valid_items = [it for it in context_page_items if it is not None]    
-    grouped_docs = [GroupedDoc.from_single_view(it) for it in valid_items]
-
-    merged_map: dict[str, GroupedDoc] = {}
-    for gd in grouped_docs:
-        key = gd.merge_key
-        if key not in merged_map:
-            merged_map[key] = gd
-        else:
-            merged_map[key] = gd
-
-    final_paths: list[str] = []
-    for group in merged_map.values():
-        for view_key, p in group.views.items():
-            if p is not None:
-                final_paths.append(p)
+    normalized_paths = []
+    for idx, item in enumerate(context_page_items):
+        if item is None:
+            continue
+        try:
+            path = extract_path(item, idx)
+        except ValueError as e:
+            raise ValueError(f"Error processing context_page_items at index {idx}: {e}") from e
+        normalized_paths.append(path)
 
     if not os.path.exists(cover_page_path):
         raise FileNotFoundError(f"Cover page file not found: {cover_page_path}")
-        
-    for p in final_paths:
+
+    for p in normalized_paths:
         if not os.path.exists(p):
             raise FileNotFoundError(f"Context page file not found: {p}")
-    
+
     output_directory = normalize_file_url(output_directory)
     if not output_directory.strip():
         raise ValueError("output_directory is empty after normalization")
 
     os.makedirs(output_directory, exist_ok=True)
+
     if not filename:
-        filename = f"overall_report.docx"
+        filename = "overall_report.docx"
     output_path = Path(output_directory) / filename
 
     master = Document(cover_page_path)
     composer = Composer(master)
-    for doc_path in final_paths:
+
+    for doc_path in normalized_paths:
         doc = Document(doc_path)
-        composer.append(doc) 
-        
-    composer.save(output_path)
+        composer.append(doc)
+
+    composer.save(str(output_path))
     return str(output_path)
 
 @task
 def round_off_values(value: float, dp: int) -> float:
     return round(value, dp)
+
+@task
+def get_split_group_names(
+    split_data: Annotated[list[tuple[CompositeFilter, Any]],
+    Field(description="Output from split_groups: [(CompositeFilter, df), ...]"),],
+) -> list[str]:
+    """
+    Extract the first grouper value from each split group.
+
+    Example:
+        Input: [
+            ((('region', '=', 'Atlantida'), ('year', '=', '2024')), df1),
+            ((('region', '=', 'Yoro'),), df2),
+        ]
+        Output: ['Atlantida', 'Yoro']
+    """
+    names: list[str] = []
+    for composite_filter, _ in split_data:
+        if composite_filter:
+            # take the first filter tuple: (index_name, '=', value)
+            _, _, value = composite_filter[0]
+            names.append(str(value))
+        else:
+            names.append("Unknown")
+    return names

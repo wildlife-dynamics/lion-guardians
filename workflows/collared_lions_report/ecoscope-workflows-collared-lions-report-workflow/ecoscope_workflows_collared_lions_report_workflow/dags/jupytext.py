@@ -31,8 +31,8 @@ from ecoscope_workflows_core.tasks.skip import (
     any_is_empty_df,
     never,
 )
-from ecoscope_workflows_core.tasks.transformation import add_temporal_index
-from ecoscope_workflows_ext_custom.tasks import html_to_png
+from ecoscope_workflows_core.tasks.transformation import add_temporal_index, map_columns
+from ecoscope_workflows_ext_custom.tasks.io import html_to_png
 from ecoscope_workflows_ext_ecoscope.tasks.analysis import (
     calculate_elliptical_time_density,
     summarize_df,
@@ -49,21 +49,24 @@ from ecoscope_workflows_ext_ecoscope.tasks.transformation import apply_color_map
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     add_totals_row,
     clean_file_keys,
-    combine_docx_files,
     create_cover_context_page,
     create_geojson_layer,
     create_map_layers,
     create_report_context,
     download_file_and_persist,
     draw_custom_map,
+    flatten_tuple,
+    get_split_group_names,
     load_geospatial_files,
     make_text_layer,
+    merge_docx_files,
     merge_static_and_grouped_layers,
     round_off_values,
     select_koi,
     set_custom_base_maps,
     view_state_deck_gdf,
     zip_grouped_by_key,
+    zip_lists,
 )
 
 # %% [markdown]
@@ -86,13 +89,20 @@ workflow_details = (
     set_workflow_details.set_task_instance_id("workflow_details")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(**workflow_details_params)
     .call()
 )
 
 
 # %% [markdown]
-# ## Time Range
+# ## Define time range
 
 # %%
 # parameters
@@ -100,7 +110,6 @@ workflow_details = (
 time_range_params = dict(
     since=...,
     until=...,
-    timezone=...,
 )
 
 # %%
@@ -111,7 +120,23 @@ time_range = (
     set_time_range.set_task_instance_id("time_range")
     .handle_errors()
     .with_tracing()
-    .partial(time_format="%d %b %Y %H:%M:%S %Z", **time_range_params)
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        time_format="%d %b %Y %H:%M:%S %Z",
+        timezone={
+            "label": "UTC",
+            "tzCode": "UTC",
+            "name": "UTC",
+            "utc_offset": "+00:00",
+        },
+        **time_range_params,
+    )
     .call()
 )
 
@@ -134,6 +159,13 @@ groupers = (
     set_groupers.set_task_instance_id("groupers")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(**groupers_params)
     .call()
 )
@@ -157,6 +189,13 @@ er_client_name = (
     set_er_connection.set_task_instance_id("er_client_name")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(**er_client_name_params)
     .call()
 )
@@ -180,6 +219,13 @@ base_map_defs = (
     set_custom_base_maps.set_task_instance_id("base_map_defs")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(**base_map_defs_params)
     .call()
 )
@@ -201,6 +247,13 @@ persist_ambo_gpkg = (
     download_file_and_persist.set_task_instance_id("persist_ambo_gpkg")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         url="https://www.dropbox.com/scl/fi/phlc488gxqpcvr6ua3vk7/amboseli_group_ranch_boundaries.gpkg?rlkey=p5ztypwmj4ndjova9xe2ssiun&st=pknuicus&dl=0",
         output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -229,6 +282,13 @@ persist_cover_page = (
     download_file_and_persist.set_task_instance_id("persist_cover_page")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         url="https://www.dropbox.com/scl/fi/kyjd9ii9nul1osbkezl5w/collared_lions_cover_page.docx?rlkey=4nl68thyqzd0n49wnr1770u0x&st=bf5fi1ke&dl=0",
         output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -257,8 +317,15 @@ persist_indv_subject_page = (
     download_file_and_persist.set_task_instance_id("persist_indv_subject_page")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
-        url="https://www.dropbox.com/scl/fi/9prdjesjteb1gmfkt3i0a/collared_lion_subject_template.docx?rlkey=frad2hcak3rdc7h1gzo2f9xn3&st=19a8vr55&dl=0",
+        url="https://www.dropbox.com/scl/fi/ncwp9obmzbgb847b40d8z/collared_lion_individual_template.docx?rlkey=9mfjjr46ojt3yzena4u8zxuf2&st=vsqac9ny&dl=0",
         output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         overwrite_existing=False,
         retries=3,
@@ -285,6 +352,13 @@ load_local_shapefiles = (
     load_geospatial_files.set_task_instance_id("load_local_shapefiles")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         config={"path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"]},
         **load_local_shapefiles_params,
@@ -309,6 +383,13 @@ clean_local_geo_files = (
     clean_file_keys.set_task_instance_id("clean_local_geo_files")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(file_dict=load_local_shapefiles, **clean_local_geo_files_params)
     .call()
 )
@@ -330,6 +411,13 @@ create_custom_map_layers = (
     create_map_layers.set_task_instance_id("create_custom_map_layers")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         file_dict=load_local_shapefiles,
         style_config={
@@ -338,12 +426,12 @@ create_custom_map_layers = (
                     "stroked": True,
                     "filled": False,
                     "get_elevation": 50,
-                    "opacity": 0.55,
-                    "get_line_color": [105, 105, 105, 200],
-                    "get_line_width": 3.5,
+                    "opacity": 0.95,
+                    "get_line_color": [169, 169, 169, 200],
+                    "get_line_width": 3.75,
                 }
             },
-            "legend": {"label": ["Group ranch boundaries"], "color": ["#696969"]},
+            "legend": {"label": ["Group ranch boundaries"], "color": ["#a9a9a9"]},
         },
         **create_custom_map_layers_params,
     )
@@ -367,6 +455,13 @@ filter_aoi = (
     select_koi.set_task_instance_id("filter_aoi")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         file_dict=clean_local_geo_files,
         key_value="amboseli_group_ranch_boundaries",
@@ -392,6 +487,13 @@ custom_text_layer = (
     make_text_layer.set_task_instance_id("custom_text_layer")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         txt_gdf=filter_aoi,
         label_column="R_NAME",
@@ -434,6 +536,13 @@ subject_obs = (
     get_subjectgroup_observations.set_task_instance_id("subject_obs")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         client=er_client_name,
         time_range=time_range,
@@ -462,6 +571,13 @@ subject_reloc = (
     process_relocations.set_task_instance_id("subject_reloc")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         observations=subject_obs,
         relocs_columns=[
@@ -485,6 +601,40 @@ subject_reloc = (
 
 
 # %% [markdown]
+# ## Persist relocations
+
+# %%
+# parameters
+
+persist_relocs_params = dict()
+
+# %%
+# call the task
+
+
+persist_relocs = (
+    persist_df.set_task_instance_id("persist_relocs")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        filetype="geoparquet",
+        filename="relocations",
+        df=subject_reloc,
+        **persist_relocs_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
 # ## Transform Relocations to Trajectories
 
 # %%
@@ -502,7 +652,48 @@ subject_traj = (
     relocations_to_trajectory.set_task_instance_id("subject_traj")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(relocations=subject_reloc, **subject_traj_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Persist trajectories
+
+# %%
+# parameters
+
+persist_trajs_params = dict()
+
+# %%
+# call the task
+
+
+persist_trajs = (
+    persist_df.set_task_instance_id("persist_trajs")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        filetype="geoparquet",
+        filename="trajectories",
+        df=subject_traj,
+        **persist_trajs_params,
+    )
     .call()
 )
 
@@ -523,6 +714,13 @@ traj_add_temporal_index = (
     add_temporal_index.set_task_instance_id("traj_add_temporal_index")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         df=subject_traj,
         time_col="segment_start",
@@ -536,28 +734,38 @@ traj_add_temporal_index = (
 
 
 # %% [markdown]
-# ## Persist trajectories
+# ## Rename trajectory columnns
 
 # %%
 # parameters
 
-persist_trajs_params = dict(
-    filename=...,
-)
+rename_traj_cols_params = dict()
 
 # %%
 # call the task
 
 
-persist_trajs = (
-    persist_df.set_task_instance_id("persist_trajs")
+rename_traj_cols = (
+    map_columns.set_task_instance_id("rename_traj_cols")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
-        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        filetype="gpkg",
+        drop_columns=[],
+        retain_columns=[],
+        rename_columns={
+            "extra__name": "subject_name",
+            "extra__sex": "subject_sex",
+            "extra__subject_subtype": "subject_subtype",
+        },
         df=traj_add_temporal_index,
-        **persist_trajs_params,
+        **rename_traj_cols_params,
     )
     .call()
 )
@@ -579,11 +787,14 @@ split_subject_traj_groups = (
     split_groups.set_task_instance_id("split_subject_traj_groups")
     .handle_errors()
     .with_tracing()
-    .partial(
-        df=traj_add_temporal_index,
-        groupers=groupers,
-        **split_subject_traj_groups_params,
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
     )
+    .partial(df=rename_traj_cols, groupers=groupers, **split_subject_traj_groups_params)
     .call()
 )
 
@@ -608,6 +819,13 @@ td = (
     calculate_elliptical_time_density.set_task_instance_id("td")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         crs="ESRI:53042",
         percentiles=[50.0, 60.0, 70.0, 80.0, 90.0, 95.0, 99.0],
@@ -635,6 +853,13 @@ td_colormap = (
     apply_color_map.set_task_instance_id("td_colormap")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         input_column_name="percentile",
         colormap="RdYlGn",
@@ -698,6 +923,13 @@ combine_custom_map_layers = (
     merge_static_and_grouped_layers.set_task_instance_id("combine_custom_map_layers")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         static_layers=[create_custom_map_layers, custom_text_layer],
         **combine_custom_map_layers_params,
@@ -722,6 +954,13 @@ zoom_view_state = (
     view_state_deck_gdf.set_task_instance_id("zoom_view_state")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(pitch=0, bearing=0, **zoom_view_state_params)
     .mapvalues(argnames=["gdf"], argvalues=td_colormap)
 )
@@ -743,6 +982,13 @@ zip_layers_view = (
     zip_grouped_by_key.set_task_instance_id("zip_layers_view")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         left=combine_custom_map_layers, right=zoom_view_state, **zip_layers_view_params
     )
@@ -768,6 +1014,13 @@ td_ecomap = (
     draw_custom_map.set_task_instance_id("td_ecomap")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         tile_layers=base_map_defs,
         static=False,
@@ -799,6 +1052,13 @@ td_ecomap_html_url = (
     persist_text.set_task_instance_id("td_ecomap_html_url")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"], **td_ecomap_html_url_params
     )
@@ -849,6 +1109,13 @@ td_grouped_map_widget = (
     merge_widget_views.set_task_instance_id("td_grouped_map_widget")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(widgets=td_map_widget, **td_grouped_map_widget_params)
     .call()
 )
@@ -870,8 +1137,15 @@ summary_table = (
     summarize_df.set_task_instance_id("summary_table")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
-        groupby_cols=["extra__name"],
+        groupby_cols=["subject_name"],
         summary_params=[
             {
                 "display_name": "mean_speed",
@@ -923,7 +1197,14 @@ add_total_events_row = (
     add_totals_row.set_task_instance_id("add_total_events_row")
     .handle_errors()
     .with_tracing()
-    .partial(label_col=["extra__name"], label="Total", **add_total_events_row_params)
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(label_col=["subject_name"], label="Total", **add_total_events_row_params)
     .mapvalues(argnames=["df"], argvalues=summary_table)
 )
 
@@ -946,6 +1227,13 @@ persist_summary_table = (
     persist_df.set_task_instance_id("persist_summary_table")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filetype="csv",
@@ -971,6 +1259,13 @@ collared_html_png = (
     html_to_png.set_task_instance_id("collared_html_png")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         config={"wait_for_timeout": 20000},
@@ -996,6 +1291,13 @@ unique_subjects = (
     dataframe_column_nunique.set_task_instance_id("unique_subjects")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         df=traj_add_temporal_index, column_name="groupby_col", **unique_subjects_params
     )
@@ -1019,6 +1321,13 @@ create_cover_context = (
     create_cover_context_page.set_task_instance_id("create_cover_context")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         report_period=time_range,
         prepared_by="Ecoscope",
@@ -1048,10 +1357,131 @@ zip_metrics_etd = (
     zip_grouped_by_key.set_task_instance_id("zip_metrics_etd")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         left=persist_summary_table, right=collared_html_png, **zip_metrics_etd_params
     )
     .call()
+)
+
+
+# %% [markdown]
+# ## Flatten context inputs
+
+# %%
+# parameters
+
+flatten_context_params = dict()
+
+# %%
+# call the task
+
+
+flatten_context = (
+    flatten_tuple.set_task_instance_id("flatten_context")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(**flatten_context_params)
+    .mapvalues(argnames=["nested"], argvalues=zip_metrics_etd)
+)
+
+
+# %% [markdown]
+# ## Get split group names
+
+# %%
+# parameters
+
+get_grouper_names_params = dict()
+
+# %%
+# call the task
+
+
+get_grouper_names = (
+    get_split_group_names.set_task_instance_id("get_grouper_names")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(split_data=split_subject_traj_groups, **get_grouper_names_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Zip grouper names with flattened context
+
+# %%
+# parameters
+
+zip_grouper_with_context_params = dict()
+
+# %%
+# call the task
+
+
+zip_grouper_with_context = (
+    zip_lists.set_task_instance_id("zip_grouper_with_context")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        left=get_grouper_names, right=flatten_context, **zip_grouper_with_context_params
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Flatten final report context
+
+# %%
+# parameters
+
+flatten_final_report_context_params = dict()
+
+# %%
+# call the task
+
+
+flatten_final_report_context = (
+    flatten_tuple.set_task_instance_id("flatten_final_report_context")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(**flatten_final_report_context_params)
+    .mapvalues(argnames=["nested"], argvalues=zip_grouper_with_context)
 )
 
 
@@ -1071,6 +1501,13 @@ subject_context_doc = (
     create_report_context.set_task_instance_id("subject_context_doc")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         template_path=persist_indv_subject_page,
         output_directory=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -1081,7 +1518,14 @@ subject_context_doc = (
         **subject_context_doc_params,
     )
     .mapvalues(
-        argnames=["subject_metrics", "home_range_ecomap"], argvalues=zip_metrics_etd
+        argnames=[
+            "grouper_type",
+            "grouper_eq",
+            "grouper_value",
+            "subject_metrics",
+            "home_range_ecomap",
+        ],
+        argvalues=flatten_final_report_context,
     )
 )
 
@@ -1092,22 +1536,29 @@ subject_context_doc = (
 # %%
 # parameters
 
-generate_mapbook_report_params = dict()
+generate_collared_report_params = dict()
 
 # %%
 # call the task
 
 
-generate_mapbook_report = (
-    combine_docx_files.set_task_instance_id("generate_mapbook_report")
+generate_collared_report = (
+    merge_docx_files.set_task_instance_id("generate_collared_report")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         cover_page_path=create_cover_context,
         output_directory=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         context_page_items=subject_context_doc,
         filename="overall_report.docx",
-        **generate_mapbook_report_params,
+        **generate_collared_report_params,
     )
     .call()
 )
@@ -1129,6 +1580,13 @@ calc_mean_speed = (
     dataframe_column_sum.set_task_instance_id("calc_mean_speed")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(column_name="mean_speed", **calc_mean_speed_params)
     .mapvalues(argnames=["df"], argvalues=summary_table)
 )
@@ -1150,6 +1608,13 @@ round_mean_speed = (
     round_off_values.set_task_instance_id("round_mean_speed")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(dp=2, **round_mean_speed_params)
     .mapvalues(argnames=["value"], argvalues=calc_mean_speed)
 )
@@ -1171,6 +1636,13 @@ calc_min_speed = (
     dataframe_column_sum.set_task_instance_id("calc_min_speed")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(column_name="min_speed", **calc_min_speed_params)
     .mapvalues(argnames=["df"], argvalues=summary_table)
 )
@@ -1192,6 +1664,13 @@ round_min_speed = (
     round_off_values.set_task_instance_id("round_min_speed")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(dp=2, **round_min_speed_params)
     .mapvalues(argnames=["value"], argvalues=calc_min_speed)
 )
@@ -1213,6 +1692,13 @@ calc_max_speed = (
     dataframe_column_sum.set_task_instance_id("calc_max_speed")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(column_name="max_speed", **calc_max_speed_params)
     .mapvalues(argnames=["df"], argvalues=summary_table)
 )
@@ -1234,6 +1720,13 @@ round_max_speed = (
     round_off_values.set_task_instance_id("round_max_speed")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(dp=2, **round_max_speed_params)
     .mapvalues(argnames=["value"], argvalues=calc_max_speed)
 )
@@ -1255,6 +1748,13 @@ total_distance_covered = (
     dataframe_column_sum.set_task_instance_id("total_distance_covered")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(column_name="total_distance", **total_distance_covered_params)
     .mapvalues(argnames=["df"], argvalues=summary_table)
 )
@@ -1276,6 +1776,13 @@ round_total_distance = (
     round_off_values.set_task_instance_id("round_total_distance")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(dp=2, **round_total_distance_params)
     .mapvalues(argnames=["value"], argvalues=total_distance_covered)
 )
@@ -1326,6 +1833,13 @@ total_mean_speed_sv_widget = (
     merge_widget_views.set_task_instance_id("total_mean_speed_sv_widget")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(widgets=total_mean_speed_widgets, **total_mean_speed_sv_widget_params)
     .call()
 )
@@ -1376,6 +1890,13 @@ total_min_speed_sv_widget = (
     merge_widget_views.set_task_instance_id("total_min_speed_sv_widget")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(widgets=total_min_speed_widgets, **total_min_speed_sv_widget_params)
     .call()
 )
@@ -1426,6 +1947,13 @@ total_max_speed_sv_widget = (
     merge_widget_views.set_task_instance_id("total_max_speed_sv_widget")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(widgets=total_max_speed_widgets, **total_max_speed_sv_widget_params)
     .call()
 )
@@ -1478,6 +2006,13 @@ total_distance_sv_widget = (
     merge_widget_views.set_task_instance_id("total_distance_sv_widget")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(widgets=total_distance_widgets, **total_distance_sv_widget_params)
     .call()
 )
@@ -1501,6 +2036,13 @@ lg_dashboard = (
     gather_dashboard.set_task_instance_id("lg_dashboard")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         details=workflow_details,
         widgets=[

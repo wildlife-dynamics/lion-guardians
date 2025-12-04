@@ -33,7 +33,7 @@ def normalize_file_url(path: str) -> str:
 @task
 def download_file_and_persist(
     url: Annotated[str, Field(description="URL to download the file from")],
-    output_path: Annotated[Optional[str], Field(description="Path to save the downloaded file or directory. Defaults to current working directory")] = None,
+    output_path: Annotated[Optional[str], Field(description="Path to save the downloaded file or directory.")] = None,
     retries: Annotated[int, Field(description="Number of retries on failure", ge=0)] = 3,
     overwrite_existing: Annotated[bool, Field(description="Whether to overwrite existing files")] = False,
     unzip: Annotated[bool, Field(description="Whether to unzip the file if it's a zip archive")] = False,

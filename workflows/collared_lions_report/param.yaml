@@ -1,48 +1,33 @@
-# Workflow details
 workflow_details:
-  name: "Collared Lions Workflow"
-  description: "Analyzes the movement patterns and home ranges of GPS-collared lions over a specified time period."
-
-# Desired time-range
-time_range:
-  since: "2025-01-01T00:00:00Z"
-  until: "2025-02-28T23:59:59Z"
-
-# Connect to EarthRanger
+  description: ''
+  name: Collared Lions Report
+groupers:
+  groupers:
+    - subject_sex
 er_client_name:
   data_source:
-    name: "lion_guardians"
-
-# Subject group name
-subject_obs:
-    subject_group_name: "Collared Lions"
-
-# specific to the subject group at hand 
+    name: lg
+base_map_defs:
+  base_maps:
+    - url: >-
+        https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}
+      opacity: 1
+      max_zoom: 20
 subject_traj:
   trajectory_segment_filter:
     min_length_meters: 0.001
-    max_length_meters: 10000.0
-    max_time_secs: 21600.0
-    min_time_secs: 1.0
-    max_speed_kmhr: 20.0
+    max_length_meters: 100000
+    min_time_secs: 1
+    max_time_secs: 21600
     min_speed_kmhr: 0.01
-
-# Any desired groupers
-groupers:
-  groupers: []
-
-# # Desired basemap layers
-# base_map_defs:
-#   base_maps:
-#     - url: "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
-#       opacity: 0.7
-#     - url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
-#       opacity: 0.2
-#       max_zoom: 9
-#       min_zoom: null
-
-# Time density configuration      
+    max_speed_kmhr: 15
 td:
   auto_scale_or_custom_cell_size:
-     auto_scale_or_custom: "Customize"
-     grid_cell_size: 500
+    auto_scale_or_custom: Auto-scale
+  max_speed_factor: 1.05
+  expansion_factor: 1.05
+time_range:
+  since: '2025-01-01T07:07:00.000Z'
+  until: '2025-06-01T07:07:00.000Z'
+subject_obs:
+  subject_group_name: Collared Lions

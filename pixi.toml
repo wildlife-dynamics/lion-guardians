@@ -1,4 +1,4 @@
-[project]
+[workspace]
 name = "lion-guardians"
 channels = [
     # Uncomment the following lines to use local channels for development.
@@ -61,5 +61,5 @@ cmd = './dev/recompile.sh collared_lions_report --install'
 depends-on = ["build-release"]
 
 [feature.compile.tasks.recompile-collared_lions_report]
-cmd = './dev/recompile.sh collared_lions_report --update'
+cmd = './dev/recompile.sh collared_lions_report --no-install'
 depends-on = ["build-release"]

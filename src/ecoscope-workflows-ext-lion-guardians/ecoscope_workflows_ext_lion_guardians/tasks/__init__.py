@@ -3,7 +3,8 @@ from ._report_context import (
     round_off_values,
     create_cover_context_page,
     create_report_context,
-    combine_docx_files
+    merge_docx_files,
+    get_split_group_names
 )
 
 from ._mapdeck import (
@@ -22,17 +23,19 @@ from ._mapdeck import (
     set_custom_base_maps
 )
 
-from ._zip import zip_grouped_by_key,flatten_tuple
+from ._zip import zip_grouped_by_key,flatten_tuple,zip_lists
 from ._download_file import download_file_and_persist
 from ._tabular import add_totals_row
 __all__ = [
+    "get_split_group_names",
+    "zip_lists",
     "zip_grouped_by_key",
     "flatten_tuple",
 
     "round_off_values",
     "create_cover_context_page",
     "create_report_context",
-    "combine_docx_files",
+    "merge_docx_files",
 
     "set_custom_base_maps",
     "draw_custom_map",
