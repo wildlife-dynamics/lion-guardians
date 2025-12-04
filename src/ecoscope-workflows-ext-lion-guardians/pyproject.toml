@@ -1,4 +1,4 @@
-[project]
+[workspace]
 name = "ecoscope-workflows-ext-lion-guardians"
 dynamic = ["version"]
 requires-python = ">=3.10"
@@ -64,6 +64,7 @@ tomli-w = "*"
 geopandas = "*"
 shapely = "*"
 docxtpl="*"
+docxcompose="*"
 playwright = "*"
 ecoscope-workflows-core = ">=0.17.0"
 ecoscope-workflows-ext-ecoscope=">=0.17.0"
