@@ -1,22 +1,33 @@
 from ._mapdeck import (
     draw_custom_map,
     make_text_layer,
-    create_map_layers,
     clean_file_keys,
-    select_koi,
-    create_geojson_layer,
+    create_map_layers,
     custom_deckgl_layer,
     view_state_deck_gdf,
+    create_gdf_from_dict,
+    create_geojson_layer,
     load_geospatial_files,
+    exclude_geom_outliers,
     remove_invalid_geometries,
+    split_gdf_by_column,
+    custom_deckgl_layer_from_dict,
+    create_styled_layers_from_dict,
     remove_invalid_point_geometries,
     merge_static_and_grouped_layers,
+    select_koi,
     set_custom_base_maps,
 )
 
-from ._zip import zip_grouped_by_key, flatten_tuple
+from ._zip import zip_grouped_by_key, flatten_tuple, zip_lists
 from ._download_file import download_file_and_persist
-from ._guardians_context import create_cover_context_page, create_report_context, combine_docx_files
+from ._guardians_context import (
+    create_cover_context_page,
+    create_report_context,
+    merge_docx_files,
+    get_split_group_names,
+    create_report_context_from_tuple,
+)
 from ._tabular import add_totals_row, rename_columns, extract_date_parts
 from ._retrieve_patrols import (
     get_patrol_observations_from_patrols_dataframe,
@@ -25,8 +36,18 @@ from ._retrieve_patrols import (
     get_event_type_display_names_from_events_aliased,
 )
 
+from ._inspect import print_output
+
 __all__ = [
+    "print_output",
+    "create_report_context_from_tuple",
     # _mapdeck
+    "zip_lists",
+    "create_gdf_from_dict",
+    "exclude_geom_outliers",
+    "split_gdf_by_column",
+    "custom_deckgl_layer_from_dict",
+    "create_styled_layers_from_dict",
     "clean_file_keys",
     "create_geojson_layer",
     "create_map_layers",
@@ -55,5 +76,6 @@ __all__ = [
     "get_event_type_display_names_from_events_aliased",
     "create_cover_context_page",
     "create_report_context",
-    "combine_docx_files",
+    "merge_docx_files",
+    "get_split_group_names",
 ]

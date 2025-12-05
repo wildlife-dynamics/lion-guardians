@@ -47,7 +47,7 @@ from ecoscope_workflows_core.tasks.transformation import (
     sort_values,
     with_unit,
 )
-from ecoscope_workflows_ext_custom.tasks import html_to_png
+from ecoscope_workflows_ext_custom.tasks.io import html_to_png
 from ecoscope_workflows_ext_custom.tasks.results import (
     create_path_layer,
     create_scatterplot_layer,
@@ -80,7 +80,6 @@ from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     add_totals_row,
     clean_file_keys,
-    combine_docx_files,
     create_cover_context_page,
     create_geojson_layer,
     create_map_layers,
@@ -91,13 +90,17 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
     flatten_tuple,
     get_event_type_display_names_from_events_aliased,
     get_patrol_observations_from_patrols_dataframe_and_combined_params,
+    get_split_group_names,
     load_geospatial_files,
     make_text_layer,
+    merge_docx_files,
     merge_static_and_grouped_layers,
+    print_output,
     select_koi,
     set_custom_base_maps,
     view_state_deck_gdf,
     zip_grouped_by_key,
+    zip_lists,
 )
 
 # %% [markdown]
@@ -120,6 +123,13 @@ workflow_details = (
     set_workflow_details.set_task_instance_id("workflow_details")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(**workflow_details_params)
     .call()
 )
@@ -134,7 +144,6 @@ workflow_details = (
 time_range_params = dict(
     since=...,
     until=...,
-    timezone=...,
 )
 
 # %%
@@ -145,7 +154,23 @@ time_range = (
     set_time_range.set_task_instance_id("time_range")
     .handle_errors()
     .with_tracing()
-    .partial(time_format="%d %b %Y %H:%M:%S %Z", **time_range_params)
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        time_format="%d %b %Y %H:%M:%S %Z",
+        timezone={
+            "label": "UTC",
+            "tzCode": "UTC",
+            "name": "UTC",
+            "utc_offset": "+00:00",
+        },
+        **time_range_params,
+    )
     .call()
 )
 
@@ -166,6 +191,13 @@ get_timezone = (
     get_timezone_from_time_range.set_task_instance_id("get_timezone")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(time_range=time_range, **get_timezone_params)
     .call()
 )
@@ -189,6 +221,13 @@ groupers = (
     set_groupers.set_task_instance_id("groupers")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(**groupers_params)
     .call()
 )
@@ -212,6 +251,13 @@ er_client_name = (
     set_er_connection.set_task_instance_id("er_client_name")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(**er_client_name_params)
     .call()
 )
@@ -235,6 +281,13 @@ base_map_defs = (
     set_custom_base_maps.set_task_instance_id("base_map_defs")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(**base_map_defs_params)
     .call()
 )
@@ -256,6 +309,13 @@ persist_ambo_gpkg = (
     download_file_and_persist.set_task_instance_id("persist_ambo_gpkg")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         url="https://www.dropbox.com/scl/fi/phlc488gxqpcvr6ua3vk7/amboseli_group_ranch_boundaries.gpkg?rlkey=p5ztypwmj4ndjova9xe2ssiun&st=pknuicus&dl=0",
         output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -284,6 +344,13 @@ persist_cover_page = (
     download_file_and_persist.set_task_instance_id("persist_cover_page")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         url="https://www.dropbox.com/scl/fi/p1xk9no77w9ctpc4mnn6p/patrol_guardians_cover_page.docx?rlkey=tc5oo54s29wu7cz47glvlbcaj&st=9ivtf2k6&dl=0",
         output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -312,8 +379,15 @@ persist_indv_subject_page = (
     download_file_and_persist.set_task_instance_id("persist_indv_subject_page")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
-        url="https://www.dropbox.com/scl/fi/5v48ioquh9hzqd3em3h25/individual_patrol_template.docx?rlkey=bn7sqiu6sk7a879poed2d9bzc&st=hs1ph1d6&dl=0",
+        url="https://www.dropbox.com/scl/fi/kp9mkc9dd5qbast86ufk4/custom_patrol_template.docx?rlkey=ea12bxesuu9dnnj1ngfahhqvr&st=ri5og7k8&dl=0",
         output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         overwrite_existing=False,
         retries=3,
@@ -340,6 +414,13 @@ load_local_shapefiles = (
     load_geospatial_files.set_task_instance_id("load_local_shapefiles")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         config={"path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"]},
         **load_local_shapefiles_params,
@@ -364,6 +445,13 @@ clean_local_geo_files = (
     clean_file_keys.set_task_instance_id("clean_local_geo_files")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(file_dict=load_local_shapefiles, **clean_local_geo_files_params)
     .call()
 )
@@ -385,6 +473,13 @@ create_custom_map_layers = (
     create_map_layers.set_task_instance_id("create_custom_map_layers")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         file_dict=load_local_shapefiles,
         style_config={
@@ -393,9 +488,9 @@ create_custom_map_layers = (
                     "stroked": True,
                     "filled": False,
                     "get_elevation": 50,
-                    "opacity": 0.55,
+                    "opacity": 0.75,
                     "get_line_color": [105, 105, 105, 200],
-                    "get_line_width": 3.5,
+                    "get_line_width": 3.75,
                 }
             },
             "legend": {"label": ["Group ranch boundaries"], "color": ["#696969"]},
@@ -422,6 +517,13 @@ filter_aoi = (
     select_koi.set_task_instance_id("filter_aoi")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         file_dict=clean_local_geo_files,
         key_value="amboseli_group_ranch_boundaries",
@@ -447,13 +549,20 @@ custom_text_layer = (
     make_text_layer.set_task_instance_id("custom_text_layer")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         txt_gdf=filter_aoi,
         label_column="R_NAME",
         fallback_columns=["name", "title"],
         use_centroid=True,
         color=[0, 0, 0, 255],
-        size=75,
+        size=70,
         font_family="Calibri",
         font_weight="bold",
         background=False,
@@ -494,6 +603,13 @@ er_patrol_and_events_params = (
     )
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         client=er_client_name,
         time_range=time_range,
@@ -523,6 +639,13 @@ prefetch_patrols = (
     get_patrols_from_combined_params.set_task_instance_id("prefetch_patrols")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(combined_params=er_patrol_and_events_params, **prefetch_patrols_params)
     .call()
 )
@@ -546,6 +669,13 @@ patrol_obs = (
     )
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         patrols_df=prefetch_patrols,
         combined_params=er_patrol_and_events_params,
@@ -573,6 +703,13 @@ patrol_events = (
     )
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         patrols_df=prefetch_patrols,
         combined_params=er_patrol_and_events_params,
@@ -600,6 +737,13 @@ event_type_display_names = (
     )
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         client=er_client_name,
         events_gdf=patrol_events,
@@ -626,6 +770,13 @@ convert_patrols_to_user_timezone = (
     convert_values_to_timezone.set_task_instance_id("convert_patrols_to_user_timezone")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         df=patrol_obs,
         timezone=get_timezone,
@@ -652,11 +803,52 @@ convert_events_to_user_timezone = (
     convert_values_to_timezone.set_task_instance_id("convert_events_to_user_timezone")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         df=event_type_display_names,
         timezone=get_timezone,
         columns=["time", "patrol_start_time"],
         **convert_events_to_user_timezone_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Persist events as geoparquet
+
+# %%
+# parameters
+
+persist_events_geoparquet_params = dict()
+
+# %%
+# call the task
+
+
+persist_events_geoparquet = (
+    persist_df.set_task_instance_id("persist_events_geoparquet")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        filetype="geoparquet",
+        df=convert_events_to_user_timezone,
+        filename="events",
+        **persist_events_geoparquet_params,
     )
     .call()
 )
@@ -680,6 +872,13 @@ set_patrol_traj_color_column = (
     set_string_var.set_task_instance_id("set_patrol_traj_color_column")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(**set_patrol_traj_color_column_params)
     .call()
 )
@@ -701,6 +900,13 @@ patrol_reloc = (
     process_relocations.set_task_instance_id("patrol_reloc")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         observations=convert_patrols_to_user_timezone,
         relocs_columns=[
@@ -747,6 +953,13 @@ patrol_traj = (
     relocations_to_trajectory.set_task_instance_id("patrol_traj")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(relocations=patrol_reloc, **patrol_traj_params)
     .call()
 )
@@ -768,6 +981,13 @@ traj_add_temporal_index = (
     add_temporal_index.set_task_instance_id("traj_add_temporal_index")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         df=patrol_traj,
         time_col="extra__patrol_start_time",
@@ -796,6 +1016,13 @@ traj_rename_grouper_columns = (
     map_columns.set_task_instance_id("traj_rename_grouper_columns")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         df=traj_add_temporal_index,
         drop_columns=[],
@@ -807,6 +1034,40 @@ traj_rename_grouper_columns = (
             "extra__patrol_subject": "patrol_subject",
         },
         **traj_rename_grouper_columns_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Persist trajectories as geoparquet
+
+# %%
+# parameters
+
+persist_patrols_geoparquet_params = dict()
+
+# %%
+# call the task
+
+
+persist_patrols_geoparquet = (
+    persist_df.set_task_instance_id("persist_patrols_geoparquet")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        filetype="geoparquet",
+        df=traj_rename_grouper_columns,
+        filename="trajectories",
+        **persist_patrols_geoparquet_params,
     )
     .call()
 )
@@ -828,6 +1089,13 @@ traj_colormap = (
     apply_color_map.set_task_instance_id("traj_colormap")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         df=traj_rename_grouper_columns,
         colormap="Paired",
@@ -858,6 +1126,13 @@ filter_patrol_events = (
     apply_reloc_coord_filter.set_task_instance_id("filter_patrol_events")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         df=convert_events_to_user_timezone,
         roi_gdf=None,
@@ -884,6 +1159,13 @@ pe_add_temporal_index = (
     add_temporal_index.set_task_instance_id("pe_add_temporal_index")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         df=filter_patrol_events,
         time_col="patrol_start_time",
@@ -912,6 +1194,13 @@ pe_colormap = (
     apply_color_map.set_task_instance_id("pe_colormap")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         df=pe_add_temporal_index,
         input_column_name="event_type",
@@ -939,6 +1228,13 @@ patrol_traj_cols_to_string = (
     convert_column_values_to_string.set_task_instance_id("patrol_traj_cols_to_string")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         df=traj_colormap,
         columns=["patrol_serial_number", "patrol_type"],
@@ -964,6 +1260,13 @@ pe_cols_to_string = (
     convert_column_values_to_string.set_task_instance_id("pe_cols_to_string")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         df=pe_colormap,
         columns=["patrol_serial_number", "patrol_type"],
@@ -989,6 +1292,13 @@ set_traj_pe_map_title = (
     set_string_var.set_task_instance_id("set_traj_pe_map_title")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(var="Trajectories & Patrol Events Map", **set_traj_pe_map_title_params)
     .call()
 )
@@ -1010,6 +1320,13 @@ set_ltd_map_title = (
     set_string_var.set_task_instance_id("set_ltd_map_title")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(var="Time Density Map", **set_ltd_map_title_params)
     .call()
 )
@@ -1031,6 +1348,13 @@ set_bar_chart_title = (
     set_string_var.set_task_instance_id("set_bar_chart_title")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(var="Patrol Events Bar Chart", **set_bar_chart_title_params)
     .call()
 )
@@ -1052,6 +1376,13 @@ set_pie_chart_title = (
     set_string_var.set_task_instance_id("set_pie_chart_title")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(var="Patrol Events Pie Chart", **set_pie_chart_title_params)
     .call()
 )
@@ -1073,6 +1404,13 @@ split_patrol_traj_groups = (
     split_groups.set_task_instance_id("split_patrol_traj_groups")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         df=patrol_traj_cols_to_string,
         groupers=groupers,
@@ -1098,6 +1436,13 @@ split_pe_groups = (
     split_groups.set_task_instance_id("split_pe_groups")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(df=pe_cols_to_string, groupers=groupers, **split_pe_groups_params)
     .call()
 )
@@ -1119,6 +1464,13 @@ pe_rename_display_columns = (
     map_columns.set_task_instance_id("pe_rename_display_columns")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         drop_columns=[],
         retain_columns=[],
@@ -1188,6 +1540,13 @@ speed_val_with_unit = (
     map_values_with_unit.set_task_instance_id("speed_val_with_unit")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         input_column_name="speed_kmhr",
         output_column_name="speed_kmhr",
@@ -1216,6 +1575,13 @@ patrol_traj_rename_columns = (
     map_columns.set_task_instance_id("patrol_traj_rename_columns")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         drop_columns=[],
         retain_columns=[],
@@ -1326,6 +1692,13 @@ merge_static_grouped_layers = (
     merge_static_and_grouped_layers.set_task_instance_id("merge_static_grouped_layers")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         static_layers=[create_custom_map_layers, custom_text_layer],
         **merge_static_grouped_layers_params,
@@ -1350,6 +1723,13 @@ zoom_view_state = (
     view_state_deck_gdf.set_task_instance_id("zoom_view_state")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(pitch=0, bearing=0, **zoom_view_state_params)
     .mapvalues(argnames=["gdf"], argvalues=patrol_traj_rename_columns)
 )
@@ -1371,6 +1751,13 @@ zip_layers_view = (
     zip_grouped_by_key.set_task_instance_id("zip_layers_view")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         left=merge_static_grouped_layers,
         right=zoom_view_state,
@@ -1396,6 +1783,13 @@ traj_patrol_events_ecomap = (
     draw_custom_map.set_task_instance_id("traj_patrol_events_ecomap")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         tile_layers=base_map_defs,
         legend_style={
@@ -1430,6 +1824,13 @@ traj_pe_ecomap_html_urls = (
     persist_text.set_task_instance_id("traj_pe_ecomap_html_urls")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filename_suffix="patrols_ecomap",
@@ -1484,6 +1885,13 @@ traj_pe_grouped_map_widget = (
     merge_widget_views.set_task_instance_id("traj_pe_grouped_map_widget")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         widgets=traj_pe_map_widgets_single_views, **traj_pe_grouped_map_widget_params
     )
@@ -1507,6 +1915,13 @@ patrol_html_png = (
     html_to_png.set_task_instance_id("patrol_html_png")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         config={"wait_for_timeout": 20000},
@@ -1532,6 +1947,13 @@ total_patrols = (
     dataframe_column_nunique.set_task_instance_id("total_patrols")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(column_name="extra__patrol_id", **total_patrols_params)
     .mapvalues(argnames=["df"], argvalues=split_patrol_traj_groups)
 )
@@ -1582,6 +2004,13 @@ total_patrols_grouped_sv_widget = (
     merge_widget_views.set_task_instance_id("total_patrols_grouped_sv_widget")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(widgets=total_patrols_sv_widgets, **total_patrols_grouped_sv_widget_params)
     .call()
 )
@@ -1603,6 +2032,13 @@ total_patrol_time = (
     dataframe_column_sum.set_task_instance_id("total_patrol_time")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(column_name="timespan_seconds", **total_patrol_time_params)
     .mapvalues(argnames=["df"], argvalues=split_patrol_traj_groups)
 )
@@ -1624,6 +2060,13 @@ total_patrol_time_converted = (
     with_unit.set_task_instance_id("total_patrol_time_converted")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(original_unit="s", new_unit="h", **total_patrol_time_converted_params)
     .mapvalues(argnames=["value"], argvalues=total_patrol_time)
 )
@@ -1676,6 +2119,13 @@ patrol_time_grouped_widget = (
     merge_widget_views.set_task_instance_id("patrol_time_grouped_widget")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(widgets=total_patrol_time_sv_widgets, **patrol_time_grouped_widget_params)
     .call()
 )
@@ -1697,6 +2147,13 @@ total_patrol_dist = (
     dataframe_column_sum.set_task_instance_id("total_patrol_dist")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(column_name="dist_meters", **total_patrol_dist_params)
     .mapvalues(argnames=["df"], argvalues=split_patrol_traj_groups)
 )
@@ -1718,6 +2175,13 @@ total_patrol_dist_converted = (
     with_unit.set_task_instance_id("total_patrol_dist_converted")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(original_unit="m", new_unit="km", **total_patrol_dist_converted_params)
     .mapvalues(argnames=["value"], argvalues=total_patrol_dist)
 )
@@ -1770,6 +2234,13 @@ patrol_dist_grouped_widget = (
     merge_widget_views.set_task_instance_id("patrol_dist_grouped_widget")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(widgets=total_patrol_dist_sv_widgets, **patrol_dist_grouped_widget_params)
     .call()
 )
@@ -1791,6 +2262,13 @@ avg_speed = (
     dataframe_column_mean.set_task_instance_id("avg_speed")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(column_name="speed_kmhr", **avg_speed_params)
     .mapvalues(argnames=["df"], argvalues=split_patrol_traj_groups)
 )
@@ -1812,6 +2290,13 @@ average_speed_converted = (
     with_unit.set_task_instance_id("average_speed_converted")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(original_unit="km/h", new_unit="km/h", **average_speed_converted_params)
     .mapvalues(argnames=["value"], argvalues=avg_speed)
 )
@@ -1860,6 +2345,13 @@ avg_speed_grouped_widget = (
     merge_widget_views.set_task_instance_id("avg_speed_grouped_widget")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(widgets=avg_speed_sv_widgets, **avg_speed_grouped_widget_params)
     .call()
 )
@@ -1881,6 +2373,13 @@ max_speed = (
     dataframe_column_max.set_task_instance_id("max_speed")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(column_name="speed_kmhr", **max_speed_params)
     .mapvalues(argnames=["df"], argvalues=split_patrol_traj_groups)
 )
@@ -1902,6 +2401,13 @@ max_speed_converted = (
     with_unit.set_task_instance_id("max_speed_converted")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(original_unit="km/h", new_unit="km/h", **max_speed_converted_params)
     .mapvalues(argnames=["value"], argvalues=max_speed)
 )
@@ -1950,6 +2456,13 @@ max_speed_grouped_widget = (
     merge_widget_views.set_task_instance_id("max_speed_grouped_widget")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(widgets=max_speed_sv_widgets, **max_speed_grouped_widget_params)
     .call()
 )
@@ -1973,6 +2486,13 @@ patrol_events_bar_chart = (
     draw_time_series_bar_chart.set_task_instance_id("patrol_events_bar_chart")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         x_axis="time",
         y_axis="event_type_display",
@@ -2006,6 +2526,13 @@ patrol_events_bar_chart_html_url = (
     persist_text.set_task_instance_id("patrol_events_bar_chart_html_url")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filename_suffix="patrol_events_time_series_bar_chart",
@@ -2060,6 +2587,13 @@ grouped_bar_plot_widget_merge = (
     merge_widget_views.set_task_instance_id("grouped_bar_plot_widget_merge")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         widgets=patrol_events_bar_chart_widget, **grouped_bar_plot_widget_merge_params
     )
@@ -2083,6 +2617,13 @@ patrol_bar_chart_png = (
     html_to_png.set_task_instance_id("patrol_bar_chart_png")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         config={"wait_for_timeout": 1000},
@@ -2108,6 +2649,13 @@ patrol_events_pie_chart = (
     draw_pie_chart.set_task_instance_id("patrol_events_pie_chart")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         value_column="event_type_display",
         plot_style={"textinfo": "value"},
@@ -2139,6 +2687,13 @@ pe_pie_chart_html_urls = (
     persist_text.set_task_instance_id("pe_pie_chart_html_urls")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filename_suffix="patrols_pie_chart",
@@ -2193,6 +2748,13 @@ patrol_events_pie_widget_grouped = (
     merge_widget_views.set_task_instance_id("patrol_events_pie_widget_grouped")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         widgets=patrol_events_pie_chart_widgets,
         **patrol_events_pie_widget_grouped_params,
@@ -2217,6 +2779,13 @@ patrol_pie_chart_png = (
     html_to_png.set_task_instance_id("patrol_pie_chart_png")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         config={"wait_for_timeout": 1000},
@@ -2245,6 +2814,13 @@ ltd_meshgrid = (
     create_meshgrid.set_task_instance_id("ltd_meshgrid")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         aoi=patrol_traj_cols_to_string, intersecting_only=False, **ltd_meshgrid_params
     )
@@ -2268,6 +2844,13 @@ ltd = (
     calculate_linear_time_density.set_task_instance_id("ltd")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         meshgrid=ltd_meshgrid,
         percentiles=[50.0, 60.0, 70.0, 80.0, 90.0, 100.0],
@@ -2293,6 +2876,13 @@ drop_nan_percentiles = (
     drop_nan_values_by_column.set_task_instance_id("drop_nan_percentiles")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(column_name="percentile", **drop_nan_percentiles_params)
     .mapvalues(argnames=["df"], argvalues=ltd)
 )
@@ -2314,6 +2904,13 @@ sort_percentile_values = (
     sort_values.set_task_instance_id("sort_percentile_values")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         column_name="percentile",
         ascending=True,
@@ -2340,6 +2937,13 @@ percentile_col_to_string = (
     convert_column_values_to_string.set_task_instance_id("percentile_col_to_string")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(columns=["percentile"], **percentile_col_to_string_params)
     .mapvalues(argnames=["df"], argvalues=sort_percentile_values)
 )
@@ -2361,6 +2965,13 @@ td_colormap = (
     apply_color_map.set_task_instance_id("td_colormap")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         input_column_name="percentile",
         colormap="RdYlGn",
@@ -2387,6 +2998,13 @@ patrol_td_rename_columns = (
     map_columns.set_task_instance_id("patrol_td_rename_columns")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         drop_columns=[],
         retain_columns=[],
@@ -2451,6 +3069,13 @@ merged_time_density_layers = (
     merge_static_and_grouped_layers.set_task_instance_id("merged_time_density_layers")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         static_layers=[create_custom_map_layers, custom_text_layer],
         **merged_time_density_layers_params,
@@ -2475,6 +3100,13 @@ zip_time_density_view = (
     zip_grouped_by_key.set_task_instance_id("zip_time_density_view")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         left=merged_time_density_layers,
         right=zoom_view_state,
@@ -2500,6 +3132,13 @@ td_ecomap = (
     draw_custom_map.set_task_instance_id("td_ecomap")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         tile_layers=base_map_defs,
         legend_style={"title": "Time Spent", "placement": "bottom-right"},
@@ -2531,6 +3170,13 @@ td_ecomap_html_url = (
     persist_text.set_task_instance_id("td_ecomap_html_url")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filename_suffix="time_density",
@@ -2583,6 +3229,13 @@ td_grouped_map_widget = (
     merge_widget_views.set_task_instance_id("td_grouped_map_widget")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(widgets=td_map_widget, **td_grouped_map_widget_params)
     .call()
 )
@@ -2604,6 +3257,13 @@ td_html_png = (
     html_to_png.set_task_instance_id("td_html_png")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         config={"wait_for_timeout": 20000},
@@ -2629,6 +3289,13 @@ summarize_ranger_patrol = (
     summarize_df.set_task_instance_id("summarize_ranger_patrol")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         groupby_cols=["patrol_subject"],
         reset_index=True,
@@ -2652,8 +3319,6 @@ summarize_ranger_patrol = (
                 "original_unit": "s",
                 "new_unit": "h",
             },
-            {"display_name": "min_speed", "aggregator": "min", "column": "speed_kmhr"},
-            {"display_name": "max_speed", "aggregator": "max", "column": "speed_kmhr"},
         ],
         **summarize_ranger_patrol_params,
     )
@@ -2679,6 +3344,13 @@ persist_ranger_patrol_efforts = (
     persist_df.set_task_instance_id("persist_ranger_patrol_efforts")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filetype="csv",
@@ -2704,6 +3376,13 @@ summarized_patrol_types = (
     summarize_df.set_task_instance_id("summarized_patrol_types")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         groupby_cols=["patrol_type"],
         reset_index=True,
@@ -2727,8 +3406,6 @@ summarized_patrol_types = (
                 "original_unit": "s",
                 "new_unit": "h",
             },
-            {"display_name": "min_speed", "aggregator": "min", "column": "speed_kmhr"},
-            {"display_name": "max_speed", "aggregator": "max", "column": "speed_kmhr"},
         ],
         **summarized_patrol_types_params,
     )
@@ -2752,6 +3429,13 @@ add_total_patrol_summary = (
     add_totals_row.set_task_instance_id("add_total_patrol_summary")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(label_col="patrol_type", label="Total", **add_total_patrol_summary_params)
     .mapvalues(argnames=["df"], argvalues=summarized_patrol_types)
 )
@@ -2775,6 +3459,13 @@ persist_patrol_types = (
     persist_df.set_task_instance_id("persist_patrol_types")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filetype="csv",
@@ -2800,6 +3491,13 @@ summarize_guardian_events = (
     summarize_df.set_task_instance_id("summarize_guardian_events")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         groupby_cols=["patrol_subject"],
         reset_index=True,
@@ -2830,6 +3528,13 @@ persist_gua_patrol_efforts = (
     persist_df.set_task_instance_id("persist_gua_patrol_efforts")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filetype="csv",
@@ -2855,6 +3560,13 @@ summarized_event_types = (
     summarize_df.set_task_instance_id("summarized_event_types")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         groupby_cols=["event_type"],
         reset_index=True,
@@ -2885,6 +3597,13 @@ persist_event_tefforts = (
     persist_df.set_task_instance_id("persist_event_tefforts")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filetype="csv",
@@ -2910,6 +3629,13 @@ add_month_name = (
     extract_date_parts.set_task_instance_id("add_month_name")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         date_column="extra__patrol_start_time",
         parts=["month", "day", "month_name"],
@@ -2935,6 +3661,13 @@ summarize_month_patrol = (
     summarize_df.set_task_instance_id("summarize_month_patrol")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         groupby_cols=["month_name"],
         reset_index=True,
@@ -2958,8 +3691,6 @@ summarize_month_patrol = (
                 "original_unit": "s",
                 "new_unit": "h",
             },
-            {"display_name": "min_speed", "aggregator": "min", "column": "speed_kmhr"},
-            {"display_name": "max_speed", "aggregator": "max", "column": "speed_kmhr"},
         ],
         **summarize_month_patrol_params,
     )
@@ -2985,6 +3716,13 @@ persist_month_patrol_efforts = (
     persist_df.set_task_instance_id("persist_month_patrol_efforts")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filetype="csv",
@@ -3010,6 +3748,13 @@ context_cover_page = (
     create_cover_context_page.set_task_instance_id("context_cover_page")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         report_period=time_range,
         prepared_by="Ecoscope",
@@ -3038,6 +3783,13 @@ zip_pte_petmp = (
     zip_grouped_by_key.set_task_instance_id("zip_pte_petmp")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(left=persist_patrol_types, right=patrol_html_png, **zip_pte_petmp_params)
     .call()
 )
@@ -3059,6 +3811,13 @@ zip_patrol_density_map = (
     zip_grouped_by_key.set_task_instance_id("zip_patrol_density_map")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(left=zip_pte_petmp, right=td_html_png, **zip_patrol_density_map_params)
     .call()
 )
@@ -3080,6 +3839,13 @@ zip_events_pie_chart = (
     zip_grouped_by_key.set_task_instance_id("zip_events_pie_chart")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         left=zip_patrol_density_map,
         right=patrol_pie_chart_png,
@@ -3105,6 +3871,13 @@ zip_events_time_series = (
     zip_grouped_by_key.set_task_instance_id("zip_events_time_series")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         left=zip_events_pie_chart,
         right=patrol_bar_chart_png,
@@ -3130,6 +3903,13 @@ zip_patrol_events = (
     zip_grouped_by_key.set_task_instance_id("zip_patrol_events")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         left=zip_events_time_series,
         right=persist_gua_patrol_efforts,
@@ -3155,6 +3935,13 @@ zip_event_efforts = (
     zip_grouped_by_key.set_task_instance_id("zip_event_efforts")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         left=zip_patrol_events, right=persist_event_tefforts, **zip_event_efforts_params
     )
@@ -3178,6 +3965,13 @@ zip_month_stats = (
     zip_grouped_by_key.set_task_instance_id("zip_month_stats")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         left=zip_event_efforts,
         right=persist_month_patrol_efforts,
@@ -3203,6 +3997,13 @@ zip_guardian_stats = (
     zip_grouped_by_key.set_task_instance_id("zip_guardian_stats")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         left=zip_month_stats,
         right=persist_ranger_patrol_efforts,
@@ -3228,8 +4029,129 @@ flatten_context = (
     flatten_tuple.set_task_instance_id("flatten_context")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(**flatten_context_params)
     .mapvalues(argnames=["nested"], argvalues=zip_guardian_stats)
+)
+
+
+# %% [markdown]
+# ## Get split group names
+
+# %%
+# parameters
+
+get_grouper_names_params = dict()
+
+# %%
+# call the task
+
+
+get_grouper_names = (
+    get_split_group_names.set_task_instance_id("get_grouper_names")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(split_data=split_patrol_traj_groups, **get_grouper_names_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Zip grouper names with flattened context
+
+# %%
+# parameters
+
+zip_grouper_with_context_params = dict()
+
+# %%
+# call the task
+
+
+zip_grouper_with_context = (
+    zip_lists.set_task_instance_id("zip_grouper_with_context")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        left=get_grouper_names, right=flatten_context, **zip_grouper_with_context_params
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Flatten final report context
+
+# %%
+# parameters
+
+flatten_final_report_context_params = dict()
+
+# %%
+# call the task
+
+
+flatten_final_report_context = (
+    flatten_tuple.set_task_instance_id("flatten_final_report_context")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(**flatten_final_report_context_params)
+    .mapvalues(argnames=["nested"], argvalues=zip_grouper_with_context)
+)
+
+
+# %% [markdown]
+# ## Print output context values
+
+# %%
+# parameters
+
+print_output_value_params = dict()
+
+# %%
+# call the task
+
+
+print_output_value = (
+    print_output.set_task_instance_id("print_output_value")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(**print_output_value_params)
+    .mapvalues(argnames=["value"], argvalues=flatten_final_report_context)
 )
 
 
@@ -3239,9 +4161,7 @@ flatten_context = (
 # %%
 # parameters
 
-individual_report_context_params = dict(
-    validate_images=...,
-)
+individual_report_context_params = dict()
 
 # %%
 # call the task
@@ -3251,8 +4171,16 @@ individual_report_context = (
     create_report_context.set_task_instance_id("individual_report_context")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         filename=None,
+        validate_images=True,
         box_h_cm=9.0,
         box_w_cm=15.0,
         template_path=persist_indv_subject_page,
@@ -3261,6 +4189,9 @@ individual_report_context = (
     )
     .mapvalues(
         argnames=[
+            "grouper_type",
+            "grouper_eq",
+            "grouper_value",
             "patrol_type_effort_path",
             "patrol_events_track_map",
             "patrol_time_density_map",
@@ -3271,7 +4202,7 @@ individual_report_context = (
             "month_stats",
             "guardian_stats",
         ],
-        argvalues=flatten_context,
+        argvalues=flatten_final_report_context,
     )
 )
 
@@ -3289,9 +4220,16 @@ generate_report_params = dict()
 
 
 generate_report = (
-    combine_docx_files.set_task_instance_id("generate_report")
+    merge_docx_files.set_task_instance_id("generate_report")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         cover_page_path=context_cover_page,
         output_directory=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -3321,6 +4259,13 @@ patrol_dashboard = (
     gather_dashboard.set_task_instance_id("patrol_dashboard")
     .handle_errors()
     .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
     .partial(
         details=workflow_details,
         widgets=[

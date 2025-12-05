@@ -34,15 +34,6 @@
           "title": "Until",
           "type": "string",
           "description": "The end time"
-        },
-        "timezone": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/TimezoneInfo"
-            }
-          ],
-          "default": null,
-          "title": "Timezone"
         }
       },
       "required": [
@@ -362,7 +353,21 @@
           "properties": {
             "var": {
               "title": "",
-              "type": "string"
+              "type": "string",
+              "oneOf": [
+                {
+                  "const": "patrol_type",
+                  "title": "Patrol Type"
+                },
+                {
+                  "const": "patrol_subject",
+                  "title": "Patrol Subject"
+                },
+                {
+                  "const": "patrol_serial_number",
+                  "title": "Patrol Serial Number"
+                }
+              ]
             }
           },
           "required": [
@@ -511,50 +516,9 @@
           "title": ""
         }
       }
-    },
-    "individual_report_context": {
-      "additionalProperties": false,
-      "properties": {
-        "validate_images": {
-          "default": true,
-          "title": "Validate Images",
-          "type": "boolean"
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Create individual report context"
     }
   },
   "$defs": {
-    "TimezoneInfo": {
-      "properties": {
-        "label": {
-          "title": "Label",
-          "type": "string"
-        },
-        "tzCode": {
-          "title": "Tzcode",
-          "type": "string"
-        },
-        "name": {
-          "title": "Name",
-          "type": "string"
-        },
-        "utc": {
-          "title": "Utc",
-          "type": "string"
-        }
-      },
-      "required": [
-        "label",
-        "tzCode",
-        "name",
-        "utc"
-      ],
-      "title": "TimezoneInfo",
-      "type": "object"
-    },
     "TemporalGrouper": {
       "oneOf": [
         {
@@ -594,7 +558,20 @@
       "type": "string"
     },
     "ValueGrouper": {
-      "oneOf": [],
+      "oneOf": [
+        {
+          "const": "patrol_type",
+          "title": "Patrol Type"
+        },
+        {
+          "const": "patrol_serial_number",
+          "title": "Patrol Serial Number"
+        },
+        {
+          "const": "patrol_subject",
+          "title": "Patrol Subject"
+        }
+      ],
       "title": "Category",
       "type": "string"
     },
@@ -762,8 +739,7 @@
     "time_range": {
       "ui:order": [
         "since",
-        "until",
-        "timezone"
+        "until"
       ]
     },
     "Patrol and Event Types": {
@@ -803,8 +779,7 @@
       "Trajectory Segment Filter",
       "Patrol Event Location Filter",
       "Patrol Events Bar Chart",
-      "Time Density Map",
-      "individual_report_context"
+      "Time Density Map"
     ]
   },
   "additionalProperties": false

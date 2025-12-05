@@ -34,15 +34,6 @@
           "title": "Until",
           "type": "string",
           "description": "The end time"
-        },
-        "timezone": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/TimezoneInfo"
-            }
-          ],
-          "default": null,
-          "title": "Timezone"
         }
       },
       "required": [
@@ -469,50 +460,9 @@
       "required": [],
       "type": "object",
       "title": ""
-    },
-    "individual_report_context": {
-      "additionalProperties": false,
-      "properties": {
-        "validate_images": {
-          "default": true,
-          "title": "Validate Images",
-          "type": "boolean"
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Create individual report context"
     }
   },
   "$defs": {
-    "TimezoneInfo": {
-      "properties": {
-        "label": {
-          "title": "Label",
-          "type": "string"
-        },
-        "tzCode": {
-          "title": "Tzcode",
-          "type": "string"
-        },
-        "name": {
-          "title": "Name",
-          "type": "string"
-        },
-        "utc": {
-          "title": "Utc",
-          "type": "string"
-        }
-      },
-      "required": [
-        "label",
-        "tzCode",
-        "name",
-        "utc"
-      ],
-      "title": "TimezoneInfo",
-      "type": "object"
-    },
     "TemporalGrouper": {
       "oneOf": [
         {
@@ -720,8 +670,7 @@
     "time_range": {
       "ui:order": [
         "since",
-        "until",
-        "timezone"
+        "until"
       ]
     },
     "er_patrol_and_events_params": {
@@ -755,8 +704,7 @@
       "patrol_traj",
       "filter_patrol_events",
       "patrol_events_bar_chart",
-      "ltd_meshgrid",
-      "individual_report_context"
+      "ltd_meshgrid"
     ]
   },
   "additionalProperties": false

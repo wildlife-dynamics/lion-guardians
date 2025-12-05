@@ -9,12 +9,36 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
-    version: "*"
+    version: "0.0.7.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   
   - name: ecoscope-workflows-ext-lion-guardians
     version: "*"
     channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
+
+rjsf-overrides:
+  properties:
+    Trajectory Category.properties.set_patrol_traj_color_column.properties.var.oneOf:
+      - const: patrol_type
+        title: Patrol Type
+      - const: patrol_subject
+        title: Patrol Subject
+      - const: patrol_serial_number
+        title: Patrol Serial Number
+  $defs:
+    ValueGrouper.oneOf:
+      - const: patrol_type
+        title: Patrol Type
+      - const: patrol_serial_number
+        title: Patrol Serial Number
+      - const: patrol_subject
+        title: Patrol Subject
+
+task-instance-defaults:
+  skipif:
+    conditions:
+      - any_is_empty_df
+      - any_dependency_skipped
 
 workflow:
   # Set workflow details
@@ -28,6 +52,11 @@ workflow:
     task: set_time_range
     partial:
       time_format: "%d %b %Y %H:%M:%S %Z"
+      timezone: 
+        label: UTC 
+        tzCode: UTC 
+        name: UTC 
+        utc_offset: "+00:00"
 
   - name: Extract Timezone Selection
     id: get_timezone
@@ -75,7 +104,7 @@ workflow:
     id: persist_indv_subject_page
     task: download_file_and_persist
     partial:
-      url: https://www.dropbox.com/scl/fi/5v48ioquh9hzqd3em3h25/individual_patrol_template.docx?rlkey=bn7sqiu6sk7a879poed2d9bzc&st=hs1ph1d6&dl=0
+      url: https://www.dropbox.com/scl/fi/kp9mkc9dd5qbast86ufk4/custom_patrol_template.docx?rlkey=ea12bxesuu9dnnj1ngfahhqvr&st=ri5og7k8&dl=0
       output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       overwrite_existing: false
       retries: 3
@@ -107,9 +136,9 @@ workflow:
             stroked: true
             filled: false
             get_elevation: 50
-            opacity: 0.55
+            opacity: 0.75
             get_line_color: [105, 105, 105, 200]
-            get_line_width: 3.5
+            get_line_width: 3.75
         legend:
           label:
             - Group ranch boundaries
@@ -134,7 +163,7 @@ workflow:
         - title
       use_centroid: true 
       color: [0,0,0,255]
-      size: 75
+      size: 70
       font_family: Calibri
       font_weight: bold
       background: false
@@ -208,7 +237,15 @@ workflow:
         - time
         - patrol_start_time
 
-
+  - name: Persist events as geoparquet 
+    id: persist_events_geoparquet 
+    task: persist_df
+    partial: 
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filetype: geoparquet
+      df: ${{ workflow.convert_events_to_user_timezone.return }}
+      filename: events
+          
   - title: Trajectory Category
     type: task-group
     description: Differentiate tracks by color using the selected category.
@@ -242,7 +279,7 @@ workflow:
         - x: 0.000000
           y: 0.000000
         - x: 1.000000
-          y: 1.
+          y: 1.000000
 
   - title: Trajectory Segment Filter
     type: task-group
@@ -276,6 +313,15 @@ workflow:
             extra__patrol_serial_number: patrol_serial_number
             extra__patrol_status: patrol_status
             extra__patrol_subject: patrol_subject
+
+      - name: Persist trajectories as geoparquet 
+        id: persist_patrols_geoparquet 
+        task: persist_df
+        partial: 
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          filetype: geoparquet
+          df: ${{ workflow.traj_rename_grouper_columns.return }}
+          filename: trajectories
 
       - name: Patrol Traj Colormap
         id: traj_colormap
@@ -1093,14 +1139,6 @@ workflow:
           column : timespan_seconds
           original_unit: s
           new_unit: h
-
-        - display_name: min_speed
-          aggregator: min
-          column: speed_kmhr
-        
-        - display_name: max_speed
-          aggregator: max
-          column: speed_kmhr
     mapvalues:
       argnames: df
       argvalues: ${{ workflow.split_patrol_traj_groups.return }}
@@ -1140,14 +1178,6 @@ workflow:
           column : timespan_seconds
           original_unit: s
           new_unit: h
-
-        - display_name: min_speed
-          aggregator: min
-          column: speed_kmhr
-        
-        - display_name: max_speed
-          aggregator: max
-          column: speed_kmhr
     mapvalues:
       argnames: df
       argvalues: ${{ workflow.split_patrol_traj_groups.return }}
@@ -1263,14 +1293,6 @@ workflow:
           column : timespan_seconds
           original_unit: s
           new_unit: h
-
-        - display_name: min_speed
-          aggregator: min
-          column: speed_kmhr
-        
-        - display_name: max_speed
-          aggregator: max
-          column: speed_kmhr
     mapvalues:
       argnames: df
       argvalues: ${{ workflow.add_month_name.return }}
@@ -1360,17 +1382,49 @@ workflow:
       argnames: nested
       argvalues: ${{ workflow.zip_guardian_stats.return }}
 
+  - name: Get split group names 
+    id: get_grouper_names 
+    task: get_split_group_names
+    partial:
+      split_data: 
+        - ${{ workflow.split_patrol_traj_groups.return }}
+
+  - name: Zip grouper names with flattened context 
+    id: zip_grouper_with_context
+    task: zip_lists 
+    partial: 
+      left: ${{ workflow.get_grouper_names.return }}
+      right: ${{ workflow.flatten_context.return }}
+  
+  - name: Flatten final report context 
+    id: flatten_final_report_context 
+    task: flatten_tuple
+    mapvalues:
+      argnames: nested
+      argvalues: ${{ workflow.zip_grouper_with_context.return }}
+
+  - name: Print output context values 
+    id: print_output_value 
+    task: print_output
+    mapvalues:  
+      argnames: value 
+      argvalues: ${{ workflow.flatten_final_report_context.return }}
+  
   - name: Create individual report context
     id: individual_report_context
     task: create_report_context
     partial:  
       filename: null
+      validate_images: true
       box_h_cm: 9.0
       box_w_cm: 15.0
       template_path: ${{ workflow.persist_indv_subject_page.return }}
       output_directory: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
     mapvalues:
       argnames: 
+        - grouper_type
+        - grouper_eq
+        - grouper_value 
         - patrol_type_effort_path # persist_patrol_types
         - patrol_events_track_map # patrol_html_png
 
@@ -1383,11 +1437,11 @@ workflow:
         - event_efforts #persist_event_tefforts
         - month_stats #works
         - guardian_stats 
-      argvalues: ${{ workflow.flatten_context.return }}
+      argvalues: ${{ workflow.flatten_final_report_context.return }}
 
   - name: Generate final report
     id: generate_report
-    task: combine_docx_files
+    task: merge_docx_files
     partial:
       cover_page_path: ${{ workflow.context_cover_page.return }}
       output_directory: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}

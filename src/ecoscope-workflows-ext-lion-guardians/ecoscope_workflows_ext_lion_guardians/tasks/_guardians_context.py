@@ -15,16 +15,17 @@ from ecoscope_workflows_core.decorators import task
 from typing import Annotated, Optional, Any, Union, Dict
 from ecoscope_workflows_core.tasks.filter._filter import TimeRange
 from ecoscope_workflows_core.indexes import CompositeFilter
-from ecoscope_workflows_core.skip import SkippedDependencyFallback, SkipSentinel
+from ecoscope_workflows_core.skip import SkipSentinel
 
 
 @dataclass
 class ReportContext:
+    grouper_type: Optional[str] = None
+    grouper_eq: Optional[str] = None
+    grouper_value: Optional[str] = None
     total_patrols: Optional[Union[int, float]] = None
     total_distance: Optional[Union[int, float]] = None
     total_time: Optional[Union[int, float]] = None
-    min_speed: Optional[Union[int, float]] = None
-    max_speed: Optional[Union[int, float]] = None
 
     patrol_events_track_map: Optional[str] = None
     patrol_time_density_map: Optional[str] = None
@@ -215,6 +216,9 @@ def create_cover_context_page(
 def create_report_context(
     template_path: str,
     output_directory: str,
+    grouper_type: Optional[str] = None,
+    grouper_eq: Optional[str] = None,
+    grouper_value: Optional[str] = None,
     patrol_type_effort_path: Optional[str] = None,
     patrol_events_track_map: Optional[str] = None,
     patrol_time_density_map: Optional[str] = None,
@@ -331,7 +335,9 @@ def create_report_context(
 
     event_efforts = pd.read_csv(normalized_paths["event_efforts"])
     month_stats = pd.read_csv(normalized_paths["month_stats"])
+    month_stats["no_of_patrols"] = month_stats["no_of_patrols"].fillna(0).astype(int)
     guardian_stats = pd.read_csv(normalized_paths["guardian_stats"])
+    guardian_stats["no_of_patrols"] = guardian_stats["no_of_patrols"].fillna(0).astype(int)
 
     last_row = patrol_metrics.iloc[-1]
 
@@ -346,11 +352,9 @@ def create_report_context(
             warnings.warn(f"Cannot convert {col_name} value '{value}' to float: {e}. Using {default}")
             return default
 
-    total_patrols = round(safe_float(last_row["no_of_patrols"], col_name="no_of_patrols"), 0)
+    total_patrols = int(safe_float(last_row["no_of_patrols"], col_name="no_of_patrols"))
     total_distance = round(safe_float(last_row["total_distance"], col_name="total_distance"), 2)
     total_time = round(safe_float(last_row["total_time"], col_name="total_time"), 2)
-    min_speed = round(safe_float(last_row["min_speed"], col_name="min_speed"), 2)
-    max_speed = round(safe_float(last_row["max_speed"], col_name="max_speed"), 2)
 
     patrol_events_dict = patrol_events.to_dict(orient="records")
     event_efforts_dict = event_efforts.to_dict(orient="records")
@@ -363,11 +367,12 @@ def create_report_context(
     # Create context
     # In your create_report_context function, change line 160:
     ctx = ReportContext(
+        grouper_type=grouper_type,
+        grouper_eq=grouper_eq,
+        grouper_value=grouper_value,
         total_patrols=total_patrols,
         total_distance=total_distance,
         total_time=total_time,
-        min_speed=min_speed,
-        max_speed=max_speed,
         patrol_events_track_map=normalized_paths["patrol_events_track_map"],  # Remove the 's'
         patrol_time_density_map=normalized_paths["patrol_time_density_map"],
         events_pie_chart=normalized_paths["events_pie_chart"],
@@ -377,6 +382,7 @@ def create_report_context(
         month_stats=month_stats_dict,
         guardian_stats=guardian_stats_dict,
     )  # Prepare result dictionary with image handling
+    print(f"Context: {ctx}")
     result: Dict[str, Any] = {}
     for key, value in asdict(ctx).items():
         processed_value = validate_and_prepare_image(tpl, value, box_w_cm, box_h_cm, validate_images)
@@ -408,45 +414,46 @@ def _fallback_to_none_doc(
 
 
 @task
-def combine_docx_files(
+def merge_docx_files(
     cover_page_path: Annotated[str, Field(description="Path to the cover page .docx file")],
-    context_page_items: Annotated[
-        list[
-            Annotated[
-                tuple[CompositeFilter | None, str],
-                SkippedDependencyFallback(_fallback_to_none_doc),
-            ]
-        ],
-        Field(description="List of context pages. Items can be SkipSentinel and will be filtered out.", exclude=True),
-    ],
+    context_page_items: Annotated[list[Any], Field(description="List of context page document paths to merge.")],
     output_directory: Annotated[str, Field(description="Directory where combined docx will be written")],
     filename: Annotated[Optional[str], Field(description="Optional output filename")] = None,
 ) -> Annotated[str, Field(description="Path to the combined .docx file")]:
     """
-    Combine cover + grouped context pages into a single DOCX.
+    Combine cover + context pages into a single DOCX.
+    Accepts context_page_items entries that are:
+      - a string path, or
+      - a tuple/list containing one or more strings (path is inferred).
     """
 
-    valid_items = [it for it in context_page_items if it is not None]
-    grouped_docs = [GroupedDoc.from_single_view(it) for it in valid_items]
+    def extract_path(item, idx):
+        if isinstance(item, str):
+            return item
+        if isinstance(item, (list, tuple)):
+            for x in item:
+                if isinstance(x, str) and os.path.exists(x):
+                    return x
+            for x in reversed(item):
+                if isinstance(x, str):
+                    return x
+            raise ValueError(f"context_page_items[{idx}] is a list/tuple but contains no string path: {item!r}")
+        raise ValueError(f"context_page_items[{idx}] has unsupported type {type(item)}; expected str or tuple/list")
 
-    merged_map: dict[str, GroupedDoc] = {}
-    for gd in grouped_docs:
-        key = gd.merge_key
-        if key not in merged_map:
-            merged_map[key] = gd
-        else:
-            merged_map[key] = gd
-
-    final_paths: list[str] = []
-    for group in merged_map.values():
-        for view_key, p in group.views.items():
-            if p is not None:
-                final_paths.append(p)
+    normalized_paths = []
+    for idx, item in enumerate(context_page_items):
+        if item is None:
+            continue
+        try:
+            path = extract_path(item, idx)
+        except ValueError as e:
+            raise ValueError(f"Error processing context_page_items at index {idx}: {e}") from e
+        normalized_paths.append(path)
 
     if not os.path.exists(cover_page_path):
         raise FileNotFoundError(f"Cover page file not found: {cover_page_path}")
 
-    for p in final_paths:
+    for p in normalized_paths:
         if not os.path.exists(p):
             raise FileNotFoundError(f"Context page file not found: {p}")
 
@@ -455,20 +462,89 @@ def combine_docx_files(
         raise ValueError("output_directory is empty after normalization")
 
     os.makedirs(output_directory, exist_ok=True)
+
     if not filename:
         filename = "overall_report.docx"
     output_path = Path(output_directory) / filename
 
     master = Document(cover_page_path)
     composer = Composer(master)
-    for doc_path in final_paths:
+
+    for doc_path in normalized_paths:
         doc = Document(doc_path)
         composer.append(doc)
 
-    composer.save(output_path)
+    composer.save(str(output_path))
     return str(output_path)
 
 
 @task
 def round_off_values(value: float, dp: int) -> float:
     return round(value, dp)
+
+
+@task
+def get_split_group_names(
+    split_data: Annotated[
+        list[tuple[CompositeFilter, Any]],
+        Field(description="Output from split_groups: [(CompositeFilter, df), ...]"),
+    ],
+) -> list[str]:
+    """
+    Extract the first grouper value from each split group.
+
+    Example:
+        Input: [
+            ((('region', '=', 'Atlantida'), ('year', '=', '2024')), df1),
+            ((('region', '=', 'Yoro'),), df2),
+        ]
+        Output: ['Atlantida', 'Yoro']
+    """
+    names: list[str] = []
+    for composite_filter, _ in split_data:
+        if composite_filter:
+            # take the first filter tuple: (index_name, '=', value)
+            _, _, value = composite_filter[0]
+            names.append(str(value))
+        else:
+            names.append("Unknown")
+    return names
+
+
+@task
+def create_report_context_from_tuple(
+    grouper_type: str,
+    grouper_eq: str,
+    grouper_value: str,
+    total_patrols: Union[int, float],
+    total_distance: Union[int, float],
+    total_time: Union[int, float],
+    patrol_events_track_map: str,
+    patrol_time_density_map: str,
+    events_pie_chart: str,
+    events_time_series_bar_chart: str,
+    patrol_events: str,
+    event_efforts: str,
+    month_stats: str,
+    guardian_stats: str,
+) -> ReportContext:
+    """
+    Convert individual parameters into a ReportContext dataclass.
+    This is used to convert flattened tuples from the workflow into proper context objects.
+    """
+    return ReportContext(
+        grouper_type=grouper_type,
+        grouper_eq=grouper_eq,
+        grouper_value=grouper_value,
+        total_patrols=total_patrols,
+        total_distance=total_distance,
+        total_time=total_time,
+        patrol_events_track_map=patrol_events_track_map,
+        patrol_time_density_map=patrol_time_density_map,
+        events_pie_chart=events_pie_chart,
+        events_time_series_bar_chart=events_time_series_bar_chart,
+        patrol_events=patrol_events,
+        event_efforts=event_efforts,
+        month_stats=month_stats,
+        guardian_stats=guardian_stats,
+    )

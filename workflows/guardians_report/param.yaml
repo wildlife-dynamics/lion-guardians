@@ -7,7 +7,7 @@ time_range:
 
 er_client_name:
   data_source:
-    name: "lion_guardians" # Ecoscope
+    name: "lg" # Ecoscope
 
 groupers:
   groupers: []

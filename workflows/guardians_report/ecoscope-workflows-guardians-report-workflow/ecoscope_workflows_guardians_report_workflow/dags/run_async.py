@@ -38,7 +38,7 @@ from ecoscope_workflows_core.tasks.transformation import (
     sort_values,
     with_unit,
 )
-from ecoscope_workflows_ext_custom.tasks import html_to_png
+from ecoscope_workflows_ext_custom.tasks.io import html_to_png
 from ecoscope_workflows_ext_custom.tasks.results import (
     create_path_layer,
     create_scatterplot_layer,
@@ -71,7 +71,6 @@ from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     add_totals_row,
     clean_file_keys,
-    combine_docx_files,
     create_cover_context_page,
     create_geojson_layer,
     create_map_layers,
@@ -82,13 +81,17 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
     flatten_tuple,
     get_event_type_display_names_from_events_aliased,
     get_patrol_observations_from_patrols_dataframe_and_combined_params,
+    get_split_group_names,
     load_geospatial_files,
     make_text_layer,
+    merge_docx_files,
     merge_static_and_grouped_layers,
+    print_output,
     select_koi,
     set_custom_base_maps,
     view_state_deck_gdf,
     zip_grouped_by_key,
+    zip_lists,
 )
 
 from ..params import Params
@@ -119,11 +122,13 @@ def main(params: Params):
         "event_type_display_names": ["er_client_name", "patrol_events"],
         "convert_patrols_to_user_timezone": ["patrol_obs", "get_timezone"],
         "convert_events_to_user_timezone": ["event_type_display_names", "get_timezone"],
+        "persist_events_geoparquet": ["convert_events_to_user_timezone"],
         "set_patrol_traj_color_column": [],
         "patrol_reloc": ["convert_patrols_to_user_timezone"],
         "patrol_traj": ["patrol_reloc"],
         "traj_add_temporal_index": ["patrol_traj", "groupers"],
         "traj_rename_grouper_columns": ["traj_add_temporal_index"],
+        "persist_patrols_geoparquet": ["traj_rename_grouper_columns"],
         "traj_colormap": [
             "traj_rename_grouper_columns",
             "set_patrol_traj_color_column",
@@ -247,7 +252,14 @@ def main(params: Params):
         "zip_month_stats": ["zip_event_efforts", "persist_month_patrol_efforts"],
         "zip_guardian_stats": ["zip_month_stats", "persist_ranger_patrol_efforts"],
         "flatten_context": ["zip_guardian_stats"],
-        "individual_report_context": ["persist_indv_subject_page", "flatten_context"],
+        "get_grouper_names": ["split_patrol_traj_groups"],
+        "zip_grouper_with_context": ["get_grouper_names", "flatten_context"],
+        "flatten_final_report_context": ["zip_grouper_with_context"],
+        "print_output_value": ["flatten_final_report_context"],
+        "individual_report_context": [
+            "persist_indv_subject_page",
+            "flatten_final_report_context",
+        ],
         "generate_report": ["context_cover_page", "individual_report_context"],
         "patrol_dashboard": [
             "workflow_details",
@@ -271,6 +283,13 @@ def main(params: Params):
             .set_task_instance_id("workflow_details")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial=(params_dict.get("workflow_details") or {}),
             method="call",
@@ -280,9 +299,22 @@ def main(params: Params):
             .set_task_instance_id("time_range")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "time_format": "%d %b %Y %H:%M:%S %Z",
+                "timezone": {
+                    "label": "UTC",
+                    "tzCode": "UTC",
+                    "name": "UTC",
+                    "utc_offset": "+00:00",
+                },
             }
             | (params_dict.get("time_range") or {}),
             method="call",
@@ -292,6 +324,13 @@ def main(params: Params):
             .set_task_instance_id("get_timezone")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "time_range": DependsOn("time_range"),
@@ -304,6 +343,13 @@ def main(params: Params):
             .set_task_instance_id("groupers")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial=(params_dict.get("groupers") or {}),
             method="call",
@@ -313,6 +359,13 @@ def main(params: Params):
             .set_task_instance_id("er_client_name")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial=(params_dict.get("er_client_name") or {}),
             method="call",
@@ -322,6 +375,13 @@ def main(params: Params):
             .set_task_instance_id("base_map_defs")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial=(params_dict.get("base_map_defs") or {}),
             method="call",
@@ -331,6 +391,13 @@ def main(params: Params):
             .set_task_instance_id("persist_ambo_gpkg")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "url": "https://www.dropbox.com/scl/fi/phlc488gxqpcvr6ua3vk7/amboseli_group_ranch_boundaries.gpkg?rlkey=p5ztypwmj4ndjova9xe2ssiun&st=pknuicus&dl=0",
@@ -347,6 +414,13 @@ def main(params: Params):
             .set_task_instance_id("persist_cover_page")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "url": "https://www.dropbox.com/scl/fi/p1xk9no77w9ctpc4mnn6p/patrol_guardians_cover_page.docx?rlkey=tc5oo54s29wu7cz47glvlbcaj&st=9ivtf2k6&dl=0",
@@ -363,9 +437,16 @@ def main(params: Params):
             .set_task_instance_id("persist_indv_subject_page")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
-                "url": "https://www.dropbox.com/scl/fi/5v48ioquh9hzqd3em3h25/individual_patrol_template.docx?rlkey=bn7sqiu6sk7a879poed2d9bzc&st=hs1ph1d6&dl=0",
+                "url": "https://www.dropbox.com/scl/fi/kp9mkc9dd5qbast86ufk4/custom_patrol_template.docx?rlkey=ea12bxesuu9dnnj1ngfahhqvr&st=ri5og7k8&dl=0",
                 "output_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "overwrite_existing": False,
                 "retries": 3,
@@ -379,6 +460,13 @@ def main(params: Params):
             .set_task_instance_id("load_local_shapefiles")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "config": {
@@ -393,6 +481,13 @@ def main(params: Params):
             .set_task_instance_id("clean_local_geo_files")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "file_dict": DependsOn("load_local_shapefiles"),
@@ -405,6 +500,13 @@ def main(params: Params):
             .set_task_instance_id("create_custom_map_layers")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "file_dict": DependsOn("load_local_shapefiles"),
@@ -414,9 +516,9 @@ def main(params: Params):
                             "stroked": True,
                             "filled": False,
                             "get_elevation": 50,
-                            "opacity": 0.55,
+                            "opacity": 0.75,
                             "get_line_color": [105, 105, 105, 200],
-                            "get_line_width": 3.5,
+                            "get_line_width": 3.75,
                         }
                     },
                     "legend": {
@@ -433,6 +535,13 @@ def main(params: Params):
             .set_task_instance_id("filter_aoi")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "file_dict": DependsOn("clean_local_geo_files"),
@@ -446,6 +555,13 @@ def main(params: Params):
             .set_task_instance_id("custom_text_layer")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "txt_gdf": DependsOn("filter_aoi"),
@@ -453,7 +569,7 @@ def main(params: Params):
                 "fallback_columns": ["name", "title"],
                 "use_centroid": True,
                 "color": [0, 0, 0, 255],
-                "size": 75,
+                "size": 70,
                 "font_family": "Calibri",
                 "font_weight": "bold",
                 "background": False,
@@ -474,6 +590,13 @@ def main(params: Params):
             .set_task_instance_id("er_patrol_and_events_params")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "client": DependsOn("er_client_name"),
@@ -491,6 +614,13 @@ def main(params: Params):
             .set_task_instance_id("prefetch_patrols")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "combined_params": DependsOn("er_patrol_and_events_params"),
@@ -503,6 +633,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_obs")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "patrols_df": DependsOn("prefetch_patrols"),
@@ -516,6 +653,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_events")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "patrols_df": DependsOn("prefetch_patrols"),
@@ -529,6 +673,13 @@ def main(params: Params):
             .set_task_instance_id("event_type_display_names")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "client": DependsOn("er_client_name"),
@@ -543,6 +694,13 @@ def main(params: Params):
             .set_task_instance_id("convert_patrols_to_user_timezone")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("patrol_obs"),
@@ -557,6 +715,13 @@ def main(params: Params):
             .set_task_instance_id("convert_events_to_user_timezone")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("event_type_display_names"),
@@ -566,11 +731,40 @@ def main(params: Params):
             | (params_dict.get("convert_events_to_user_timezone") or {}),
             method="call",
         ),
+        "persist_events_geoparquet": Node(
+            async_task=persist_df.validate()
+            .set_task_instance_id("persist_events_geoparquet")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "filetype": "geoparquet",
+                "df": DependsOn("convert_events_to_user_timezone"),
+                "filename": "events",
+            }
+            | (params_dict.get("persist_events_geoparquet") or {}),
+            method="call",
+        ),
         "set_patrol_traj_color_column": Node(
             async_task=set_string_var.validate()
             .set_task_instance_id("set_patrol_traj_color_column")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial=(params_dict.get("set_patrol_traj_color_column") or {}),
             method="call",
@@ -580,6 +774,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_reloc")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "observations": DependsOn("convert_patrols_to_user_timezone"),
@@ -612,6 +813,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_traj")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "relocations": DependsOn("patrol_reloc"),
@@ -624,6 +832,13 @@ def main(params: Params):
             .set_task_instance_id("traj_add_temporal_index")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("patrol_traj"),
@@ -640,6 +855,13 @@ def main(params: Params):
             .set_task_instance_id("traj_rename_grouper_columns")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("traj_add_temporal_index"),
@@ -655,11 +877,40 @@ def main(params: Params):
             | (params_dict.get("traj_rename_grouper_columns") or {}),
             method="call",
         ),
+        "persist_patrols_geoparquet": Node(
+            async_task=persist_df.validate()
+            .set_task_instance_id("persist_patrols_geoparquet")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "filetype": "geoparquet",
+                "df": DependsOn("traj_rename_grouper_columns"),
+                "filename": "trajectories",
+            }
+            | (params_dict.get("persist_patrols_geoparquet") or {}),
+            method="call",
+        ),
         "traj_colormap": Node(
             async_task=apply_color_map.validate()
             .set_task_instance_id("traj_colormap")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("traj_rename_grouper_columns"),
@@ -675,6 +926,13 @@ def main(params: Params):
             .set_task_instance_id("filter_patrol_events")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("convert_events_to_user_timezone"),
@@ -689,6 +947,13 @@ def main(params: Params):
             .set_task_instance_id("pe_add_temporal_index")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("filter_patrol_events"),
@@ -705,6 +970,13 @@ def main(params: Params):
             .set_task_instance_id("pe_colormap")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("pe_add_temporal_index"),
@@ -720,6 +992,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_traj_cols_to_string")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("traj_colormap"),
@@ -733,6 +1012,13 @@ def main(params: Params):
             .set_task_instance_id("pe_cols_to_string")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("pe_colormap"),
@@ -746,6 +1032,13 @@ def main(params: Params):
             .set_task_instance_id("set_traj_pe_map_title")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "var": "Trajectories & Patrol Events Map",
@@ -758,6 +1051,13 @@ def main(params: Params):
             .set_task_instance_id("set_ltd_map_title")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "var": "Time Density Map",
@@ -770,6 +1070,13 @@ def main(params: Params):
             .set_task_instance_id("set_bar_chart_title")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "var": "Patrol Events Bar Chart",
@@ -782,6 +1089,13 @@ def main(params: Params):
             .set_task_instance_id("set_pie_chart_title")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "var": "Patrol Events Pie Chart",
@@ -794,6 +1108,13 @@ def main(params: Params):
             .set_task_instance_id("split_patrol_traj_groups")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("patrol_traj_cols_to_string"),
@@ -807,6 +1128,13 @@ def main(params: Params):
             .set_task_instance_id("split_pe_groups")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "df": DependsOn("pe_cols_to_string"),
@@ -820,6 +1148,13 @@ def main(params: Params):
             .set_task_instance_id("pe_rename_display_columns")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "drop_columns": [],
@@ -873,6 +1208,13 @@ def main(params: Params):
             .set_task_instance_id("speed_val_with_unit")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "input_column_name": "speed_kmhr",
@@ -893,6 +1235,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_traj_rename_columns")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "drop_columns": [],
@@ -980,6 +1329,13 @@ def main(params: Params):
             .set_task_instance_id("merge_static_grouped_layers")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "static_layers": DependsOnSequence(
@@ -1001,6 +1357,13 @@ def main(params: Params):
             .set_task_instance_id("zoom_view_state")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "pitch": 0,
@@ -1018,6 +1381,13 @@ def main(params: Params):
             .set_task_instance_id("zip_layers_view")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "left": DependsOn("merge_static_grouped_layers"),
@@ -1031,6 +1401,13 @@ def main(params: Params):
             .set_task_instance_id("traj_patrol_events_ecomap")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "tile_layers": DependsOn("base_map_defs"),
@@ -1055,6 +1432,13 @@ def main(params: Params):
             .set_task_instance_id("traj_pe_ecomap_html_urls")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -1094,6 +1478,13 @@ def main(params: Params):
             .set_task_instance_id("traj_pe_grouped_map_widget")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "widgets": DependsOn("traj_pe_map_widgets_single_views"),
@@ -1106,6 +1497,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_html_png")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -1123,6 +1521,13 @@ def main(params: Params):
             .set_task_instance_id("total_patrols")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "column_name": "extra__patrol_id",
@@ -1162,6 +1567,13 @@ def main(params: Params):
             .set_task_instance_id("total_patrols_grouped_sv_widget")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "widgets": DependsOn("total_patrols_sv_widgets"),
@@ -1174,6 +1586,13 @@ def main(params: Params):
             .set_task_instance_id("total_patrol_time")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "column_name": "timespan_seconds",
@@ -1190,6 +1609,13 @@ def main(params: Params):
             .set_task_instance_id("total_patrol_time_converted")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "original_unit": "s",
@@ -1230,6 +1656,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_time_grouped_widget")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "widgets": DependsOn("total_patrol_time_sv_widgets"),
@@ -1242,6 +1675,13 @@ def main(params: Params):
             .set_task_instance_id("total_patrol_dist")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "column_name": "dist_meters",
@@ -1258,6 +1698,13 @@ def main(params: Params):
             .set_task_instance_id("total_patrol_dist_converted")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "original_unit": "m",
@@ -1298,6 +1745,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_dist_grouped_widget")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "widgets": DependsOn("total_patrol_dist_sv_widgets"),
@@ -1310,6 +1764,13 @@ def main(params: Params):
             .set_task_instance_id("avg_speed")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "column_name": "speed_kmhr",
@@ -1326,6 +1787,13 @@ def main(params: Params):
             .set_task_instance_id("average_speed_converted")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "original_unit": "km/h",
@@ -1366,6 +1834,13 @@ def main(params: Params):
             .set_task_instance_id("avg_speed_grouped_widget")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "widgets": DependsOn("avg_speed_sv_widgets"),
@@ -1378,6 +1853,13 @@ def main(params: Params):
             .set_task_instance_id("max_speed")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "column_name": "speed_kmhr",
@@ -1394,6 +1876,13 @@ def main(params: Params):
             .set_task_instance_id("max_speed_converted")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "original_unit": "km/h",
@@ -1434,6 +1923,13 @@ def main(params: Params):
             .set_task_instance_id("max_speed_grouped_widget")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "widgets": DependsOn("max_speed_sv_widgets"),
@@ -1446,6 +1942,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_events_bar_chart")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "x_axis": "time",
@@ -1469,6 +1972,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_events_bar_chart_html_url")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -1508,6 +2018,13 @@ def main(params: Params):
             .set_task_instance_id("grouped_bar_plot_widget_merge")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "widgets": DependsOn("patrol_events_bar_chart_widget"),
@@ -1520,6 +2037,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_bar_chart_png")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -1537,6 +2061,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_events_pie_chart")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "value_column": "event_type_display",
@@ -1558,6 +2089,13 @@ def main(params: Params):
             .set_task_instance_id("pe_pie_chart_html_urls")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -1597,6 +2135,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_events_pie_widget_grouped")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "widgets": DependsOn("patrol_events_pie_chart_widgets"),
@@ -1609,6 +2154,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_pie_chart_png")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -1626,6 +2178,13 @@ def main(params: Params):
             .set_task_instance_id("ltd_meshgrid")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "aoi": DependsOn("patrol_traj_cols_to_string"),
@@ -1639,6 +2198,13 @@ def main(params: Params):
             .set_task_instance_id("ltd")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "meshgrid": DependsOn("ltd_meshgrid"),
@@ -1656,6 +2222,13 @@ def main(params: Params):
             .set_task_instance_id("drop_nan_percentiles")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "column_name": "percentile",
@@ -1672,6 +2245,13 @@ def main(params: Params):
             .set_task_instance_id("sort_percentile_values")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "column_name": "percentile",
@@ -1690,6 +2270,13 @@ def main(params: Params):
             .set_task_instance_id("percentile_col_to_string")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "columns": ["percentile"],
@@ -1706,6 +2293,13 @@ def main(params: Params):
             .set_task_instance_id("td_colormap")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "input_column_name": "percentile",
@@ -1724,6 +2318,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_td_rename_columns")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "drop_columns": [],
@@ -1775,6 +2376,13 @@ def main(params: Params):
             .set_task_instance_id("merged_time_density_layers")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "static_layers": DependsOnSequence(
@@ -1796,6 +2404,13 @@ def main(params: Params):
             .set_task_instance_id("zip_time_density_view")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "left": DependsOn("merged_time_density_layers"),
@@ -1809,6 +2424,13 @@ def main(params: Params):
             .set_task_instance_id("td_ecomap")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "tile_layers": DependsOn("base_map_defs"),
@@ -1830,6 +2452,13 @@ def main(params: Params):
             .set_task_instance_id("td_ecomap_html_url")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -1869,6 +2498,13 @@ def main(params: Params):
             .set_task_instance_id("td_grouped_map_widget")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "widgets": DependsOn("td_map_widget"),
@@ -1881,6 +2517,13 @@ def main(params: Params):
             .set_task_instance_id("td_html_png")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -1898,6 +2541,13 @@ def main(params: Params):
             .set_task_instance_id("summarize_ranger_patrol")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "groupby_cols": ["patrol_subject"],
@@ -1922,16 +2572,6 @@ def main(params: Params):
                         "original_unit": "s",
                         "new_unit": "h",
                     },
-                    {
-                        "display_name": "min_speed",
-                        "aggregator": "min",
-                        "column": "speed_kmhr",
-                    },
-                    {
-                        "display_name": "max_speed",
-                        "aggregator": "max",
-                        "column": "speed_kmhr",
-                    },
                 ],
             }
             | (params_dict.get("summarize_ranger_patrol") or {}),
@@ -1946,6 +2586,13 @@ def main(params: Params):
             .set_task_instance_id("persist_ranger_patrol_efforts")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -1963,6 +2610,13 @@ def main(params: Params):
             .set_task_instance_id("summarized_patrol_types")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "groupby_cols": ["patrol_type"],
@@ -1987,16 +2641,6 @@ def main(params: Params):
                         "original_unit": "s",
                         "new_unit": "h",
                     },
-                    {
-                        "display_name": "min_speed",
-                        "aggregator": "min",
-                        "column": "speed_kmhr",
-                    },
-                    {
-                        "display_name": "max_speed",
-                        "aggregator": "max",
-                        "column": "speed_kmhr",
-                    },
                 ],
             }
             | (params_dict.get("summarized_patrol_types") or {}),
@@ -2011,6 +2655,13 @@ def main(params: Params):
             .set_task_instance_id("add_total_patrol_summary")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "label_col": "patrol_type",
@@ -2028,6 +2679,13 @@ def main(params: Params):
             .set_task_instance_id("persist_patrol_types")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -2045,6 +2703,13 @@ def main(params: Params):
             .set_task_instance_id("summarize_guardian_events")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "groupby_cols": ["patrol_subject"],
@@ -2069,6 +2734,13 @@ def main(params: Params):
             .set_task_instance_id("persist_gua_patrol_efforts")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -2086,6 +2758,13 @@ def main(params: Params):
             .set_task_instance_id("summarized_event_types")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "groupby_cols": ["event_type"],
@@ -2110,6 +2789,13 @@ def main(params: Params):
             .set_task_instance_id("persist_event_tefforts")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -2127,6 +2813,13 @@ def main(params: Params):
             .set_task_instance_id("add_month_name")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "date_column": "extra__patrol_start_time",
@@ -2144,6 +2837,13 @@ def main(params: Params):
             .set_task_instance_id("summarize_month_patrol")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "groupby_cols": ["month_name"],
@@ -2168,16 +2868,6 @@ def main(params: Params):
                         "original_unit": "s",
                         "new_unit": "h",
                     },
-                    {
-                        "display_name": "min_speed",
-                        "aggregator": "min",
-                        "column": "speed_kmhr",
-                    },
-                    {
-                        "display_name": "max_speed",
-                        "aggregator": "max",
-                        "column": "speed_kmhr",
-                    },
                 ],
             }
             | (params_dict.get("summarize_month_patrol") or {}),
@@ -2192,6 +2882,13 @@ def main(params: Params):
             .set_task_instance_id("persist_month_patrol_efforts")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
@@ -2209,6 +2906,13 @@ def main(params: Params):
             .set_task_instance_id("context_cover_page")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "report_period": DependsOn("time_range"),
@@ -2225,6 +2929,13 @@ def main(params: Params):
             .set_task_instance_id("zip_pte_petmp")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "left": DependsOn("persist_patrol_types"),
@@ -2238,6 +2949,13 @@ def main(params: Params):
             .set_task_instance_id("zip_patrol_density_map")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "left": DependsOn("zip_pte_petmp"),
@@ -2251,6 +2969,13 @@ def main(params: Params):
             .set_task_instance_id("zip_events_pie_chart")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "left": DependsOn("zip_patrol_density_map"),
@@ -2264,6 +2989,13 @@ def main(params: Params):
             .set_task_instance_id("zip_events_time_series")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "left": DependsOn("zip_events_pie_chart"),
@@ -2277,6 +3009,13 @@ def main(params: Params):
             .set_task_instance_id("zip_patrol_events")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "left": DependsOn("zip_events_time_series"),
@@ -2290,6 +3029,13 @@ def main(params: Params):
             .set_task_instance_id("zip_event_efforts")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "left": DependsOn("zip_patrol_events"),
@@ -2303,6 +3049,13 @@ def main(params: Params):
             .set_task_instance_id("zip_month_stats")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "left": DependsOn("zip_event_efforts"),
@@ -2316,6 +3069,13 @@ def main(params: Params):
             .set_task_instance_id("zip_guardian_stats")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "left": DependsOn("zip_month_stats"),
@@ -2329,6 +3089,13 @@ def main(params: Params):
             .set_task_instance_id("flatten_context")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial=(params_dict.get("flatten_context") or {}),
             method="mapvalues",
@@ -2337,14 +3104,101 @@ def main(params: Params):
                 "argvalues": DependsOn("zip_guardian_stats"),
             },
         ),
+        "get_grouper_names": Node(
+            async_task=get_split_group_names.validate()
+            .set_task_instance_id("get_grouper_names")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "split_data": DependsOn("split_patrol_traj_groups"),
+            }
+            | (params_dict.get("get_grouper_names") or {}),
+            method="call",
+        ),
+        "zip_grouper_with_context": Node(
+            async_task=zip_lists.validate()
+            .set_task_instance_id("zip_grouper_with_context")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "left": DependsOn("get_grouper_names"),
+                "right": DependsOn("flatten_context"),
+            }
+            | (params_dict.get("zip_grouper_with_context") or {}),
+            method="call",
+        ),
+        "flatten_final_report_context": Node(
+            async_task=flatten_tuple.validate()
+            .set_task_instance_id("flatten_final_report_context")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial=(params_dict.get("flatten_final_report_context") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["nested"],
+                "argvalues": DependsOn("zip_grouper_with_context"),
+            },
+        ),
+        "print_output_value": Node(
+            async_task=print_output.validate()
+            .set_task_instance_id("print_output_value")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial=(params_dict.get("print_output_value") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["value"],
+                "argvalues": DependsOn("flatten_final_report_context"),
+            },
+        ),
         "individual_report_context": Node(
             async_task=create_report_context.validate()
             .set_task_instance_id("individual_report_context")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "filename": None,
+                "validate_images": True,
                 "box_h_cm": 9.0,
                 "box_w_cm": 15.0,
                 "template_path": DependsOn("persist_indv_subject_page"),
@@ -2354,6 +3208,9 @@ def main(params: Params):
             method="mapvalues",
             kwargs={
                 "argnames": [
+                    "grouper_type",
+                    "grouper_eq",
+                    "grouper_value",
                     "patrol_type_effort_path",
                     "patrol_events_track_map",
                     "patrol_time_density_map",
@@ -2364,14 +3221,21 @@ def main(params: Params):
                     "month_stats",
                     "guardian_stats",
                 ],
-                "argvalues": DependsOn("flatten_context"),
+                "argvalues": DependsOn("flatten_final_report_context"),
             },
         ),
         "generate_report": Node(
-            async_task=combine_docx_files.validate()
+            async_task=merge_docx_files.validate()
             .set_task_instance_id("generate_report")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "cover_page_path": DependsOn("context_cover_page"),
@@ -2387,6 +3251,13 @@ def main(params: Params):
             .set_task_instance_id("patrol_dashboard")
             .handle_errors()
             .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
             .set_executor("lithops"),
             partial={
                 "details": DependsOn("workflow_details"),

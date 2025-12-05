@@ -18,6 +18,14 @@ class WorkflowDetails(BaseModel):
     description: Optional[str] = Field("", title="Workflow Description")
 
 
+class TimeRange(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    since: datetime = Field(..., description="The start time", title="Since")
+    until: datetime = Field(..., description="The end time", title="Until")
+
+
 class Url(str, Enum):
     https___tile_openstreetmap_org__z___x___y__png = (
         "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -239,20 +247,6 @@ class PatrolEventsBarChart(BaseModel):
     time_interval: TimeInterval = Field(..., title="Time Interval")
 
 
-class IndividualReportContext(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    validate_images: Optional[bool] = Field(True, title="Validate Images")
-
-
-class TimezoneInfo(BaseModel):
-    label: str = Field(..., title="Label")
-    tzCode: str = Field(..., title="Tzcode")
-    name: str = Field(..., title="Name")
-    utc: str = Field(..., title="Utc")
-
-
 class TemporalGrouper(RootModel[str]):
     root: str = Field(..., title="Time")
 
@@ -321,15 +315,6 @@ class CustomGridCellSize(BaseModel):
         description="Define the resolution of the raster grid (in the unit of measurement defined by the coordinate reference system set below). A smaller grid cell size provides more detail, while a larger size generalizes the data.",
         title="Custom Grid Cell Size",
     )
-
-
-class TimeRange(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    since: datetime = Field(..., description="The start time", title="Since")
-    until: datetime = Field(..., description="The end time", title="Until")
-    timezone: Optional[TimezoneInfo] = Field(None, title="Timezone")
 
 
 class Groupers(BaseModel):
@@ -429,6 +414,3 @@ class Params(BaseModel):
     filter_patrol_events: Optional[FilterPatrolEvents] = Field(None, title="")
     patrol_events_bar_chart: Optional[PatrolEventsBarChart] = Field(None, title="")
     ltd_meshgrid: Optional[LtdMeshgrid] = Field(None, title="")
-    individual_report_context: Optional[IndividualReportContext] = Field(
-        None, title="Create individual report context"
-    )
