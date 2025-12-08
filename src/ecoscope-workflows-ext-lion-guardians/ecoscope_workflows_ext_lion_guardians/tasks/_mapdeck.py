@@ -583,6 +583,95 @@ def create_map_layers(file_dict: Dict[str, AnyGeoDataFrame], style_config: MapSt
     return layers
 
 
+def _custom_legend_values(style_cfg: dict) -> dict:
+    """Build legend values from style configuration dictionary."""
+    # Access legend as dictionary key instead of attribute
+    legend_config = style_cfg.get("legend", {})
+    if not legend_config:
+        return None
+
+    labels = legend_config.get("label", [])
+    colors = legend_config.get("color", [])
+
+    if not labels or not colors:
+        return None
+
+    return {"labels": labels, "colors": colors}
+
+
+@task
+def create_styled_layers_from_gdf(
+    gdf: AnyGeoDataFrame, style_config: dict, filename: str = None
+) -> List[LayerDefinition]:
+    layers: List[LayerDefinition] = []
+
+    # Remove invalid geometries
+    gdf = remove_invalid_geometries(gdf)
+
+    # Detect geometry type
+    geom_analysis = detect_geometry_type(gdf=gdf)
+    gdf_geom_type = geom_analysis["primary_type"]
+    gdf_counts = geom_analysis.get("counts", {})
+
+    # Canonicalize geometry type
+    canonical = {
+        "MultiPolygon": "Polygon",
+        "MultiPoint": "Point",
+        "MultiLineString": "LineString",
+    }.get(gdf_geom_type, gdf_geom_type)
+
+    # Get style parameters directly from style_config
+    style_params = style_config.get("styles", {})
+    if not style_params:
+        logger.debug("No style defined for %s – skipping", filename or canonical)
+        return []
+
+    # Build legend if available
+    legend = None
+    if "legend" in style_config and style_config["legend"]:
+        legend = _custom_legend_values(style_config)
+
+    # Create appropriate layer based on geometry type
+    try:
+        if canonical == "Polygon":
+            layer = create_geojson_layer(
+                geodataframe=gdf,
+                layer_style=GeoJsonLayerStyle(**style_params),
+                legend=legend,
+            )
+            if layer is not None:
+                layers.append(layer)
+
+        elif canonical == "Point":
+            layer = create_scatterplot_layer(
+                geodataframe=gdf,
+                layer_style=ScatterplotLayerStyle(**style_params),
+                legend=legend,
+            )
+            if layer is not None:
+                layers.append(layer)
+
+        elif canonical == "LineString":
+            layer = create_path_layer(
+                geodataframe=gdf,
+                layer_style=PathLayerStyle(**style_params),
+                legend=legend,
+            )
+            if layer is not None:
+                layers.append(layer)
+        else:
+            # Handle other geometry types
+            logger.info("%s geometry type: %s counts: %s", filename, gdf_geom_type, gdf_counts)
+            layer = custom_deckgl_layer(filename, gdf, style_config, gdf_geom_type)
+            if layer is not None:
+                layers.append(layer)
+
+    except Exception as e:
+        logger.error("Error creating layer for %s: %s", filename or canonical, str(e))
+
+    return layers
+
+
 @task
 def make_text_layer(
     txt_gdf: Annotated[

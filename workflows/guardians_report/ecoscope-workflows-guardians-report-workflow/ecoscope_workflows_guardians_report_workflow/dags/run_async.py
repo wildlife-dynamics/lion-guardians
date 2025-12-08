@@ -38,7 +38,7 @@ from ecoscope_workflows_core.tasks.transformation import (
     sort_values,
     with_unit,
 )
-from ecoscope_workflows_ext_custom.tasks.io import html_to_png
+from ecoscope_workflows_ext_custom.tasks.io import html_to_png, load_df
 from ecoscope_workflows_ext_custom.tasks.results import (
     create_path_layer,
     create_scatterplot_layer,
@@ -70,11 +70,10 @@ from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     add_totals_row,
-    clean_file_keys,
     create_cover_context_page,
     create_geojson_layer,
-    create_map_layers,
     create_report_context,
+    create_styled_layers_from_gdf,
     download_file_and_persist,
     draw_custom_map,
     extract_date_parts,
@@ -82,15 +81,12 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
     get_event_type_display_names_from_events_aliased,
     get_patrol_observations_from_patrols_dataframe_and_combined_params,
     get_split_group_names,
-    load_geospatial_files,
     make_text_layer,
     merge_docx_files,
     merge_static_and_grouped_layers,
     print_output,
-    select_koi,
     set_custom_base_maps,
     view_state_deck_gdf,
-    zip_grouped_by_key,
     zip_lists,
 )
 
@@ -110,11 +106,9 @@ def main(params: Params):
         "persist_ambo_gpkg": [],
         "persist_cover_page": [],
         "persist_indv_subject_page": [],
-        "load_local_shapefiles": [],
-        "clean_local_geo_files": ["load_local_shapefiles"],
+        "load_local_shapefiles": ["persist_ambo_gpkg"],
         "create_custom_map_layers": ["load_local_shapefiles"],
-        "filter_aoi": ["clean_local_geo_files"],
-        "custom_text_layer": ["filter_aoi"],
+        "custom_text_layer": ["load_local_shapefiles"],
         "er_patrol_and_events_params": ["er_client_name", "time_range"],
         "prefetch_patrols": ["er_patrol_and_events_params"],
         "patrol_obs": ["prefetch_patrols", "er_patrol_and_events_params"],
@@ -161,13 +155,13 @@ def main(params: Params):
             "custom_text_layer",
             "combined_traj_and_pe_map_layers",
         ],
-        "zoom_view_state": ["patrol_traj_rename_columns"],
-        "zip_layers_view": ["merge_static_grouped_layers", "zoom_view_state"],
+        "zoom_view_state": ["load_local_shapefiles"],
         "traj_patrol_events_ecomap": [
             "base_map_defs",
             "set_patrol_traj_color_column",
             "set_traj_pe_map_title",
-            "zip_layers_view",
+            "zoom_view_state",
+            "merge_static_grouped_layers",
         ],
         "traj_pe_ecomap_html_urls": ["traj_patrol_events_ecomap"],
         "traj_pe_map_widgets_single_views": [
@@ -224,8 +218,12 @@ def main(params: Params):
             "custom_text_layer",
             "td_map_layer",
         ],
-        "zip_time_density_view": ["merged_time_density_layers", "zoom_view_state"],
-        "td_ecomap": ["base_map_defs", "set_ltd_map_title", "zip_time_density_view"],
+        "td_ecomap": [
+            "base_map_defs",
+            "set_ltd_map_title",
+            "zoom_view_state",
+            "merged_time_density_layers",
+        ],
         "td_ecomap_html_url": ["td_ecomap"],
         "td_map_widget": ["set_ltd_map_title", "td_ecomap_html_url"],
         "td_grouped_map_widget": ["td_map_widget"],
@@ -243,19 +241,22 @@ def main(params: Params):
         "summarize_month_patrol": ["add_month_name"],
         "persist_month_patrol_efforts": ["summarize_month_patrol"],
         "context_cover_page": ["time_range", "persist_cover_page"],
-        "zip_pte_petmp": ["persist_patrol_types", "patrol_html_png"],
-        "zip_patrol_density_map": ["zip_pte_petmp", "td_html_png"],
-        "zip_events_pie_chart": ["zip_patrol_density_map", "patrol_pie_chart_png"],
-        "zip_events_time_series": ["zip_events_pie_chart", "patrol_bar_chart_png"],
-        "zip_patrol_events": ["zip_events_time_series", "persist_gua_patrol_efforts"],
-        "zip_event_efforts": ["zip_patrol_events", "persist_event_tefforts"],
-        "zip_month_stats": ["zip_event_efforts", "persist_month_patrol_efforts"],
-        "zip_guardian_stats": ["zip_month_stats", "persist_ranger_patrol_efforts"],
-        "flatten_context": ["zip_guardian_stats"],
+        "report_context": [
+            "persist_patrol_types",
+            "patrol_html_png",
+            "td_html_png",
+            "patrol_pie_chart_png",
+            "patrol_bar_chart_png",
+            "persist_gua_patrol_efforts",
+            "persist_event_tefforts",
+            "persist_month_patrol_efforts",
+            "persist_ranger_patrol_efforts",
+        ],
+        "print_report_ctx": ["report_context"],
+        "flatten_context": ["report_context"],
         "get_grouper_names": ["split_patrol_traj_groups"],
         "zip_grouper_with_context": ["get_grouper_names", "flatten_context"],
         "flatten_final_report_context": ["zip_grouper_with_context"],
-        "print_output_value": ["flatten_final_report_context"],
         "individual_report_context": [
             "persist_indv_subject_page",
             "flatten_final_report_context",
@@ -456,7 +457,7 @@ def main(params: Params):
             method="call",
         ),
         "load_local_shapefiles": Node(
-            async_task=load_geospatial_files.validate()
+            async_task=load_df.validate()
             .set_task_instance_id("load_local_shapefiles")
             .handle_errors()
             .with_tracing()
@@ -469,34 +470,15 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "config": {
-                    "path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                },
+                "file_path": DependsOn("persist_ambo_gpkg"),
+                "layer": None,
+                "deserialize_json": False,
             }
             | (params_dict.get("load_local_shapefiles") or {}),
             method="call",
         ),
-        "clean_local_geo_files": Node(
-            async_task=clean_file_keys.validate()
-            .set_task_instance_id("clean_local_geo_files")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "file_dict": DependsOn("load_local_shapefiles"),
-            }
-            | (params_dict.get("clean_local_geo_files") or {}),
-            method="call",
-        ),
         "create_custom_map_layers": Node(
-            async_task=create_map_layers.validate()
+            async_task=create_styled_layers_from_gdf.validate()
             .set_task_instance_id("create_custom_map_layers")
             .handle_errors()
             .with_tracing()
@@ -509,17 +491,16 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "file_dict": DependsOn("load_local_shapefiles"),
+                "gdf": DependsOn("load_local_shapefiles"),
+                "filename": "amboseli_group_ranch_boundaries",
                 "style_config": {
                     "styles": {
-                        "amboseli_group_ranch_boundaries": {
-                            "stroked": True,
-                            "filled": False,
-                            "get_elevation": 50,
-                            "opacity": 0.75,
-                            "get_line_color": [105, 105, 105, 200],
-                            "get_line_width": 3.75,
-                        }
+                        "stroked": True,
+                        "filled": False,
+                        "get_elevation": 50,
+                        "opacity": 0.75,
+                        "get_line_color": [105, 105, 105, 200],
+                        "get_line_width": 3.75,
                     },
                     "legend": {
                         "label": ["Group ranch boundaries"],
@@ -528,26 +509,6 @@ def main(params: Params):
                 },
             }
             | (params_dict.get("create_custom_map_layers") or {}),
-            method="call",
-        ),
-        "filter_aoi": Node(
-            async_task=select_koi.validate()
-            .set_task_instance_id("filter_aoi")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "file_dict": DependsOn("clean_local_geo_files"),
-                "key_value": "amboseli_group_ranch_boundaries",
-            }
-            | (params_dict.get("filter_aoi") or {}),
             method="call",
         ),
         "custom_text_layer": Node(
@@ -564,12 +525,12 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "txt_gdf": DependsOn("filter_aoi"),
+                "txt_gdf": DependsOn("load_local_shapefiles"),
                 "label_column": "R_NAME",
                 "fallback_columns": ["name", "title"],
                 "use_centroid": True,
                 "color": [0, 0, 0, 255],
-                "size": 70,
+                "size": 65,
                 "font_family": "Calibri",
                 "font_weight": "bold",
                 "background": False,
@@ -1368,32 +1329,9 @@ def main(params: Params):
             partial={
                 "pitch": 0,
                 "bearing": 0,
+                "gdf": DependsOn("load_local_shapefiles"),
             }
             | (params_dict.get("zoom_view_state") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["gdf"],
-                "argvalues": DependsOn("patrol_traj_rename_columns"),
-            },
-        ),
-        "zip_layers_view": Node(
-            async_task=zip_grouped_by_key.validate()
-            .set_task_instance_id("zip_layers_view")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "left": DependsOn("merge_static_grouped_layers"),
-                "right": DependsOn("zoom_view_state"),
-            }
-            | (params_dict.get("zip_layers_view") or {}),
             method="call",
         ),
         "traj_patrol_events_ecomap": Node(
@@ -1419,12 +1357,13 @@ def main(params: Params):
                 "title": None,
                 "max_zoom": 15,
                 "widget_id": DependsOn("set_traj_pe_map_title"),
+                "view_state": DependsOn("zoom_view_state"),
             }
             | (params_dict.get("traj_patrol_events_ecomap") or {}),
             method="mapvalues",
             kwargs={
-                "argnames": ["geo_layers", "view_state"],
-                "argvalues": DependsOn("zip_layers_view"),
+                "argnames": ["geo_layers"],
+                "argvalues": DependsOn("merge_static_grouped_layers"),
             },
         ),
         "traj_pe_ecomap_html_urls": Node(
@@ -2399,26 +2338,6 @@ def main(params: Params):
                 "argvalues": DependsOn("td_map_layer"),
             },
         ),
-        "zip_time_density_view": Node(
-            async_task=zip_grouped_by_key.validate()
-            .set_task_instance_id("zip_time_density_view")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "left": DependsOn("merged_time_density_layers"),
-                "right": DependsOn("zoom_view_state"),
-            }
-            | (params_dict.get("zip_time_density_view") or {}),
-            method="call",
-        ),
         "td_ecomap": Node(
             async_task=draw_custom_map.validate()
             .set_task_instance_id("td_ecomap")
@@ -2439,12 +2358,13 @@ def main(params: Params):
                 "title": None,
                 "max_zoom": 15,
                 "widget_id": DependsOn("set_ltd_map_title"),
+                "view_state": DependsOn("zoom_view_state"),
             }
             | (params_dict.get("td_ecomap") or {}),
             method="mapvalues",
             kwargs={
-                "argnames": ["geo_layers", "view_state"],
-                "argvalues": DependsOn("zip_time_density_view"),
+                "argnames": ["geo_layers"],
+                "argvalues": DependsOn("merged_time_density_layers"),
             },
         ),
         "td_ecomap_html_url": Node(
@@ -2924,29 +2844,39 @@ def main(params: Params):
             | (params_dict.get("context_cover_page") or {}),
             method="call",
         ),
-        "zip_pte_petmp": Node(
-            async_task=zip_grouped_by_key.validate()
-            .set_task_instance_id("zip_pte_petmp")
+        "report_context": Node(
+            async_task=groupbykey.validate()
+            .set_task_instance_id("report_context")
             .handle_errors()
             .with_tracing()
             .skipif(
                 conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
+                    all_keyed_iterables_are_skips,
                 ],
                 unpack_depth=1,
             )
             .set_executor("lithops"),
             partial={
-                "left": DependsOn("persist_patrol_types"),
-                "right": DependsOn("patrol_html_png"),
+                "iterables": DependsOnSequence(
+                    [
+                        DependsOn("persist_patrol_types"),
+                        DependsOn("patrol_html_png"),
+                        DependsOn("td_html_png"),
+                        DependsOn("patrol_pie_chart_png"),
+                        DependsOn("patrol_bar_chart_png"),
+                        DependsOn("persist_gua_patrol_efforts"),
+                        DependsOn("persist_event_tefforts"),
+                        DependsOn("persist_month_patrol_efforts"),
+                        DependsOn("persist_ranger_patrol_efforts"),
+                    ],
+                ),
             }
-            | (params_dict.get("zip_pte_petmp") or {}),
+            | (params_dict.get("report_context") or {}),
             method="call",
         ),
-        "zip_patrol_density_map": Node(
-            async_task=zip_grouped_by_key.validate()
-            .set_task_instance_id("zip_patrol_density_map")
+        "print_report_ctx": Node(
+            async_task=print_output.validate()
+            .set_task_instance_id("print_report_ctx")
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -2957,132 +2887,12 @@ def main(params: Params):
                 unpack_depth=1,
             )
             .set_executor("lithops"),
-            partial={
-                "left": DependsOn("zip_pte_petmp"),
-                "right": DependsOn("td_html_png"),
-            }
-            | (params_dict.get("zip_patrol_density_map") or {}),
-            method="call",
-        ),
-        "zip_events_pie_chart": Node(
-            async_task=zip_grouped_by_key.validate()
-            .set_task_instance_id("zip_events_pie_chart")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "left": DependsOn("zip_patrol_density_map"),
-                "right": DependsOn("patrol_pie_chart_png"),
-            }
-            | (params_dict.get("zip_events_pie_chart") or {}),
-            method="call",
-        ),
-        "zip_events_time_series": Node(
-            async_task=zip_grouped_by_key.validate()
-            .set_task_instance_id("zip_events_time_series")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "left": DependsOn("zip_events_pie_chart"),
-                "right": DependsOn("patrol_bar_chart_png"),
-            }
-            | (params_dict.get("zip_events_time_series") or {}),
-            method="call",
-        ),
-        "zip_patrol_events": Node(
-            async_task=zip_grouped_by_key.validate()
-            .set_task_instance_id("zip_patrol_events")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "left": DependsOn("zip_events_time_series"),
-                "right": DependsOn("persist_gua_patrol_efforts"),
-            }
-            | (params_dict.get("zip_patrol_events") or {}),
-            method="call",
-        ),
-        "zip_event_efforts": Node(
-            async_task=zip_grouped_by_key.validate()
-            .set_task_instance_id("zip_event_efforts")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "left": DependsOn("zip_patrol_events"),
-                "right": DependsOn("persist_event_tefforts"),
-            }
-            | (params_dict.get("zip_event_efforts") or {}),
-            method="call",
-        ),
-        "zip_month_stats": Node(
-            async_task=zip_grouped_by_key.validate()
-            .set_task_instance_id("zip_month_stats")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "left": DependsOn("zip_event_efforts"),
-                "right": DependsOn("persist_month_patrol_efforts"),
-            }
-            | (params_dict.get("zip_month_stats") or {}),
-            method="call",
-        ),
-        "zip_guardian_stats": Node(
-            async_task=zip_grouped_by_key.validate()
-            .set_task_instance_id("zip_guardian_stats")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "left": DependsOn("zip_month_stats"),
-                "right": DependsOn("persist_ranger_patrol_efforts"),
-            }
-            | (params_dict.get("zip_guardian_stats") or {}),
-            method="call",
+            partial=(params_dict.get("print_report_ctx") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["value"],
+                "argvalues": DependsOn("report_context"),
+            },
         ),
         "flatten_context": Node(
             async_task=flatten_tuple.validate()
@@ -3101,7 +2911,7 @@ def main(params: Params):
             method="mapvalues",
             kwargs={
                 "argnames": ["nested"],
-                "argvalues": DependsOn("zip_guardian_stats"),
+                "argvalues": DependsOn("report_context"),
             },
         ),
         "get_grouper_names": Node(
@@ -3161,26 +2971,6 @@ def main(params: Params):
             kwargs={
                 "argnames": ["nested"],
                 "argvalues": DependsOn("zip_grouper_with_context"),
-            },
-        ),
-        "print_output_value": Node(
-            async_task=print_output.validate()
-            .set_task_instance_id("print_output_value")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial=(params_dict.get("print_output_value") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["value"],
-                "argvalues": DependsOn("flatten_final_report_context"),
             },
         ),
         "individual_report_context": Node(

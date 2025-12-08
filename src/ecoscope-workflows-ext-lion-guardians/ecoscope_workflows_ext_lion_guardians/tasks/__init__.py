@@ -17,6 +17,7 @@ from ._mapdeck import (
     merge_static_and_grouped_layers,
     select_koi,
     set_custom_base_maps,
+    create_styled_layers_from_gdf,
 )
 
 from ._zip import zip_grouped_by_key, flatten_tuple, zip_lists
@@ -36,10 +37,13 @@ from ._retrieve_patrols import (
     get_event_type_display_names_from_events_aliased,
 )
 
-from ._inspect import print_output
+from ._inspect import print_output, view_df, view_gdf
 
 __all__ = [
+    "view_df",
+    "view_gdf",
     "print_output",
+    "create_styled_layers_from_gdf",
     "create_report_context_from_tuple",
     # _mapdeck
     "zip_lists",

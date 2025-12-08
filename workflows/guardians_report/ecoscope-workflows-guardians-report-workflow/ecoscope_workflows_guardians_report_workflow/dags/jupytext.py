@@ -47,7 +47,7 @@ from ecoscope_workflows_core.tasks.transformation import (
     sort_values,
     with_unit,
 )
-from ecoscope_workflows_ext_custom.tasks.io import html_to_png
+from ecoscope_workflows_ext_custom.tasks.io import html_to_png, load_df
 from ecoscope_workflows_ext_custom.tasks.results import (
     create_path_layer,
     create_scatterplot_layer,
@@ -79,11 +79,10 @@ from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     add_totals_row,
-    clean_file_keys,
     create_cover_context_page,
     create_geojson_layer,
-    create_map_layers,
     create_report_context,
+    create_styled_layers_from_gdf,
     download_file_and_persist,
     draw_custom_map,
     extract_date_parts,
@@ -91,15 +90,12 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
     get_event_type_display_names_from_events_aliased,
     get_patrol_observations_from_patrols_dataframe_and_combined_params,
     get_split_group_names,
-    load_geospatial_files,
     make_text_layer,
     merge_docx_files,
     merge_static_and_grouped_layers,
     print_output,
-    select_koi,
     set_custom_base_maps,
     view_state_deck_gdf,
-    zip_grouped_by_key,
     zip_lists,
 )
 
@@ -411,7 +407,7 @@ load_local_shapefiles_params = dict()
 
 
 load_local_shapefiles = (
-    load_geospatial_files.set_task_instance_id("load_local_shapefiles")
+    load_df.set_task_instance_id("load_local_shapefiles")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -422,37 +418,11 @@ load_local_shapefiles = (
         unpack_depth=1,
     )
     .partial(
-        config={"path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"]},
+        file_path=persist_ambo_gpkg,
+        layer=None,
+        deserialize_json=False,
         **load_local_shapefiles_params,
     )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Clean file keys from initially loaded geospatial files
-
-# %%
-# parameters
-
-clean_local_geo_files_params = dict()
-
-# %%
-# call the task
-
-
-clean_local_geo_files = (
-    clean_file_keys.set_task_instance_id("clean_local_geo_files")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(file_dict=load_local_shapefiles, **clean_local_geo_files_params)
     .call()
 )
 
@@ -470,7 +440,7 @@ create_custom_map_layers_params = dict()
 
 
 create_custom_map_layers = (
-    create_map_layers.set_task_instance_id("create_custom_map_layers")
+    create_styled_layers_from_gdf.set_task_instance_id("create_custom_map_layers")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -481,53 +451,20 @@ create_custom_map_layers = (
         unpack_depth=1,
     )
     .partial(
-        file_dict=load_local_shapefiles,
+        gdf=load_local_shapefiles,
+        filename="amboseli_group_ranch_boundaries",
         style_config={
             "styles": {
-                "amboseli_group_ranch_boundaries": {
-                    "stroked": True,
-                    "filled": False,
-                    "get_elevation": 50,
-                    "opacity": 0.75,
-                    "get_line_color": [105, 105, 105, 200],
-                    "get_line_width": 3.75,
-                }
+                "stroked": True,
+                "filled": False,
+                "get_elevation": 50,
+                "opacity": 0.75,
+                "get_line_color": [105, 105, 105, 200],
+                "get_line_width": 3.75,
             },
             "legend": {"label": ["Group ranch boundaries"], "color": ["#696969"]},
         },
         **create_custom_map_layers_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Select Key of Interest to annotate text layers on the map
-
-# %%
-# parameters
-
-filter_aoi_params = dict()
-
-# %%
-# call the task
-
-
-filter_aoi = (
-    select_koi.set_task_instance_id("filter_aoi")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        file_dict=clean_local_geo_files,
-        key_value="amboseli_group_ranch_boundaries",
-        **filter_aoi_params,
     )
     .call()
 )
@@ -557,12 +494,12 @@ custom_text_layer = (
         unpack_depth=1,
     )
     .partial(
-        txt_gdf=filter_aoi,
+        txt_gdf=load_local_shapefiles,
         label_column="R_NAME",
         fallback_columns=["name", "title"],
         use_centroid=True,
         color=[0, 0, 0, 255],
-        size=70,
+        size=65,
         font_family="Calibri",
         font_weight="bold",
         background=False,
@@ -1730,39 +1667,7 @@ zoom_view_state = (
         ],
         unpack_depth=1,
     )
-    .partial(pitch=0, bearing=0, **zoom_view_state_params)
-    .mapvalues(argnames=["gdf"], argvalues=patrol_traj_rename_columns)
-)
-
-
-# %% [markdown]
-# ## Zip layers and viewstate
-
-# %%
-# parameters
-
-zip_layers_view_params = dict()
-
-# %%
-# call the task
-
-
-zip_layers_view = (
-    zip_grouped_by_key.set_task_instance_id("zip_layers_view")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        left=merge_static_grouped_layers,
-        right=zoom_view_state,
-        **zip_layers_view_params,
-    )
+    .partial(pitch=0, bearing=0, gdf=load_local_shapefiles, **zoom_view_state_params)
     .call()
 )
 
@@ -1800,9 +1705,10 @@ traj_patrol_events_ecomap = (
         title=None,
         max_zoom=15,
         widget_id=set_traj_pe_map_title,
+        view_state=zoom_view_state,
         **traj_patrol_events_ecomap_params,
     )
-    .mapvalues(argnames=["geo_layers", "view_state"], argvalues=zip_layers_view)
+    .mapvalues(argnames=["geo_layers"], argvalues=merge_static_grouped_layers)
 )
 
 
@@ -3085,38 +2991,6 @@ merged_time_density_layers = (
 
 
 # %% [markdown]
-# ## Zip layers and  time density
-
-# %%
-# parameters
-
-zip_time_density_view_params = dict()
-
-# %%
-# call the task
-
-
-zip_time_density_view = (
-    zip_grouped_by_key.set_task_instance_id("zip_time_density_view")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        left=merged_time_density_layers,
-        right=zoom_view_state,
-        **zip_time_density_view_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
 # ## Draw Ecomap from Time Density
 
 # %%
@@ -3146,9 +3020,10 @@ td_ecomap = (
         title=None,
         max_zoom=15,
         widget_id=set_ltd_map_title,
+        view_state=zoom_view_state,
         **td_ecomap_params,
     )
-    .mapvalues(argnames=["geo_layers", "view_state"], argvalues=zip_time_density_view)
+    .mapvalues(argnames=["geo_layers"], argvalues=merged_time_density_layers)
 )
 
 
@@ -3768,107 +3643,59 @@ context_cover_page = (
 
 
 # %% [markdown]
-# ## Zip patrol type effort and patrol events track map
+# ## Combine report context
 
 # %%
 # parameters
 
-zip_pte_petmp_params = dict()
+report_context_params = dict()
 
 # %%
 # call the task
 
 
-zip_pte_petmp = (
-    zip_grouped_by_key.set_task_instance_id("zip_pte_petmp")
+report_context = (
+    groupbykey.set_task_instance_id("report_context")
     .handle_errors()
     .with_tracing()
     .skipif(
         conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(left=persist_patrol_types, right=patrol_html_png, **zip_pte_petmp_params)
-    .call()
-)
-
-
-# %% [markdown]
-# ## Zip patrol time density map and existing
-
-# %%
-# parameters
-
-zip_patrol_density_map_params = dict()
-
-# %%
-# call the task
-
-
-zip_patrol_density_map = (
-    zip_grouped_by_key.set_task_instance_id("zip_patrol_density_map")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(left=zip_pte_petmp, right=td_html_png, **zip_patrol_density_map_params)
-    .call()
-)
-
-
-# %% [markdown]
-# ## Zip events pie chart
-
-# %%
-# parameters
-
-zip_events_pie_chart_params = dict()
-
-# %%
-# call the task
-
-
-zip_events_pie_chart = (
-    zip_grouped_by_key.set_task_instance_id("zip_events_pie_chart")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
+            all_keyed_iterables_are_skips,
         ],
         unpack_depth=1,
     )
     .partial(
-        left=zip_patrol_density_map,
-        right=patrol_pie_chart_png,
-        **zip_events_pie_chart_params,
+        iterables=[
+            persist_patrol_types,
+            patrol_html_png,
+            td_html_png,
+            patrol_pie_chart_png,
+            patrol_bar_chart_png,
+            persist_gua_patrol_efforts,
+            persist_event_tefforts,
+            persist_month_patrol_efforts,
+            persist_ranger_patrol_efforts,
+        ],
+        **report_context_params,
     )
     .call()
 )
 
 
 # %% [markdown]
-# ## Zip events time series bar chart
+# ## Print output context values
 
 # %%
 # parameters
 
-zip_events_time_series_params = dict()
+print_report_ctx_params = dict()
 
 # %%
 # call the task
 
 
-zip_events_time_series = (
-    zip_grouped_by_key.set_task_instance_id("zip_events_time_series")
+print_report_ctx = (
+    print_output.set_task_instance_id("print_report_ctx")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -3878,138 +3705,8 @@ zip_events_time_series = (
         ],
         unpack_depth=1,
     )
-    .partial(
-        left=zip_events_pie_chart,
-        right=patrol_bar_chart_png,
-        **zip_events_time_series_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Zip patrol events
-
-# %%
-# parameters
-
-zip_patrol_events_params = dict()
-
-# %%
-# call the task
-
-
-zip_patrol_events = (
-    zip_grouped_by_key.set_task_instance_id("zip_patrol_events")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        left=zip_events_time_series,
-        right=persist_gua_patrol_efforts,
-        **zip_patrol_events_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Zip event efforts
-
-# %%
-# parameters
-
-zip_event_efforts_params = dict()
-
-# %%
-# call the task
-
-
-zip_event_efforts = (
-    zip_grouped_by_key.set_task_instance_id("zip_event_efforts")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        left=zip_patrol_events, right=persist_event_tefforts, **zip_event_efforts_params
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Zip month stats
-
-# %%
-# parameters
-
-zip_month_stats_params = dict()
-
-# %%
-# call the task
-
-
-zip_month_stats = (
-    zip_grouped_by_key.set_task_instance_id("zip_month_stats")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        left=zip_event_efforts,
-        right=persist_month_patrol_efforts,
-        **zip_month_stats_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Zip guardian stats
-
-# %%
-# parameters
-
-zip_guardian_stats_params = dict()
-
-# %%
-# call the task
-
-
-zip_guardian_stats = (
-    zip_grouped_by_key.set_task_instance_id("zip_guardian_stats")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        left=zip_month_stats,
-        right=persist_ranger_patrol_efforts,
-        **zip_guardian_stats_params,
-    )
-    .call()
+    .partial(**print_report_ctx_params)
+    .mapvalues(argnames=["value"], argvalues=report_context)
 )
 
 
@@ -4037,7 +3734,7 @@ flatten_context = (
         unpack_depth=1,
     )
     .partial(**flatten_context_params)
-    .mapvalues(argnames=["nested"], argvalues=zip_guardian_stats)
+    .mapvalues(argnames=["nested"], argvalues=report_context)
 )
 
 
@@ -4124,34 +3821,6 @@ flatten_final_report_context = (
     )
     .partial(**flatten_final_report_context_params)
     .mapvalues(argnames=["nested"], argvalues=zip_grouper_with_context)
-)
-
-
-# %% [markdown]
-# ## Print output context values
-
-# %%
-# parameters
-
-print_output_value_params = dict()
-
-# %%
-# call the task
-
-
-print_output_value = (
-    print_output.set_task_instance_id("print_output_value")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(**print_output_value_params)
-    .mapvalues(argnames=["value"], argvalues=flatten_final_report_context)
 )
 
 

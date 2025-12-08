@@ -25,6 +25,7 @@ rjsf-overrides:
         title: Patrol Subject
       - const: patrol_serial_number
         title: Patrol Serial Number
+
   $defs:
     ValueGrouper.oneOf:
       - const: patrol_type
@@ -109,30 +110,25 @@ workflow:
       overwrite_existing: false
       retries: 3
       unzip: false
- 
+
   #Load custom shapefiles
   - name : Load downloaded shapefiles
     id: load_local_shapefiles 
-    task: load_geospatial_files
+    task: load_df
     partial:
-      config: 
-        path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-
-  - name: Clean file keys from initially loaded geospatial files
-    id: clean_local_geo_files
-    task: clean_file_keys 
-    partial: 
-      file_dict: ${{ workflow.load_local_shapefiles.return }}
-
+      file_path: ${{ workflow.persist_ambo_gpkg.return }}
+      layer: null
+      deserialize_json: false
+      
   # Create community conservancy map layers 
   - name: Create Map Layers
     id: create_custom_map_layers
-    task: create_map_layers
+    task: create_styled_layers_from_gdf
     partial:
-      file_dict: ${{ workflow.load_local_shapefiles.return }}
+      gdf: ${{ workflow.load_local_shapefiles.return }}
+      filename: amboseli_group_ranch_boundaries
       style_config:
         styles:
-          amboseli_group_ranch_boundaries: 
             stroked: true
             filled: false
             get_elevation: 50
@@ -145,25 +141,18 @@ workflow:
           color:
             - "#696969"
 
-  - name: Select Key of Interest to annotate text layers on the map
-    id: filter_aoi
-    task: select_koi
-    partial:
-      file_dict: ${{ workflow.clean_local_geo_files.return }}
-      key_value: amboseli_group_ranch_boundaries
-
   - name: Create text layer 
     id: custom_text_layer
     task: make_text_layer
     partial:
-      txt_gdf: ${{ workflow.filter_aoi.return }}
+      txt_gdf: ${{ workflow.load_local_shapefiles.return }}
       label_column: "R_NAME"
       fallback_columns:
         - name
         - title
       use_centroid: true 
       color: [0,0,0,255]
-      size: 70
+      size: 65
       font_family: Calibri
       font_weight: bold
       background: false
@@ -547,16 +536,7 @@ workflow:
         partial:
           pitch: 0
           bearing: 0
-        mapvalues:
-          argnames: gdf
-          argvalues: ${{ workflow.patrol_traj_rename_columns.return }}
-
-      - name: Zip layers and viewstate
-        id: zip_layers_view
-        task: zip_grouped_by_key
-        partial:
-          left:  ${{ workflow.merge_static_grouped_layers.return }}
-          right: ${{ workflow.zoom_view_state.return }}
+          gdf: ${{ workflow.load_local_shapefiles.return }} #${{ workflow.patrol_traj_rename_columns.return }}
 
       - name: Draw Ecomaps for each combined Trajectory and Patrol Events group
         id: traj_patrol_events_ecomap
@@ -570,11 +550,10 @@ workflow:
           title: null
           max_zoom: 15 
           widget_id: ${{ workflow.set_traj_pe_map_title.return }}
+          view_state: ${{ workflow.zoom_view_state.return }}
         mapvalues:
-          argnames: 
-            - geo_layers
-            - view_state 
-          argvalues: ${{ workflow.zip_layers_view.return }}
+          argnames: geo_layers
+          argvalues: ${{ workflow.merge_static_grouped_layers.return }}
 
       - name: Persist Patrols Ecomap as Text
         id: traj_pe_ecomap_html_urls
@@ -1048,13 +1027,6 @@ workflow:
           argnames: grouped_layers
           argvalues: ${{ workflow.td_map_layer.return }}
 
-      - name: Zip layers and  time density
-        id: zip_time_density_view
-        task: zip_grouped_by_key
-        partial:
-          left:  ${{ workflow.merged_time_density_layers.return }}
-          right: ${{ workflow.zoom_view_state.return }}
-
       - name: Draw Ecomap from Time Density
         id: td_ecomap
         task: draw_custom_map
@@ -1067,11 +1039,10 @@ workflow:
           title: null
           max_zoom: 15
           widget_id: ${{ workflow.set_ltd_map_title.return }}
+          view_state: ${{ workflow.zoom_view_state.return }}
         mapvalues:
-          argnames: 
-            - geo_layers
-            - view_state
-          argvalues: ${{ workflow.zip_time_density_view.return }}
+          argnames: geo_layers
+          argvalues: ${{ workflow.merged_time_density_layers.return }}
 
       - name: Persist Ecomap as Text
         id: td_ecomap_html_url
@@ -1318,69 +1289,40 @@ workflow:
       output_directory: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: cover_page.docx
 
+  - name: Combine report context
+    id: report_context
+    skipif:
+      conditions:
+        - all_keyed_iterables_are_skips
+      unpack_depth: 1
+    task: groupbykey
+    partial:
+      iterables:
+        - ${{ workflow.persist_patrol_types.return }}
+        - ${{ workflow.patrol_html_png.return }}
+        - ${{ workflow.td_html_png.return }} 
+        - ${{ workflow.patrol_pie_chart_png.return }} 
+        - ${{ workflow.patrol_bar_chart_png.return }} 
+        - ${{ workflow.persist_gua_patrol_efforts.return }} 
+        - ${{ workflow.persist_event_tefforts.return }}
+        - ${{ workflow.persist_month_patrol_efforts.return }} 
+        - ${{ workflow.persist_ranger_patrol_efforts.return }}
+
+
   # zip other inputs to add on the individual templates
-  - name: Zip patrol type effort and patrol events track map
-    id: zip_pte_petmp
-    task: zip_grouped_by_key
-    partial:  
-      left: ${{ workflow.persist_patrol_types.return }}
-      right: ${{ workflow.patrol_html_png.return }} 
-
-  - name: Zip patrol time density map and existing
-    id: zip_patrol_density_map
-    task: zip_grouped_by_key
-    partial:  
-      left: ${{ workflow.zip_pte_petmp.return }}
-      right: ${{ workflow.td_html_png.return }} 
-
-  - name: Zip events pie chart
-    id: zip_events_pie_chart
-    task: zip_grouped_by_key
-    partial:  
-      left: ${{ workflow.zip_patrol_density_map.return }}
-      right: ${{ workflow.patrol_pie_chart_png.return }} 
-
-  - name: Zip events time series bar chart
-    id: zip_events_time_series
-    task: zip_grouped_by_key
-    partial:  
-      left: ${{ workflow.zip_events_pie_chart.return }}
-      right: ${{ workflow.patrol_bar_chart_png.return }} 
-
-  - name: Zip patrol events
-    id: zip_patrol_events
-    task: zip_grouped_by_key
-    partial:  
-      left: ${{ workflow.zip_events_time_series.return }}
-      right: ${{ workflow.persist_gua_patrol_efforts.return }} 
-
-  - name: Zip event efforts
-    id: zip_event_efforts
-    task: zip_grouped_by_key
-    partial:  
-      left: ${{ workflow.zip_patrol_events.return }}
-      right: ${{ workflow.persist_event_tefforts.return }} 
-
-  - name: Zip month stats
-    id: zip_month_stats
-    task: zip_grouped_by_key
-    partial:  
-      left: ${{ workflow.zip_event_efforts.return }}
-      right: ${{ workflow.persist_month_patrol_efforts.return }} 
-
-  - name: Zip guardian stats 
-    id: zip_guardian_stats
-    task: zip_grouped_by_key
-    partial:  
-      left: ${{ workflow.zip_month_stats.return }}
-      right: ${{ workflow.persist_ranger_patrol_efforts.return }}
+  - name: Print output context values 
+    id: print_report_ctx
+    task: print_output
+    mapvalues:  
+      argnames: value 
+      argvalues: ${{ workflow.report_context.return }}
 
   - name: Flatten zipped  context inputs
     id: flatten_context
     task: flatten_tuple
     mapvalues:
       argnames: nested
-      argvalues: ${{ workflow.zip_guardian_stats.return }}
+      argvalues: ${{ workflow.report_context.return }}
 
   - name: Get split group names 
     id: get_grouper_names 
@@ -1402,13 +1344,6 @@ workflow:
     mapvalues:
       argnames: nested
       argvalues: ${{ workflow.zip_grouper_with_context.return }}
-
-  - name: Print output context values 
-    id: print_output_value 
-    task: print_output
-    mapvalues:  
-      argnames: value 
-      argvalues: ${{ workflow.flatten_final_report_context.return }}
   
   - name: Create individual report context
     id: individual_report_context
