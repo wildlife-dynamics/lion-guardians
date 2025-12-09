@@ -97,5 +97,49 @@
         "minW": 2,
         "minH": 3,
         "static": false
+    },
+    {
+        "i": "9",
+        "x": 0,
+        "y": 20,
+        "widget_id": 9,
+        "w": 15,
+        "h": 20,
+        "minW": 5,
+        "minH": 8,
+        "static": false
+    },
+    {
+        "i": "10",
+        "x": 0,
+        "y": 20,
+        "widget_id": 10,
+        "w": 15,
+        "h": 20,
+        "minW": 5,
+        "minH": 8,
+        "static": false
+    },
+    {
+        "i": "11",
+        "x": 0,
+        "y": 20,
+        "widget_id": 11,
+        "w": 15,
+        "h": 20,
+        "minW": 5,
+        "minH": 8,
+        "static": false
+    },
+    {
+        "i": "12",
+        "x": 0,
+        "y": 20,
+        "widget_id": 12,
+        "w": 15,
+        "h": 20,
+        "minW": 5,
+        "minH": 8,
+        "static": false
     }
 ]

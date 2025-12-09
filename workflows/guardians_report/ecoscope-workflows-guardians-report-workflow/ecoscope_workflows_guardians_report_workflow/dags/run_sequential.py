@@ -3,91 +3,164 @@ import json
 import os
 
 from ecoscope_workflows_core.tasks.analysis import (
-    dataframe_column_max,
-    dataframe_column_mean,
-    dataframe_column_nunique,
-    dataframe_column_sum,
+    dataframe_column_max as dataframe_column_max,
 )
-from ecoscope_workflows_core.tasks.config import set_string_var, set_workflow_details
+from ecoscope_workflows_core.tasks.analysis import (
+    dataframe_column_mean as dataframe_column_mean,
+)
+from ecoscope_workflows_core.tasks.analysis import (
+    dataframe_column_nunique as dataframe_column_nunique,
+)
+from ecoscope_workflows_core.tasks.analysis import (
+    dataframe_column_sum as dataframe_column_sum,
+)
+from ecoscope_workflows_core.tasks.config import set_string_var as set_string_var
+from ecoscope_workflows_core.tasks.config import (
+    set_workflow_details as set_workflow_details,
+)
 from ecoscope_workflows_core.tasks.filter import (
-    get_timezone_from_time_range,
-    set_time_range,
+    get_timezone_from_time_range as get_timezone_from_time_range,
 )
-from ecoscope_workflows_core.tasks.groupby import groupbykey, set_groupers, split_groups
-from ecoscope_workflows_core.tasks.io import persist_text, set_er_connection
+from ecoscope_workflows_core.tasks.filter import set_time_range as set_time_range
+from ecoscope_workflows_core.tasks.groupby import groupbykey as groupbykey
+from ecoscope_workflows_core.tasks.groupby import set_groupers as set_groupers
+from ecoscope_workflows_core.tasks.groupby import split_groups as split_groups
+from ecoscope_workflows_core.tasks.io import persist_text as persist_text
+from ecoscope_workflows_core.tasks.io import set_er_connection as set_er_connection
 from ecoscope_workflows_core.tasks.results import (
-    create_map_widget_single_view,
-    create_plot_widget_single_view,
-    create_single_value_widget_single_view,
-    gather_dashboard,
-    merge_widget_views,
+    create_map_widget_single_view as create_map_widget_single_view,
+)
+from ecoscope_workflows_core.tasks.results import (
+    create_plot_widget_single_view as create_plot_widget_single_view,
+)
+from ecoscope_workflows_core.tasks.results import (
+    create_single_value_widget_single_view as create_single_value_widget_single_view,
+)
+from ecoscope_workflows_core.tasks.results import gather_dashboard as gather_dashboard
+from ecoscope_workflows_core.tasks.results import (
+    merge_widget_views as merge_widget_views,
 )
 from ecoscope_workflows_core.tasks.skip import (
-    all_keyed_iterables_are_skips,
-    any_dependency_skipped,
-    any_is_empty_df,
-    never,
+    all_keyed_iterables_are_skips as all_keyed_iterables_are_skips,
+)
+from ecoscope_workflows_core.tasks.skip import (
+    any_dependency_skipped as any_dependency_skipped,
+)
+from ecoscope_workflows_core.tasks.skip import any_is_empty_df as any_is_empty_df
+from ecoscope_workflows_core.tasks.skip import never as never
+from ecoscope_workflows_core.tasks.transformation import (
+    add_temporal_index as add_temporal_index,
 )
 from ecoscope_workflows_core.tasks.transformation import (
-    add_temporal_index,
-    convert_column_values_to_string,
-    convert_values_to_timezone,
-    map_columns,
-    map_values_with_unit,
-    sort_values,
-    with_unit,
+    convert_column_values_to_string as convert_column_values_to_string,
 )
-from ecoscope_workflows_ext_custom.tasks.io import html_to_png, load_df
+from ecoscope_workflows_core.tasks.transformation import (
+    convert_values_to_timezone as convert_values_to_timezone,
+)
+from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
+from ecoscope_workflows_core.tasks.transformation import (
+    map_values_with_unit as map_values_with_unit,
+)
+from ecoscope_workflows_core.tasks.transformation import sort_values as sort_values
+from ecoscope_workflows_core.tasks.transformation import with_unit as with_unit
+from ecoscope_workflows_ext_custom.tasks.io import html_to_png as html_to_png
+from ecoscope_workflows_ext_custom.tasks.io import load_df as load_df
 from ecoscope_workflows_ext_custom.tasks.results import (
-    create_path_layer,
-    create_scatterplot_layer,
+    create_path_layer as create_path_layer,
+)
+from ecoscope_workflows_ext_custom.tasks.results import (
+    create_scatterplot_layer as create_scatterplot_layer,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.analysis import (
-    calculate_linear_time_density,
-    create_meshgrid,
-    summarize_df,
+    calculate_linear_time_density as calculate_linear_time_density,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.analysis import (
+    create_meshgrid as create_meshgrid,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.analysis import summarize_df as summarize_df
+from ecoscope_workflows_ext_ecoscope.tasks.io import (
+    get_patrols_from_combined_params as get_patrols_from_combined_params,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.io import persist_df as persist_df
+from ecoscope_workflows_ext_ecoscope.tasks.io import (
+    set_patrols_and_patrol_events_params as set_patrols_and_patrol_events_params,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.io import (
-    get_patrols_from_combined_params,
-    persist_df,
-    set_patrols_and_patrol_events_params,
-    unpack_events_from_patrols_df_and_combined_params,
+    unpack_events_from_patrols_df_and_combined_params as unpack_events_from_patrols_df_and_combined_params,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
-    process_relocations,
-    relocations_to_trajectory,
+    process_relocations as process_relocations,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
+    relocations_to_trajectory as relocations_to_trajectory,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
-    draw_pie_chart,
-    draw_time_series_bar_chart,
+    draw_pie_chart as draw_pie_chart,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.skip import all_geometry_are_none
+from ecoscope_workflows_ext_ecoscope.tasks.results import draw_table as draw_table
+from ecoscope_workflows_ext_ecoscope.tasks.results import (
+    draw_time_series_bar_chart as draw_time_series_bar_chart,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.skip import (
+    all_geometry_are_none as all_geometry_are_none,
+)
 from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
-    apply_color_map,
-    apply_reloc_coord_filter,
-    drop_nan_values_by_column,
+    apply_color_map as apply_color_map,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
+    apply_reloc_coord_filter as apply_reloc_coord_filter,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
+    drop_nan_values_by_column as drop_nan_values_by_column,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import add_totals_row as add_totals_row
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    create_cover_context_page as create_cover_context_page,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
-    add_totals_row,
-    create_cover_context_page,
-    create_geojson_layer,
-    create_report_context,
-    create_styled_layers_from_gdf,
-    download_file_and_persist,
-    draw_custom_map,
-    extract_date_parts,
-    flatten_tuple,
-    get_event_type_display_names_from_events_aliased,
-    get_patrol_observations_from_patrols_dataframe_and_combined_params,
-    get_split_group_names,
-    make_text_layer,
-    merge_docx_files,
-    merge_static_and_grouped_layers,
-    print_output,
-    set_custom_base_maps,
-    view_state_deck_gdf,
-    zip_lists,
+    create_geojson_layer as create_geojson_layer,
 )
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    create_report_context as create_report_context,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    create_styled_layers_from_gdf as create_styled_layers_from_gdf,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    download_file_and_persist as download_file_and_persist,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    draw_custom_map as draw_custom_map,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    extract_date_parts as extract_date_parts,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import flatten_tuple as flatten_tuple
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    get_event_type_display_names_from_events_aliased as get_event_type_display_names_from_events_aliased,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    get_patrol_observations_from_patrols_dataframe_and_combined_params as get_patrol_observations_from_patrols_dataframe_and_combined_params,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    get_split_group_names as get_split_group_names,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    make_text_layer as make_text_layer,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    merge_docx_files as merge_docx_files,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    merge_static_and_grouped_layers as merge_static_and_grouped_layers,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    set_custom_base_maps as set_custom_base_maps,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    view_state_deck_gdf as view_state_deck_gdf,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import zip_lists as zip_lists
 
 from ..params import Params
 
@@ -2375,6 +2448,312 @@ def main(params: Params):
         .mapvalues(argnames=["df"], argvalues=summarize_month_patrol)
     )
 
+    no_of_events_recorded = (
+        draw_table.validate()
+        .set_task_instance_id("no_of_events_recorded")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            widget_id="No of events recorded by guardian",
+            **(params_dict.get("no_of_events_recorded") or {}),
+        )
+        .mapvalues(argnames=["dataframe"], argvalues=summarize_guardian_events)
+    )
+
+    no_of_events_recorded_url = (
+        persist_text.validate()
+        .set_task_instance_id("no_of_events_recorded_url")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename_suffix="no_of_events_recorded_table",
+            **(params_dict.get("no_of_events_recorded_url") or {}),
+        )
+        .mapvalues(argnames=["text"], argvalues=no_of_events_recorded)
+    )
+
+    no_events_recorded_sv = (
+        create_plot_widget_single_view.validate()
+        .set_task_instance_id("no_events_recorded_sv")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            title="No of events recorded by Guardian",
+            **(params_dict.get("no_events_recorded_sv") or {}),
+        )
+        .map(argnames=["view", "data"], argvalues=no_of_events_recorded_url)
+    )
+
+    no_of_events_table_widget = (
+        merge_widget_views.validate()
+        .set_task_instance_id("no_of_events_table_widget")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            widgets=no_events_recorded_sv,
+            **(params_dict.get("no_of_events_table_widget") or {}),
+        )
+        .call()
+    )
+
+    ranger_patrol_recorded = (
+        draw_table.validate()
+        .set_task_instance_id("ranger_patrol_recorded")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            widget_id="Ranger patrols summary",
+            **(params_dict.get("ranger_patrol_recorded") or {}),
+        )
+        .mapvalues(argnames=["dataframe"], argvalues=summarize_ranger_patrol)
+    )
+
+    ranger_patrol_recorded_url = (
+        persist_text.validate()
+        .set_task_instance_id("ranger_patrol_recorded_url")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename_suffix="ranger_patrol_recorded_table",
+            **(params_dict.get("ranger_patrol_recorded_url") or {}),
+        )
+        .mapvalues(argnames=["text"], argvalues=ranger_patrol_recorded)
+    )
+
+    ranger_patrols_sv = (
+        create_plot_widget_single_view.validate()
+        .set_task_instance_id("ranger_patrols_sv")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            title="Ranger patrol summary by Guardian",
+            **(params_dict.get("ranger_patrols_sv") or {}),
+        )
+        .map(argnames=["view", "data"], argvalues=ranger_patrol_recorded_url)
+    )
+
+    ranger_patrol_table_widget = (
+        merge_widget_views.validate()
+        .set_task_instance_id("ranger_patrol_table_widget")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            widgets=ranger_patrols_sv,
+            **(params_dict.get("ranger_patrol_table_widget") or {}),
+        )
+        .call()
+    )
+
+    patrol_types_recorded = (
+        draw_table.validate()
+        .set_task_instance_id("patrol_types_recorded")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            widget_id="Patrol types summary",
+            **(params_dict.get("patrol_types_recorded") or {}),
+        )
+        .mapvalues(argnames=["dataframe"], argvalues=summarized_patrol_types)
+    )
+
+    patrol_types_recorded_url = (
+        persist_text.validate()
+        .set_task_instance_id("patrol_types_recorded_url")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename_suffix="patrol_types_recorded_table",
+            **(params_dict.get("patrol_types_recorded_url") or {}),
+        )
+        .mapvalues(argnames=["text"], argvalues=patrol_types_recorded)
+    )
+
+    patrol_types_sv = (
+        create_plot_widget_single_view.validate()
+        .set_task_instance_id("patrol_types_sv")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            title="Patrol types summary", **(params_dict.get("patrol_types_sv") or {})
+        )
+        .map(argnames=["view", "data"], argvalues=patrol_types_recorded_url)
+    )
+
+    patrol_types_table_widget = (
+        merge_widget_views.validate()
+        .set_task_instance_id("patrol_types_table_widget")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            widgets=patrol_types_sv,
+            **(params_dict.get("patrol_types_table_widget") or {}),
+        )
+        .call()
+    )
+
+    event_types_recorded = (
+        draw_table.validate()
+        .set_task_instance_id("event_types_recorded")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            widget_id="Event types summary",
+            **(params_dict.get("event_types_recorded") or {}),
+        )
+        .mapvalues(argnames=["dataframe"], argvalues=summarized_event_types)
+    )
+
+    event_types_recorded_url = (
+        persist_text.validate()
+        .set_task_instance_id("event_types_recorded_url")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename_suffix="event_types_recorded_table",
+            **(params_dict.get("event_types_recorded_url") or {}),
+        )
+        .mapvalues(argnames=["text"], argvalues=event_types_recorded)
+    )
+
+    event_types_sv = (
+        create_plot_widget_single_view.validate()
+        .set_task_instance_id("event_types_sv")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            title="Event types summary", **(params_dict.get("event_types_sv") or {})
+        )
+        .map(argnames=["view", "data"], argvalues=event_types_recorded_url)
+    )
+
+    event_types_table_widget = (
+        merge_widget_views.validate()
+        .set_task_instance_id("event_types_table_widget")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            widgets=event_types_sv,
+            **(params_dict.get("event_types_table_widget") or {}),
+        )
+        .call()
+    )
+
     context_cover_page = (
         create_cover_context_page.validate()
         .set_task_instance_id("context_cover_page")
@@ -2424,22 +2803,6 @@ def main(params: Params):
             **(params_dict.get("report_context") or {}),
         )
         .call()
-    )
-
-    print_report_ctx = (
-        print_output.validate()
-        .set_task_instance_id("print_report_ctx")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(**(params_dict.get("print_report_ctx") or {}))
-        .mapvalues(argnames=["value"], argvalues=report_context)
     )
 
     flatten_context = (
@@ -2599,6 +2962,10 @@ def main(params: Params):
                 patrol_dist_grouped_widget,
                 avg_speed_grouped_widget,
                 max_speed_grouped_widget,
+                no_of_events_table_widget,
+                ranger_patrol_table_widget,
+                patrol_types_table_widget,
+                event_types_table_widget,
             ],
             groupers=groupers,
             time_range=time_range,

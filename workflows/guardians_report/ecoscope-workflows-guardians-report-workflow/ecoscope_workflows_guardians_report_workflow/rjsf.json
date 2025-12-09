@@ -326,6 +326,7 @@
               "title": "Patrol Status",
               "type": "array",
               "description": "Choose to analyze patrols with a certain status. If left empty, patrols of all status will be analyzed",
+              "ecoscope:multiselect": true,
               "ecoscope:advanced": true
             },
             "include_null_geometry": {
@@ -516,6 +517,183 @@
           "title": ""
         }
       }
+    },
+    "persist_ranger_patrol_efforts": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Filename",
+          "description": "            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            "
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Persist ranger patrol efforts"
+    },
+    "persist_patrol_types": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Filename",
+          "description": "            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            "
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Persist patrol types"
+    },
+    "persist_gua_patrol_efforts": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Filename",
+          "description": "            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            "
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Persist guardian patrol efforts"
+    },
+    "persist_event_tefforts": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Filename",
+          "description": "            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            "
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Persist event types"
+    },
+    "persist_month_patrol_efforts": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Filename",
+          "description": "            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            "
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Persist month  patrol efforts"
+    },
+    "no_of_events_recorded": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "default": null,
+          "items": {
+            "type": "string"
+          },
+          "title": "Columns",
+          "type": "array",
+          "description": "The list of dataframe columns to render in the table.",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Render no of events recorded"
+    },
+    "ranger_patrol_recorded": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "default": null,
+          "items": {
+            "type": "string"
+          },
+          "title": "Columns",
+          "type": "array",
+          "description": "The list of dataframe columns to render in the table.",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Render ranger patrols recorded"
+    },
+    "patrol_types_recorded": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "default": null,
+          "items": {
+            "type": "string"
+          },
+          "title": "Columns",
+          "type": "array",
+          "description": "The list of dataframe columns to render in the table.",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Render patrol types recorded"
+    },
+    "event_types_recorded": {
+      "additionalProperties": false,
+      "properties": {
+        "columns": {
+          "default": null,
+          "items": {
+            "type": "string"
+          },
+          "title": "Columns",
+          "type": "array",
+          "description": "The list of dataframe columns to render in the table.",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Render event types recorded"
     }
   },
   "$defs": {
@@ -779,7 +957,16 @@
       "Trajectory Segment Filter",
       "Patrol Event Location Filter",
       "Patrol Events Bar Chart",
-      "Time Density Map"
+      "Time Density Map",
+      "persist_ranger_patrol_efforts",
+      "persist_patrol_types",
+      "persist_gua_patrol_efforts",
+      "persist_event_tefforts",
+      "persist_month_patrol_efforts",
+      "no_of_events_recorded",
+      "ranger_patrol_recorded",
+      "patrol_types_recorded",
+      "event_types_recorded"
     ]
   },
   "additionalProperties": false

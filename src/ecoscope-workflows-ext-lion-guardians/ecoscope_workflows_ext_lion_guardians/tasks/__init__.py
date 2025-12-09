@@ -37,12 +37,7 @@ from ._retrieve_patrols import (
     get_event_type_display_names_from_events_aliased,
 )
 
-from ._inspect import print_output, view_df, view_gdf
-
 __all__ = [
-    "view_df",
-    "view_gdf",
-    "print_output",
     "create_styled_layers_from_gdf",
     "create_report_context_from_tuple",
     # _mapdeck

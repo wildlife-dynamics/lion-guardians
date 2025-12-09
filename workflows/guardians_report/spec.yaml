@@ -1,11 +1,11 @@
 id: guardians_report
 requirements:
   - name: ecoscope-workflows-core
-    version: "0.17.0.*"
+    version: "0.19.0.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-ecoscope
-    version: "0.17.0.*"
+    version: "0.19.0.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
@@ -1278,6 +1278,155 @@ workflow:
       argnames: df
       argvalues: ${{ workflow.summarize_month_patrol.return }}
 
+  # -- no of events recorded by guardian 
+  - name: Render no of events recorded 
+    id: no_of_events_recorded
+    task: draw_table 
+    partial:
+      widget_id: "No of events recorded by guardian"
+    mapvalues: 
+      argnames: dataframe 
+      argvalues: ${{ workflow.summarize_guardian_events.return }}
+  
+  - name: Persist no of events recorded table
+    id: no_of_events_recorded_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: "no_of_events_recorded_table"
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.no_of_events_recorded.return }}
+
+  - name: Create table widget for no of events recorded (SV)
+    id: no_events_recorded_sv
+    task: create_plot_widget_single_view
+    partial:
+      title: "No of events recorded by Guardian"
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.no_of_events_recorded_url.return }}
+
+  - name: Merge no of events table widgets
+    id: no_of_events_table_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.no_events_recorded_sv.return }}
+
+  # -- ranger patrol
+  - name: Render ranger patrols recorded 
+    id: ranger_patrol_recorded
+    task: draw_table 
+    partial:
+      widget_id: "Ranger patrols summary"
+    mapvalues: 
+      argnames: dataframe 
+      argvalues: ${{ workflow.summarize_ranger_patrol.return }}
+  
+  - name: Persist ranger patrols recorded table
+    id: ranger_patrol_recorded_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: "ranger_patrol_recorded_table"
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.ranger_patrol_recorded.return }}
+
+  - name: Create table widget for ranger patrols recorded (SV)
+    id: ranger_patrols_sv
+    task: create_plot_widget_single_view
+    partial:
+      title: "Ranger patrol summary by Guardian"
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.ranger_patrol_recorded_url.return }}
+
+  - name: Merge ranger patrols table widgets
+    id: ranger_patrol_table_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.ranger_patrols_sv.return }}
+
+  # -- patrol types 
+  - name: Render patrol types recorded 
+    id: patrol_types_recorded
+    task: draw_table 
+    partial:
+      widget_id: "Patrol types summary"
+    mapvalues: 
+      argnames: dataframe 
+      argvalues: ${{ workflow.summarized_patrol_types.return }}
+  
+  - name: Persist patrol types recorded table
+    id: patrol_types_recorded_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: "patrol_types_recorded_table"
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.patrol_types_recorded.return }}
+
+  - name: Create table widget for patrol types recorded (SV)
+    id: patrol_types_sv
+    task: create_plot_widget_single_view
+    partial:
+      title: "Patrol types summary"
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.patrol_types_recorded_url.return }}
+
+  - name: Merge patrol types table widgets
+    id: patrol_types_table_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.patrol_types_sv.return }}
+
+
+  # -- event types
+  - name: Render event types recorded 
+    id: event_types_recorded
+    task: draw_table 
+    partial:
+      widget_id: "Event types summary"
+    mapvalues: 
+      argnames: dataframe 
+      argvalues: ${{ workflow.summarized_event_types.return }}
+  
+  - name: Persist event types recorded table
+    id: event_types_recorded_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: "event_types_recorded_table"
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.event_types_recorded.return }}
+
+  - name: Create table widget for event types recorded (SV)
+    id: event_types_sv
+    task: create_plot_widget_single_view
+    partial:
+      title: "Event types summary"
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.event_types_recorded_url.return }}
+
+  - name: Merge event types table widgets
+    id: event_types_table_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.event_types_sv.return }}
+
   # Create context cover page
   - name: Create context cover page
     id: context_cover_page
@@ -1307,15 +1456,6 @@ workflow:
         - ${{ workflow.persist_event_tefforts.return }}
         - ${{ workflow.persist_month_patrol_efforts.return }} 
         - ${{ workflow.persist_ranger_patrol_efforts.return }}
-
-
-  # zip other inputs to add on the individual templates
-  - name: Print output context values 
-    id: print_report_ctx
-    task: print_output
-    mapvalues:  
-      argnames: value 
-      argvalues: ${{ workflow.report_context.return }}
 
   - name: Flatten zipped  context inputs
     id: flatten_context
@@ -1398,5 +1538,10 @@ workflow:
         - ${{ workflow.patrol_dist_grouped_widget.return }}
         - ${{ workflow.avg_speed_grouped_widget.return }}
         - ${{ workflow.max_speed_grouped_widget.return }}
+        - ${{ workflow.no_of_events_table_widget.return }}
+        - ${{ workflow.ranger_patrol_table_widget.return }}
+        - ${{ workflow.patrol_types_table_widget.return }}
+        - ${{ workflow.event_types_table_widget.return }}
+
       groupers: ${{ workflow.groupers.return }}
       time_range: ${{ workflow.time_range.return}}

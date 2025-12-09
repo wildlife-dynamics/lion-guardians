@@ -247,8 +247,114 @@ class PatrolEventsBarChart(BaseModel):
     time_interval: TimeInterval = Field(..., title="Time Interval")
 
 
-class TemporalGrouper(RootModel[str]):
-    root: str = Field(..., title="Time")
+class PersistRangerPatrolEfforts(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    filename: Optional[str] = Field(
+        None,
+        description="            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            ",
+        title="Filename",
+    )
+
+
+class PersistPatrolTypes(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    filename: Optional[str] = Field(
+        None,
+        description="            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            ",
+        title="Filename",
+    )
+
+
+class PersistGuaPatrolEfforts(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    filename: Optional[str] = Field(
+        None,
+        description="            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            ",
+        title="Filename",
+    )
+
+
+class PersistEventTefforts(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    filename: Optional[str] = Field(
+        None,
+        description="            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            ",
+        title="Filename",
+    )
+
+
+class PersistMonthPatrolEfforts(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    filename: Optional[str] = Field(
+        None,
+        description="            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            ",
+        title="Filename",
+    )
+
+
+class NoOfEventsRecorded(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    columns: Optional[List[str]] = Field(
+        None,
+        description="The list of dataframe columns to render in the table.",
+        title="Columns",
+    )
+
+
+class RangerPatrolRecorded(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    columns: Optional[List[str]] = Field(
+        None,
+        description="The list of dataframe columns to render in the table.",
+        title="Columns",
+    )
+
+
+class PatrolTypesRecorded(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    columns: Optional[List[str]] = Field(
+        None,
+        description="The list of dataframe columns to render in the table.",
+        title="Columns",
+    )
+
+
+class EventTypesRecorded(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    columns: Optional[List[str]] = Field(
+        None,
+        description="The list of dataframe columns to render in the table.",
+        title="Columns",
+    )
+
+
+class TemporalGrouper(str, Enum):
+    field_Y = "%Y"
+    field_B = "%B"
+    field_Y__m = "%Y-%m"
+    field_j = "%j"
+    field_d = "%d"
+    field_A = "%A"
+    field_H = "%H"
+    field_Y__m__d = "%Y-%m-%d"
 
 
 class ValueGrouper(RootModel[str]):
@@ -419,3 +525,30 @@ class Params(BaseModel):
     filter_patrol_events: Optional[FilterPatrolEvents] = Field(None, title="")
     patrol_events_bar_chart: Optional[PatrolEventsBarChart] = Field(None, title="")
     ltd_meshgrid: Optional[LtdMeshgrid] = Field(None, title="")
+    persist_ranger_patrol_efforts: Optional[PersistRangerPatrolEfforts] = Field(
+        None, title="Persist ranger patrol efforts"
+    )
+    persist_patrol_types: Optional[PersistPatrolTypes] = Field(
+        None, title="Persist patrol types"
+    )
+    persist_gua_patrol_efforts: Optional[PersistGuaPatrolEfforts] = Field(
+        None, title="Persist guardian patrol efforts"
+    )
+    persist_event_tefforts: Optional[PersistEventTefforts] = Field(
+        None, title="Persist event types"
+    )
+    persist_month_patrol_efforts: Optional[PersistMonthPatrolEfforts] = Field(
+        None, title="Persist month  patrol efforts"
+    )
+    no_of_events_recorded: Optional[NoOfEventsRecorded] = Field(
+        None, title="Render no of events recorded"
+    )
+    ranger_patrol_recorded: Optional[RangerPatrolRecorded] = Field(
+        None, title="Render ranger patrols recorded"
+    )
+    patrol_types_recorded: Optional[PatrolTypesRecorded] = Field(
+        None, title="Render patrol types recorded"
+    )
+    event_types_recorded: Optional[EventTypesRecorded] = Field(
+        None, title="Render event types recorded"
+    )
