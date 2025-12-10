@@ -7,7 +7,7 @@ from datetime import datetime
 from enum import Enum
 from typing import List, Literal, Optional, Union
 
-from pydantic import BaseModel, ConfigDict, Field, RootModel, confloat, constr
+from pydantic import BaseModel, ConfigDict, Field, confloat, constr
 
 
 class WorkflowDetails(BaseModel):
@@ -205,12 +205,32 @@ class SubjectObs(BaseModel):
     )
 
 
-class TemporalGrouper(RootModel[str]):
-    root: str = Field(..., title="Time")
+class PersistSummaryTable(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    filename: Optional[str] = Field(
+        None,
+        description="            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            ",
+        title="Filename",
+    )
 
 
-class ValueGrouper(RootModel[str]):
-    root: str = Field(..., title="Category")
+class TemporalGrouper(str, Enum):
+    field_Y = "%Y"
+    field_B = "%B"
+    field_Y__m = "%Y-%m"
+    field_j = "%j"
+    field_d = "%d"
+    field_A = "%A"
+    field_H = "%H"
+    field_Y__m__d = "%Y-%m-%d"
+
+
+class ValueGrouper(str, Enum):
+    subject_name = "subject_name"
+    subject_sex = "subject_sex"
+    subject_subtype = "subject_subtype"
 
 
 class EarthRangerConnection(BaseModel):
@@ -309,7 +329,12 @@ class Td(BaseModel):
     )
     auto_scale_or_custom_cell_size: Optional[
         Union[AutoScaleGridCellSize, CustomGridCellSize]
-    ] = Field({"auto_scale_or_custom": "Auto-scale"}, title="Grid Cell Size")
+    ] = Field(
+        default_factory=lambda: AutoScaleGridCellSize.model_validate(
+            {"auto_scale_or_custom": "Auto-scale"}
+        ),
+        title="Grid Cell Size",
+    )
     max_speed_factor: Optional[float] = Field(
         1.05,
         description="An estimate of the subject's maximum speed as a factor of the maximum measured speed value in the dataset.",
@@ -353,4 +378,7 @@ class FormData(BaseModel):
         None,
         alias="Time Density Map",
         description="These settings show a grid-based heatmap showing where subjects spent the most time.",
+    )
+    persist_summary_table: Optional[PersistSummaryTable] = Field(
+        None, title="Persist summary table"
     )

@@ -12,20 +12,35 @@ import os
 import warnings  # 🧪
 
 from ecoscope_workflows_core.graph import DependsOn, DependsOnSequence, Graph, Node
-from ecoscope_workflows_core.tasks.config import set_workflow_details
-from ecoscope_workflows_core.tasks.filter import set_time_range
-from ecoscope_workflows_core.tasks.groupby import set_groupers
-from ecoscope_workflows_core.tasks.io import set_er_connection
-from ecoscope_workflows_core.tasks.skip import any_dependency_skipped, any_is_empty_df
+from ecoscope_workflows_core.tasks.config import (
+    set_workflow_details as set_workflow_details,
+)
+from ecoscope_workflows_core.tasks.filter import set_time_range as set_time_range
+from ecoscope_workflows_core.tasks.groupby import set_groupers as set_groupers
+from ecoscope_workflows_core.tasks.io import set_er_connection as set_er_connection
+from ecoscope_workflows_core.tasks.skip import (
+    any_dependency_skipped as any_dependency_skipped,
+)
+from ecoscope_workflows_core.tasks.skip import any_is_empty_df as any_is_empty_df
 from ecoscope_workflows_core.testing import create_task_magicmock  # 🧪
 from ecoscope_workflows_ext_lion_guardians.tasks import (
-    clean_file_keys,
-    create_map_layers,
-    download_file_and_persist,
-    load_geospatial_files,
-    make_text_layer,
-    select_koi,
-    set_custom_base_maps,
+    clean_file_keys as clean_file_keys,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    create_map_layers as create_map_layers,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    download_file_and_persist as download_file_and_persist,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    load_geospatial_files as load_geospatial_files,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    make_text_layer as make_text_layer,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import select_koi as select_koi
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    set_custom_base_maps as set_custom_base_maps,
 )
 
 get_subjectgroup_observations = create_task_magicmock(  # 🧪
@@ -33,49 +48,78 @@ get_subjectgroup_observations = create_task_magicmock(  # 🧪
     func_name="get_subjectgroup_observations",  # 🧪
 )  # 🧪
 from ecoscope_workflows_core.tasks.analysis import (
-    dataframe_column_nunique,
-    dataframe_column_sum,
+    dataframe_column_nunique as dataframe_column_nunique,
 )
-from ecoscope_workflows_core.tasks.groupby import split_groups
-from ecoscope_workflows_core.tasks.io import persist_text
+from ecoscope_workflows_core.tasks.analysis import (
+    dataframe_column_sum as dataframe_column_sum,
+)
+from ecoscope_workflows_core.tasks.groupby import groupbykey as groupbykey
+from ecoscope_workflows_core.tasks.groupby import split_groups as split_groups
+from ecoscope_workflows_core.tasks.io import persist_text as persist_text
 from ecoscope_workflows_core.tasks.results import (
-    create_map_widget_single_view,
-    create_single_value_widget_single_view,
-    gather_dashboard,
-    merge_widget_views,
+    create_map_widget_single_view as create_map_widget_single_view,
+)
+from ecoscope_workflows_core.tasks.results import (
+    create_single_value_widget_single_view as create_single_value_widget_single_view,
+)
+from ecoscope_workflows_core.tasks.results import gather_dashboard as gather_dashboard
+from ecoscope_workflows_core.tasks.results import (
+    merge_widget_views as merge_widget_views,
 )
 from ecoscope_workflows_core.tasks.skip import (
-    any_dependency_skipped,
-    any_is_empty_df,
-    never,
+    any_dependency_skipped as any_dependency_skipped,
 )
-from ecoscope_workflows_core.tasks.transformation import add_temporal_index, map_columns
-from ecoscope_workflows_ext_custom.tasks.io import html_to_png
+from ecoscope_workflows_core.tasks.skip import any_is_empty_df as any_is_empty_df
+from ecoscope_workflows_core.tasks.skip import never as never
+from ecoscope_workflows_core.tasks.transformation import (
+    add_temporal_index as add_temporal_index,
+)
+from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
+from ecoscope_workflows_ext_custom.tasks.io import html_to_png as html_to_png
 from ecoscope_workflows_ext_ecoscope.tasks.analysis import (
-    calculate_elliptical_time_density,
-    summarize_df,
+    calculate_elliptical_time_density as calculate_elliptical_time_density,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.io import persist_df
+from ecoscope_workflows_ext_ecoscope.tasks.analysis import summarize_df as summarize_df
+from ecoscope_workflows_ext_ecoscope.tasks.io import persist_df as persist_df
 from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
-    process_relocations,
-    relocations_to_trajectory,
+    process_relocations as process_relocations,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.transformation import apply_color_map
+from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
+    relocations_to_trajectory as relocations_to_trajectory,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
+    apply_color_map as apply_color_map,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import add_totals_row as add_totals_row
 from ecoscope_workflows_ext_lion_guardians.tasks import (
-    add_totals_row,
-    create_cover_context_page,
-    create_geojson_layer,
-    create_report_context,
-    draw_custom_map,
-    flatten_tuple,
-    get_split_group_names,
-    merge_docx_files,
-    merge_static_and_grouped_layers,
-    round_off_values,
-    view_state_deck_gdf,
-    zip_grouped_by_key,
-    zip_lists,
+    create_cover_context_page as create_cover_context_page,
 )
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    create_geojson_layer as create_geojson_layer,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    create_report_context as create_report_context,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    draw_custom_map as draw_custom_map,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import flatten_tuple as flatten_tuple
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    get_split_group_names as get_split_group_names,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    merge_docx_files as merge_docx_files,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    merge_static_and_grouped_layers as merge_static_and_grouped_layers,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    round_off_values as round_off_values,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    view_state_deck_gdf as view_state_deck_gdf,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import zip_lists as zip_lists
 
 from ..params import Params
 
@@ -778,7 +822,7 @@ def main(params: Params):
             },
         ),
         "zip_layers_view": Node(
-            async_task=zip_grouped_by_key.validate()
+            async_task=groupbykey.validate()
             .set_task_instance_id("zip_layers_view")
             .handle_errors()
             .with_tracing()
@@ -791,8 +835,12 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "left": DependsOn("combine_custom_map_layers"),
-                "right": DependsOn("zoom_view_state"),
+                "iterables": DependsOnSequence(
+                    [
+                        DependsOn("combine_custom_map_layers"),
+                        DependsOn("zoom_view_state"),
+                    ],
+                ),
             }
             | (params_dict.get("zip_layers_view") or {}),
             method="call",
@@ -1057,7 +1105,7 @@ def main(params: Params):
             method="call",
         ),
         "zip_metrics_etd": Node(
-            async_task=zip_grouped_by_key.validate()
+            async_task=groupbykey.validate()
             .set_task_instance_id("zip_metrics_etd")
             .handle_errors()
             .with_tracing()
@@ -1070,8 +1118,12 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "left": DependsOn("persist_summary_table"),
-                "right": DependsOn("collared_html_png"),
+                "iterables": DependsOnSequence(
+                    [
+                        DependsOn("persist_summary_table"),
+                        DependsOn("collared_html_png"),
+                    ],
+                ),
             }
             | (params_dict.get("zip_metrics_etd") or {}),
             method="call",

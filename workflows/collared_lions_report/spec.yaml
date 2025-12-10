@@ -1,11 +1,11 @@
 id: collared_lions_report
 requirements:
   - name: ecoscope-workflows-core
-    version: "0.17.0.*"
+    version: "0.19.0.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-ecoscope
-    version: "0.17.0.*"
+    version: "0.19.0.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
@@ -339,10 +339,11 @@ workflow:
         # Zip up tasks to pass them on the same mapvalues
       - name: Zip layers and viewstate
         id: zip_layers_view
-        task: zip_grouped_by_key
+        task: groupbykey
         partial:
-          left:  ${{ workflow.combine_custom_map_layers.return }}
-          right: ${{ workflow.zoom_view_state.return }}
+          iterables:
+            - ${{ workflow.combine_custom_map_layers.return }}
+            - ${{ workflow.zoom_view_state.return }}
 
       - name: Draw Ecomap from Time Density
         id: td_ecomap
@@ -442,6 +443,7 @@ workflow:
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filetype: csv
+      filename: null
     mapvalues:
       argnames: df
       argvalues: ${{ workflow.add_total_events_row.return }}
@@ -480,10 +482,11 @@ workflow:
 
   - name: Zip subject metrics and home range ecomap
     id: zip_metrics_etd
-    task: zip_grouped_by_key
+    task: groupbykey
     partial:
-      left: ${{ workflow.persist_summary_table.return }}
-      right: ${{ workflow.collared_html_png.return }}
+      iterables:
+        - ${{ workflow.persist_summary_table.return }}
+        - ${{ workflow.collared_html_png.return }}
 
   - name: Flatten context inputs
     id: flatten_context

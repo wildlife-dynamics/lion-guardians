@@ -370,6 +370,27 @@
           "title": ""
         }
       }
+    },
+    "persist_summary_table": {
+      "additionalProperties": false,
+      "properties": {
+        "filename": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Filename",
+          "description": "            Optional filename to persist text to within the `root_path`.\n            If not provided, a filename will be generated based on a hash of the df content.\n            "
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Persist summary table"
     }
   },
   "$defs": {
@@ -563,7 +584,8 @@
       "base_map_defs",
       "subject_obs",
       "subject_traj",
-      "Time Density Map"
+      "Time Density Map",
+      "persist_summary_table"
     ]
   },
   "additionalProperties": false
