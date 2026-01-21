@@ -34,8 +34,8 @@ all-grouper:
       max_speed_factor: 1.05
       expansion_factor: 1.05
     time_range:
-      since: '2025-08-01T12:22:00.000Z'
-      until: '2026-01-20T12:22:00.000Z'
+      since: '2008-08-01T12:22:00.000Z'
+      until: '2013-01-20T12:22:00.000Z'
     subject_obs:
       subject_group_name: elephants
 
@@ -77,7 +77,7 @@ value-grouper:
       max_speed_factor: 1.05
       expansion_factor: 1.05
     time_range:
-      since: '2025-08-01T12:22:00.000Z'
-      until: '2026-01-20T12:22:00.000Z'
+      since: '2008-08-01T12:22:00.000Z'
+      until: '2013-01-20T12:22:00.000Z'
     subject_obs:
       subject_group_name: elephants
