@@ -1,0 +1,83 @@
+all-grouper:
+  name: All Grouper
+  description: A demonstration of a workflow with no grouping.
+  params:
+    workflow_details:
+      description: ''
+      name: collared_lions
+    groupers:
+      groupers: []
+    er_client_name:
+      data_source:
+        name: lg
+    base_map_defs:
+      base_maps:
+        - url: >-
+            https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}
+          opacity: 1
+          max_zoom: 20
+        - url: >-
+            https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}
+          opacity: 0.15
+          max_zoom: 20
+    subject_traj:
+      trajectory_segment_filter:
+        min_length_meters: 0.001
+        max_length_meters: 5000
+        min_time_secs: 1
+        max_time_secs: 21600
+        min_speed_kmhr: 0.01
+        max_speed_kmhr: 20
+    td:
+      auto_scale_or_custom_cell_size:
+        auto_scale_or_custom: Auto-scale
+      max_speed_factor: 1.05
+      expansion_factor: 1.05
+    time_range:
+      since: '2008-08-01T12:22:00.000Z'
+      until: '2013-01-20T12:22:00.000Z'
+    subject_obs:
+      subject_group_name: elephants
+
+
+value-grouper:
+  name: Value Grouper
+  description: A demonstration of a workflow grouped by a value.
+  params:
+    workflow_details:
+      description: ''
+      name: collared_lions
+    groupers:
+      groupers:
+        - subject_name
+    er_client_name:
+      data_source:
+        name: lg
+    base_map_defs:
+      base_maps:
+        - url: >-
+            https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}
+          opacity: 1
+          max_zoom: 20
+        - url: >-
+            https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}
+          opacity: 0.15
+          max_zoom: 20
+    subject_traj:
+      trajectory_segment_filter:
+        min_length_meters: 0.001
+        max_length_meters: 5000
+        min_time_secs: 1
+        max_time_secs: 21600
+        min_speed_kmhr: 0.01
+        max_speed_kmhr: 20
+    td:
+      auto_scale_or_custom_cell_size:
+        auto_scale_or_custom: Auto-scale
+      max_speed_factor: 1.05
+      expansion_factor: 1.05
+    time_range:
+      since: '2008-08-01T12:22:00.000Z'
+      until: '2013-01-20T12:22:00.000Z'
+    subject_obs:
+      subject_group_name: elephants
