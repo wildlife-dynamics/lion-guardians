@@ -1,5 +1,6 @@
 import os
 import uuid
+import pandas as pd
 from pathlib import Path
 from pydantic import Field
 from datetime import datetime
@@ -345,3 +346,163 @@ def merge_cl_files(
 
     composer.save(str(output_path))
     return str(output_path)
+
+
+@task
+def create_guardians_ctx_cover(
+    report_period: TimeRange,
+    prepared_by: str,
+) -> Dict[str, str]:
+    """
+    Build a dictionary with the mapbook report template values.
+
+    Args:
+        report_period (TimeRange): Object with 'since', 'until', and 'time_format' attributes.
+        prepared_by (str): Name of the person or organization preparing the report.
+
+    Returns:
+        Dict[str, str]: Structured dictionary with formatted metadata.
+    """
+
+    formatted_date = datetime.now()
+    formatted_date_str = formatted_date.strftime("%Y-%m-%d %H:%M:%S")
+    fmt = getattr(report_period, "time_format", "%Y-%m-%d")
+    formatted_time_range = f"{report_period.since.strftime(fmt)} to {report_period.until.strftime(fmt)}"
+
+    # Return structured dictionary
+    return {
+        "report_id": f"REP-{uuid.uuid4().hex[:8].upper()}",
+        "time_generated": formatted_date_str,
+        "report_period": formatted_time_range,
+        "prepared_by": prepared_by,
+    }
+
+
+@task
+def create_guardians_grouper_ctx(
+    grouper_name: tuple | list | str | None,
+    df: AnyDataFrame,
+    total_patrols: int | float | None,
+    total_distance: int | float | None,
+    total_time: int | float | None,
+    patrol_events_track_map: str | None,
+    patrol_time_density_map: str | None,
+    events_pie_chart: str | None,
+    events_time_series_bar_chart: str | None,
+    patrol_events: str | None,
+    event_efforts: str | None,
+    month_stats: str | None,
+    guardian_stats: str | None,
+) -> Dict[str, str | int | float | None | list]:
+    """
+    Create context dictionary for guardians report with grouper information and map paths.
+
+    Args:
+        grouper_name: The grouper identifier (can be various types)
+        df: The dataframe to extract grouper values from
+        total_patrols: Total number of patrols
+        total_distance: Total distance value for the group (in km)
+        total_time: Total time value for the group (in seconds)
+        patrol_events_track_map: Path to the patrol events track map image
+        patrol_time_density_map: Path to the time density map image
+        events_pie_chart: Path to the events pie chart image
+        events_time_series_bar_chart: Path to the events time series bar chart image
+        patrol_events: Path to patrol events CSV file
+        event_efforts: Path to event efforts CSV file
+        month_stats: Path to month statistics CSV file
+        guardian_stats: Path to guardian statistics CSV file
+
+    Returns:
+        Dictionary containing all context data for the guardians report template
+    """
+
+    # Extract grouper value dynamically
+    grouper_value = "All"
+    print(f"grouper name raw: {grouper_name} (type: {type(grouper_name)})")
+
+    if grouper_name:
+        if isinstance(grouper_name, str):
+            grouper_value = grouper_name
+        elif isinstance(grouper_name, (list, tuple)) and len(grouper_name) > 0:
+            # Check if it's a tuple structure like (('index_name', 'All'),)
+            first_item = grouper_name[0]
+
+            # Handle tuple structure (('index_name', 'All'),)
+            if isinstance(first_item, tuple) and len(first_item) == 2:
+                key, value = first_item
+                if key == "index_name" and value == "All":
+                    grouper_value = "All"
+                else:
+                    grouper_value = str(value)
+                print(f"Extracted from tuple structure: {grouper_value}")
+            # Handle grouper objects
+            elif hasattr(first_item, "__class__"):
+                grouper = first_item
+                grouper_type = grouper.__class__.__name__
+                print(f"grouper_type: {grouper_type}")
+
+                if grouper_type == "ValueGrouper":
+                    index_name = getattr(grouper, "index_name", None)
+                    if df is not None and index_name and index_name in df.columns:
+                        unique_values = df[index_name].unique()
+                        if len(unique_values) == 1:
+                            grouper_value = str(unique_values[0])
+                        else:
+                            grouper_value = index_name
+                    else:
+                        grouper_value = index_name if index_name else "Value"
+
+                elif grouper_type == "TemporalGrouper":
+                    grouper_value = _format_temporal_grouper(grouper, df)
+
+                elif grouper_type == "AllGrouper":
+                    grouper_value = "All"
+                else:
+                    grouper_value = str(grouper_name)
+            else:
+                grouper_value = str(first_item)
+        else:
+            grouper_value = str(grouper_name)
+
+    print(f"grouper_value: {grouper_value}")
+
+    # Safely convert total_time from seconds to hours
+    total_time_hours = None
+    if total_time is not None:
+        total_time_hours = round(total_time / 3600, 1)
+
+    # Safely read CSV files and convert to list of dictionaries
+    def safe_read_csv(file_path: str | None) -> list:
+        """Safely read CSV file and return list of dicts, or empty list if file is None/invalid."""
+        if file_path is None:
+            print("Warning: CSV file path is None")
+            return []
+        try:
+            return pd.read_csv(file_path).to_dict(orient="records")
+        except Exception as e:
+            print(f"Error reading CSV file {file_path}: {e}")
+            return []
+
+    patrol_events_df = safe_read_csv(patrol_events)
+    event_efforts_df = safe_read_csv(event_efforts)
+    month_stats_df = safe_read_csv(month_stats)
+    guardians_stats_df = safe_read_csv(guardian_stats)
+
+    # Build context with the required keys
+    ctx = {
+        "grouper_value": grouper_value,
+        "total_patrols": str(total_patrols) if total_patrols is not None else "0",
+        "total_distance": str(total_distance) if total_distance is not None else "0",
+        "total_time": str(total_time_hours) if total_time_hours is not None else "0",
+        "patrol_events_track_map": patrol_events_track_map,
+        "patrol_time_density_map": patrol_time_density_map,
+        "events_pie_chart": events_pie_chart,
+        "events_time_series_bar_chart": events_time_series_bar_chart,
+        "patrol_events": patrol_events_df,
+        "event_efforts": event_efforts_df,
+        "month_stats": month_stats_df,
+        "guardian_stats": guardians_stats_df,
+    }
+
+    print(f"Guardians Context: {ctx}")
+    return ctx

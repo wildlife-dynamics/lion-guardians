@@ -1,0 +1,1715 @@
+id: guardians_report
+requirements:
+  - name: ecoscope-workflows-core
+    version: "0.20.4.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows/
+
+  - name: ecoscope-workflows-ext-ecoscope
+    version: "0.20.4.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows/
+
+  - name: ecoscope-workflows-ext-custom
+    version: "0.0.20.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+  - name: ecoscope-workflows-ext-ste
+    version: "0.0.6.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+  - name: ecoscope-workflows-ext-mnc
+    version: "0.0.0.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+  - name: ecoscope-workflows-ext-lion-guardians
+    version: "*"
+    channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
+
+rjsf-overrides:
+  properties:
+    Trajectory Category.properties.set_patrol_traj_color_column.properties.var.oneOf:
+      - const: patrol_type
+        title: Patrol Type
+      - const: patrol_subject
+        title: Patrol Subject
+      - const: patrol_serial_number
+        title: Patrol Serial Number
+
+  $defs:
+    ValueGrouper.oneOf:
+      - const: patrol_type
+        title: Patrol Type
+      - const: patrol_serial_number
+        title: Patrol Serial Number
+      - const: patrol_subject
+        title: Patrol Subject
+
+task-instance-defaults:
+  skipif:
+    conditions:
+      - any_is_empty_df
+      - any_dependency_skipped
+
+workflow:
+  # Set workflow details
+  - name: Set Workflow Details
+    id: workflow_details
+    task: set_workflow_details
+
+  - name: Time range
+    id: time_range
+    task: set_time_range
+    partial:
+      time_format: "%d %b %Y %H:%M:%S %Z"
+      timezone: 
+        label: UTC 
+        tzCode: UTC 
+        name: UTC 
+        utc_offset: "+03:00"
+  
+  - name: Extract Timezone Selection
+    id: get_timezone
+    task: get_timezone_from_time_range
+    partial:
+      time_range: ${{ workflow.time_range.return }}
+
+  - name: Set groupers
+    id: groupers
+    task: set_groupers
+
+  - name: Connect to ER 
+    id: er_client_name
+    task: set_er_connection
+
+  - name: Configure base map layers
+    id: base_map_defs
+    task: set_base_maps_pydeck
+
+  # Download amboseli group ranches and the collared lions templates
+  - name: Download amboseli group ranches
+    id: persist_ambo_gpkg
+    task: fetch_and_persist_file
+    partial:
+      url: https://www.dropbox.com/scl/fi/fcy57d5x5y67gh0xje6rw/lg_group_ranch_boundaries.gpkg?rlkey=yte99xhkte7f1r7n9nemgy7p0&st=sxx1emc1&dl=0
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: false
+      retries: 3
+      unzip: false
+  
+  - name: Download hotspot areas gpkg 
+    id: persist_hotspot_areas
+    task: fetch_and_persist_file
+    partial: 
+      url: https://www.dropbox.com/scl/fi/nlozcti0oqhj6bzvsr46g/lg_conflict_hotspots.gpkg?rlkey=giwdizp1j6e24btgh48uxf5v0&st=jivblame&dl=0
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: false
+      retries: 3
+      unzip: false
+
+  - name: Download protected areas gpkg 
+    id: persist_protected_gpkg 
+    task: fetch_and_persist_file
+    partial:  
+      url: https://www.dropbox.com/scl/fi/i5yczgyln3zh1n8c4ppl5/lg_protected_areas.gpkg?rlkey=5ea21haq2tmsmx7g502p3qag5&st=zt6ztcku&dl=0
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: false
+      retries: 3
+      unzip: false
+
+  - name: Download guardians report cover page
+    id: persist_cover_page
+    task: fetch_and_persist_file
+    partial:
+      url: https://www.dropbox.com/scl/fi/p1xk9no77w9ctpc4mnn6p/patrol_guardians_cover_page.docx?rlkey=tc5oo54s29wu7cz47glvlbcaj&st=rtwbfa0i&dl=0
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: false
+      retries: 3
+      unzip: false
+
+  - name: Download guardians report  subject page
+    id: persist_indv_subject_page
+    task: fetch_and_persist_file
+    partial:
+      url: https://www.dropbox.com/scl/fi/kp9mkc9dd5qbast86ufk4/custom_patrol_template.docx?rlkey=ea12bxesuu9dnnj1ngfahhqvr&st=smoaj6kw&dl=0
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: false
+      retries: 3
+      unzip: false
+
+
+  - name: Load amboseli group ranches 
+    id: load_ambo_group_ranches 
+    task: load_df 
+    partial: 
+      file_path: ${{ workflow.persist_ambo_gpkg.return }}
+      layer: null
+      deserialize_json: false 
+
+  - name: Load amboseli group ranches 
+    id: load_hotspot_areas
+    task: load_df 
+    partial: 
+      file_path: ${{ workflow.persist_hotspot_areas.return }}
+      layer: null
+      deserialize_json: false 
+
+  - name: Load protected areas
+    id: load_protected_areas
+    task: load_df 
+    partial: 
+      file_path: ${{ workflow.persist_protected_gpkg.return }}
+      layer: null
+      deserialize_json: false 
+
+  - name: Reproject gdf to 4326 for ambo layers
+    id: reproject_ambo_boundaries 
+    task: reproject_gdf
+    partial: 
+      gdf: ${{ workflow.load_ambo_group_ranches.return }}
+      target_crs: "EPSG:4326"
+
+  - name: Reproject gdf to 4326 for hotspot areas
+    id: reproject_hotspot_areas
+    task: reproject_gdf
+    partial: 
+      gdf: ${{ workflow.load_hotspot_areas.return }}
+      target_crs: "EPSG:4326"
+
+  - name: Reproject gdf to 4326 for protected areas
+    id: reproject_protected_areas
+    task: reproject_gdf
+    partial: 
+      gdf: ${{ workflow.load_protected_areas.return }}
+      target_crs: "EPSG:4326"
+
+  - name: Annotate amboseli layers with geom type 
+    id: annotate_ambo_layers
+    task: get_gdf_geom_type
+    partial:  
+      gdf: ${{ workflow.reproject_ambo_boundaries.return }}
+
+  - name: Annotate hotspot layers with geom type 
+    id: annotate_hotspot_layers
+    task: get_gdf_geom_type
+    partial:  
+      gdf: ${{ workflow.reproject_hotspot_areas.return }}
+
+  - name: Annotate protected areas with geom type 
+    id: annotate_protected_layers
+    task: get_gdf_geom_type
+    partial:  
+      gdf: ${{ workflow.reproject_protected_areas.return }}
+
+  - name: Create layer for amboseli group ranch 
+    id: custom_amboseli_layer 
+    task: create_deckgl_layer_from_gdf
+    partial: 
+      gdf: ${{ workflow.annotate_ambo_layers.return }}
+      style: 
+        get_line_color: [169, 169, 169]
+        get_fill_color: [169, 169, 169]
+        get_line_width: 4.00
+        opacity: 0.75
+        extruded: false
+        stroked: true
+        filled: false
+      legend: 
+        title: Map layers 
+        values:
+          - label: Group ranch boundaries 
+            color: "#a9a9a9"
+
+  - name: Create layer for hotspot areas 
+    id: custom_hotspot_layer 
+    task: create_deckgl_layer_from_gdf
+    partial: 
+      gdf: ${{ workflow.annotate_hotspot_layers.return }}
+      style: 
+        get_line_color: [220, 20, 60]
+        get_fill_color: [220, 20, 60]
+        get_radius: 6 
+        get_line_width: 1.95
+        opacity: 0.95
+        extruded: false
+        stroked: true
+        filled: true
+      legend: 
+        title: ""
+        values:
+          - label: Hotspot areas
+            color: "#dc143c"
+
+  - name: Create layer for protected areas 
+    id: custom_protected_layer 
+    task: create_deckgl_layer_from_gdf
+    partial: 
+      gdf: ${{ workflow.annotate_protected_layers.return }}
+      style: 
+        get_line_color: [77, 102, 0]
+        get_fill_color: [77, 102, 0]
+        get_line_width: 1.95
+        opacity: 0.15
+        extruded: false
+        stroked: true
+        filled: true
+      legend: 
+        title: ""
+        values:
+          - label: National parks and reserves 
+            color: "#4d6600"
+
+  - name: Create text layer for conflict hotspots 
+    id: create_hotspot_text_layer 
+    task: create_custom_text_layer
+    partial: 
+      geodataframe: ${{ workflow.reproject_hotspot_areas.return }}
+      layer_style: 
+        get_text: name 
+        get_color: [0,0,0,255]
+        
+        get_size: 1500
+        size_units: meters 
+        size_min_pixels: 65 #65 
+        size_max_pixels: 100
+        size_scale: 2.05 
+
+        font_family: Calibri 
+        font_weight: "700" 
+        get_text_anchor: middle 
+        get_alignment_baseline: center
+        billboard: true 
+
+        background_padding: [4,8]
+        pickable: true 
+        auto_highlight: false 
+      use_centroid: true 
+      legend: null 
+
+  - title: Patrol and Event Types
+    type: task-group
+    description: ' '
+    tasks:
+      - id: er_patrol_and_events_params
+        task: set_patrols_and_patrol_events_params
+        partial:
+          client: ${{ workflow.er_client_name.return }}
+          time_range: ${{ workflow.time_range.return }}
+          include_patrol_details: true
+          raise_on_empty: false
+          truncate_to_time_range: true
+          sub_page_size: 150
+          # pass patrol_types  on param.yaml
+
+      - id: prefetch_patrols
+        task: get_patrols_from_combined_params
+        partial:
+          combined_params: ${{ workflow.er_patrol_and_events_params.return }}
+
+      - id: patrol_obs
+        task: get_patrol_observations_from_patrols_dataframe_and_combined_params
+        partial:
+          patrols_df: ${{ workflow.prefetch_patrols.return }}
+          combined_params: ${{ workflow.er_patrol_and_events_params.return }}
+
+      - id: patrol_events
+        task: unpack_events_from_patrols_df_and_combined_params
+        partial:
+          patrols_df: ${{ workflow.prefetch_patrols.return }}
+          combined_params: ${{ workflow.er_patrol_and_events_params.return }}
+
+      - id: event_type_display_names
+        task: get_event_type_display_names_from_events_aliased
+        partial:
+          client: ${{ workflow.er_client_name.return }}
+          events_gdf: ${{ workflow.patrol_events.return }}
+          append_category_names: duplicates
+
+  - name: Convert patrols to timezone
+    id: convert_patrols_to_user_timezone
+    task: convert_values_to_timezone
+    partial:
+      df: ${{ workflow.patrol_obs.return }}
+      timezone: ${{ workflow.get_timezone.return }}
+      columns:
+        - patrol_start_time
+        - patrol_end_time
+        - fixtime
+
+  - name: Convert events to timezone
+    id: convert_events_to_user_timezone
+    task: convert_values_to_timezone
+    partial:
+      df: ${{ workflow.event_type_display_names.return }}
+      timezone: ${{ workflow.get_timezone.return }}
+      columns:
+        - time
+        - patrol_start_time
+
+  - name: Persist events as geoparquet 
+    id: persist_events_geoparquet 
+    task: persist_df
+    partial: 
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filetype: geoparquet
+      df: ${{ workflow.convert_events_to_user_timezone.return }}
+      filename: events
+          
+  - title: Trajectory Category
+    type: task-group
+    description: Differentiate tracks by color using the selected category.
+    tasks:
+      - name: null
+        id: set_patrol_traj_color_column
+        task: set_string_var
+
+  - name: Transform Observations to Relocations
+    id: patrol_reloc
+    task: process_relocations
+    partial:
+      observations: ${{ workflow.convert_patrols_to_user_timezone.return }}
+      relocs_columns:
+        - patrol_id
+        - patrol_start_time
+        - patrol_end_time
+        - patrol_type__value
+        - patrol_type__display
+        - patrol_serial_number
+        - patrol_status
+        - patrol_subject
+        - groupby_col
+        - fixtime
+        - junk_status
+        - extra__source
+        - geometry
+      filter_point_coords:
+        - x: 180.000000
+          y: 90.000000
+        - x: 0.000000
+          y: 0.000000
+        - x: 1.000000
+          y: 1.000000
+
+  - title: Trajectory Segment Filter
+    type: task-group
+    description: ' '
+    tasks:
+      - name: null
+        id: patrol_traj
+        task: relocations_to_trajectory
+        partial:
+          relocations: ${{ workflow.patrol_reloc.return }}
+
+      - name: Add temporal index to Patrol Trajectories
+        id: traj_add_temporal_index
+        task: add_temporal_index
+        partial:
+          df: ${{ workflow.patrol_traj.return }}
+          time_col: extra__patrol_start_time
+          groupers: ${{ workflow.groupers.return }}
+          cast_to_datetime: true
+          format: mixed
+
+      - name: Rename value grouper columns for Trajectories
+        id: traj_rename_grouper_columns
+        task: map_columns
+        partial:
+          df: ${{ workflow.traj_add_temporal_index.return }}
+          drop_columns: []
+          retain_columns: []
+          rename_columns:
+            extra__patrol_type__value: patrol_type
+            extra__patrol_serial_number: patrol_serial_number
+            extra__patrol_status: patrol_status
+            extra__patrol_subject: patrol_subject
+
+      - name: Persist trajectories as geoparquet 
+        id: persist_patrols_geoparquet 
+        task: persist_df
+        partial: 
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          filetype: geoparquet
+          df: ${{ workflow.traj_rename_grouper_columns.return }}
+          filename: trajectories
+
+      - name: Patrol Traj Colormap
+        id: traj_colormap
+        task: apply_color_map
+        partial:
+          df: ${{ workflow.traj_rename_grouper_columns.return }}
+          colormap: Paired
+          input_column_name: ${{ workflow.set_patrol_traj_color_column.return }}
+          output_column_name: patrol_traj_colormap
+
+  - title: Patrol Event Location Filter
+    type: task-group
+    description: Filter events based on their location.
+    tasks:
+      - name: null
+        id: filter_patrol_events
+        task: apply_reloc_coord_filter
+        partial:
+          df: ${{ workflow.convert_events_to_user_timezone.return }}
+          roi_gdf: null
+          roi_name: null
+
+      - name: Add temporal index to Patrol Events
+        id: pe_add_temporal_index
+        task: add_temporal_index
+        partial:
+          df: ${{ workflow.filter_patrol_events.return }}
+          time_col: patrol_start_time
+          groupers: ${{ workflow.groupers.return }}
+          cast_to_datetime: true
+          format: mixed
+
+      - name: Patrol Events Colormap
+        id: pe_colormap
+        task: apply_color_map
+        partial:
+          df: ${{ workflow.pe_add_temporal_index.return }}
+          input_column_name: event_type
+          colormap: Accent
+          output_column_name: event_type_colormap
+
+  - name: Cast Patrol Trajectory Columns
+    id: patrol_traj_cols_to_string
+    task: convert_column_values_to_string
+    partial:
+      df: ${{ workflow.traj_colormap.return }}
+      columns:
+        - patrol_serial_number
+        - patrol_type
+
+  - name: Cast Patrol Events Columns
+    id: pe_cols_to_string
+    task: convert_column_values_to_string
+    partial:
+      df: ${{ workflow.pe_colormap.return }}
+      columns:
+        - patrol_serial_number
+        - patrol_type
+
+  - name: Set Combined Trajectory & Event Map Title
+    id: set_traj_pe_map_title
+    task: set_string_var
+    partial:
+      var: Trajectories & Patrol Events Map
+
+  - name: Set Time Density Map Title
+    id: set_ltd_map_title
+    task: set_string_var
+    partial:
+      var: Time Density Map
+
+  - name: Set Bar Chart Title
+    id: set_bar_chart_title
+    task: set_string_var
+    partial:
+      var: Patrol Events Bar Chart
+
+  - name: Set Pie Chart Title
+    id: set_pie_chart_title
+    task: set_string_var
+    partial:
+      var: Patrol Events Pie Chart
+
+  - name: Split Patrol Trajectories by Group
+    id: split_patrol_traj_groups
+    task: split_groups
+    partial:
+      df: ${{ workflow.patrol_traj_cols_to_string.return }}
+      groupers: ${{ workflow.groupers.return }}
+
+  - name: Split Patrol Events by Group
+    id: split_pe_groups
+    task: split_groups
+    partial:
+      df: ${{ workflow.pe_cols_to_string.return }}
+      groupers: ${{ workflow.groupers.return }}
+
+  - title: Patrol Events and Trajectories Map
+    type: task-group
+    description: Create a combined patrol trajectories and events map.
+    tasks:
+      - name: Rename patrol events columns for map tooltip display
+        id: pe_rename_display_columns
+        task: map_columns
+        partial:
+          drop_columns: []
+          retain_columns: []
+          rename_columns:
+            patrol_serial_number: Patrol Serial
+            serial_number: Event Serial
+            event_type_display: Event Type
+            time: Event Time
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.split_pe_groups.return }}
+
+      - name: Create map layers for each Patrols Events group
+        id: patrol_events_map_layers
+        task: create_scatterplot_layer
+        skipif:
+          conditions:
+            - any_is_empty_df
+            - any_dependency_skipped
+            - all_geometry_are_none
+        partial:
+          layer_style:
+            get_fill_color: event_type_colormap
+            get_radius: 3
+            opacity: 0.55
+            stroked: true
+          legend: null
+
+        mapvalues:
+          argnames: geodataframe
+          argvalues: ${{ workflow.pe_rename_display_columns.return }}
+
+      - name: Format speed values for display
+        id: speed_val_with_unit
+        task: map_values_with_unit
+        partial:
+          input_column_name: speed_kmhr
+          output_column_name: speed_kmhr
+          original_unit: km/h
+          new_unit: km/h
+          decimal_places: 1
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.split_patrol_traj_groups.return }}
+
+      - name: Rename patrol traj columns for map tooltip display
+        id: patrol_traj_rename_columns
+        task: map_columns
+        partial:
+          drop_columns: []
+          retain_columns: []
+          rename_columns:
+            patrol_serial_number: Patrol Serial
+            extra__patrol_type__display: Patrol Type
+            segment_start: Start
+            timespan_seconds: Duration (s)
+            speed_kmhr: Speed (kph)
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.speed_val_with_unit.return }}
+
+      - name: Create map layer for each Patrol Trajectories group
+        id: patrol_traj_map_layers
+        task: create_path_layer
+        skipif:
+          conditions:
+            - any_is_empty_df
+            - any_dependency_skipped
+            - all_geometry_are_none
+        partial:
+          layer_style:
+            get_color: patrol_traj_colormap
+            get_width: 1.85
+            width_scale: 1
+            width_min_pixels: 2
+            width_max_pixels: 6
+            width_units: pixels
+            cap_rounded: true 
+            joint_rounded: true
+            billboard: false
+            opacity: 0.55
+            stroked: true
+
+          legend:
+            title: "Patrol Trajectories"
+            label_column: ${{ workflow.set_patrol_traj_color_column.return }}
+            color_column: patrol_traj_colormap
+            sort: ascending
+            label_suffix: null 
+        mapvalues:
+          argnames: geodataframe
+          argvalues: ${{ workflow.patrol_traj_rename_columns.return }}
+
+      - name: Combine Trajectories and Patrol Events layers
+        id: combined_traj_and_pe_map_layers
+        skipif:
+          conditions:
+            - all_keyed_iterables_are_skips
+          unpack_depth: 1
+        task: groupbykey
+        partial:
+          iterables:
+            - ${{ workflow.patrol_traj_map_layers.return }}
+            - ${{ workflow.patrol_events_map_layers.return }}
+
+      - name: Combine styled layers with trajectories and events  
+        id: merge_static_grouped_layers
+        task: combine_deckgl_map_layers
+        skipif:
+          conditions:
+            - any_is_empty_df
+            - any_dependency_skipped
+        partial:
+          static_layers: 
+            - ${{ workflow.custom_amboseli_layer.return }}
+            - ${{ workflow.custom_hotspot_layer.return }}
+            - ${{ workflow.custom_protected_layer.return }}
+            - ${{ workflow.create_hotspot_text_layer.return }}
+        mapvalues: 
+          argnames: grouped_layers
+          argvalues: ${{ workflow.combined_traj_and_pe_map_layers.return }}
+
+      - name: Global map zoom value
+        id: zoom_view_state
+        task: view_state_deck_gdf
+        skipif:
+          conditions:
+            - any_is_empty_df
+            - any_dependency_skipped
+        partial:
+          pitch: 0
+          bearing: 0
+          gdf: ${{ workflow.reproject_ambo_boundaries.return }}
+
+      - name: Draw Ecomaps for each combined Trajectory and Patrol Events group
+        id: traj_patrol_events_ecomap
+        task: draw_map
+        partial:
+          tile_layers: ${{ workflow.base_map_defs.return }}
+          legend_style:
+            title: ${{ workflow.set_patrol_traj_color_column.return }}
+            placement: bottom-right
+          static: false
+          title: null
+          max_zoom: 10
+          widget_id: ${{ workflow.set_traj_pe_map_title.return }}
+          view_state: ${{ workflow.zoom_view_state.return }}
+        mapvalues:
+          argnames: geo_layers
+          argvalues: ${{ workflow.merge_static_grouped_layers.return }}
+
+      - name: Persist Patrols Ecomap as Text
+        id: traj_pe_ecomap_html_urls
+        task: persist_text
+        partial:
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          filename_suffix: patrols_ecomap
+        mapvalues:
+          argnames: text
+          argvalues: ${{ workflow.traj_patrol_events_ecomap.return }}
+
+      - name: Create Map Widgets for Patrol Events
+        id: traj_pe_map_widgets_single_views
+        task: create_map_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: ${{ workflow.set_traj_pe_map_title.return }}
+        map:
+          argnames:
+            - view
+            - data
+          argvalues: ${{ workflow.traj_pe_ecomap_html_urls.return }}
+
+      - name: Merge EcoMap Widget Views
+        id: traj_pe_grouped_map_widget
+        task: merge_widget_views
+        partial:
+          widgets: ${{ workflow.traj_pe_map_widgets_single_views.return }}
+      
+      - name: Convert patrol events ecomap html to png 
+        id: patrol_html_png
+        task: html_to_png
+        partial:  
+          output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          config: 
+            full_page: false
+            device_scale_factor: 2.0 
+            wait_for_timeout: 30000
+            max_concurrent_pages: 5
+        mapvalues:
+          argnames: html_path
+          argvalues: ${{ workflow.traj_pe_ecomap_html_urls.return }}
+
+  # Patrol Summary Stats
+  - title: Patrol Summary Statistics
+    type: task-group
+    description: Create a single value widget for various patrol statistics.
+    tasks:
+      - name: Calculate Total Patrols Per Group
+        id: total_patrols
+        task: dataframe_column_nunique
+        partial:
+          column_name: extra__patrol_id
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.split_patrol_traj_groups.return }}
+
+      - name: Create Single Value Widgets for Total Patrols Per Group
+        id: total_patrols_sv_widgets
+        task: create_single_value_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: Total Patrols
+          decimal_places: 1
+        map:
+          argnames:
+            - view
+            - data
+          argvalues: ${{ workflow.total_patrols.return }}
+
+      - name: Merge per group Total Patrols SV widgets
+        id: total_patrols_grouped_sv_widget
+        task: merge_widget_views
+        partial:
+          widgets: ${{ workflow.total_patrols_sv_widgets.return }}
+
+      - name: Calculate Total Patrol Time Per Group
+        id: total_patrol_time
+        task: dataframe_column_sum
+        partial:
+          column_name: timespan_seconds
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.split_patrol_traj_groups.return }}
+
+      - name: Convert total patrol time units
+        id: total_patrol_time_converted
+        task: with_unit
+        partial:
+          original_unit: s
+          new_unit: h
+        mapvalues:
+          argnames: value
+          argvalues: ${{ workflow.total_patrol_time.return }}
+
+      - name: Create Single Value Widgets for Total Patrol Time Per Group
+        id: total_patrol_time_sv_widgets
+        task: create_single_value_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: Total Time
+          decimal_places: 1
+        map:
+          argnames:
+            - view
+            - data
+          argvalues: ${{ workflow.total_patrol_time_converted.return }}
+
+      - name: Merge per group Total Patrol Time SV widgets
+        id: patrol_time_grouped_widget
+        task: merge_widget_views
+        partial:
+          widgets: ${{ workflow.total_patrol_time_sv_widgets.return }}
+
+      - name: Calculate Total Distance Per Group
+        id: total_patrol_dist
+        task: dataframe_column_sum
+        partial:
+          column_name: dist_meters
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.split_patrol_traj_groups.return }}
+
+      - name: Convert total patrol distance units
+        id: total_patrol_dist_converted
+        task: with_unit
+        partial:
+          original_unit: m
+          new_unit: km
+        mapvalues:
+          argnames: value
+          argvalues: ${{ workflow.total_patrol_dist.return }}
+
+      - name: Create Single Value Widgets for Total Distance Per Group
+        id: total_patrol_dist_sv_widgets
+        task: create_single_value_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: Total Distance
+          decimal_places: 1
+        map:
+          argnames:
+            - view
+            - data
+          argvalues: ${{ workflow.total_patrol_dist_converted.return }}
+
+      - name: Merge per group Total Patrol Distance SV widgets
+        id: patrol_dist_grouped_widget
+        task: merge_widget_views
+        partial:
+          widgets: ${{ workflow.total_patrol_dist_sv_widgets.return }}
+
+      - name: Calculate Average Speed Per Group
+        id: avg_speed
+        task: dataframe_column_mean
+        partial:
+          column_name: speed_kmhr
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.split_patrol_traj_groups.return }}
+
+      - name: Convert Average Speed units
+        id: average_speed_converted
+        task: with_unit
+        partial:
+          original_unit: km/h
+          new_unit: km/h
+        mapvalues:
+          argnames: value
+          argvalues: ${{ workflow.avg_speed.return }}
+
+      - name: Create Single Value Widgets for Avg Speed Per Group
+        id: avg_speed_sv_widgets
+        task: create_single_value_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: Average Speed
+          decimal_places: 1
+        map:
+          argnames:
+            - view
+            - data
+          argvalues: ${{ workflow.average_speed_converted.return }}
+
+      - name: Merge per group Avg Speed SV widgets
+        id: avg_speed_grouped_widget
+        task: merge_widget_views
+        partial:
+          widgets: ${{ workflow.avg_speed_sv_widgets.return }}
+      - name: Calculate Max Speed Per Group
+        id: max_speed
+        task: dataframe_column_max
+        partial:
+          column_name: speed_kmhr
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.split_patrol_traj_groups.return }}
+
+      - name: Convert Max Speed units
+        id: max_speed_converted
+        task: with_unit
+        partial:
+          original_unit: km/h
+          new_unit: km/h
+        mapvalues:
+          argnames: value
+          argvalues: ${{ workflow.max_speed.return }}
+
+      - name: Create Single Value Widgets for Max Speed Per Group
+        id: max_speed_sv_widgets
+        task: create_single_value_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: Max Speed
+          decimal_places: 1
+        map:
+          argnames:
+            - view
+            - data
+          argvalues: ${{ workflow.max_speed_converted.return }}
+
+      - name: Merge per group Max Speed SV widgets
+        id: max_speed_grouped_widget
+        task: merge_widget_views
+        partial:
+          widgets: ${{ workflow.max_speed_sv_widgets.return }}
+
+
+  # Time series bar chart 
+  - title: Patrol Events Bar Chart
+    type: task-group
+    description: The bar chart shows how many events of different types occurred over time. Choose the time interval for the x-axis to control how event counts are summarized over time.
+    tasks:
+      - name: null
+        id: patrol_events_bar_chart
+        task: draw_time_series_bar_chart
+        partial:
+          x_axis: time
+          y_axis: event_type_display
+          category: event_type_display
+          agg_function: count
+          color_column: event_type_colormap
+          plot_style:
+            xperiodalignment: middle
+          layout_style: null
+          widget_id: ${{ workflow.set_bar_chart_title.return }}
+        mapvalues:
+          argnames: dataframe
+          argvalues: ${{ workflow.split_pe_groups.return }}
+
+      - name: Persist Patrols Bar Chart as Text
+        id: patrol_events_bar_chart_html_url
+        task: persist_text
+        partial:
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          filename_suffix: patrol_events_time_series_bar_chart
+        mapvalues:
+          argnames: text
+          argvalues: ${{ workflow.patrol_events_bar_chart.return }}
+
+      - name: Create Plot Widget for Patrol Events
+        id: patrol_events_bar_chart_widget
+        task: create_plot_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: ${{ workflow.set_bar_chart_title.return }}
+        map:
+          argnames:
+            - view
+            - data
+          argvalues: ${{ workflow.patrol_events_bar_chart_html_url.return }}
+
+      - name: Merge Bar Plot Widget Views
+        id: grouped_bar_plot_widget_merge
+        task: merge_widget_views
+        partial:
+          widgets: ${{ workflow.patrol_events_bar_chart_widget.return }}
+
+      - name: Convert patrol events time series bar chart html to png 
+        id: patrol_bar_chart_png
+        task: html_to_png
+        partial:  
+          output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          config: 
+            full_page: false
+            device_scale_factor: 2.0 
+            wait_for_timeout: 10 
+            max_concurrent_pages: 5
+        mapvalues:
+          argnames: html_path
+          argvalues: ${{ workflow.patrol_events_bar_chart_html_url.return }}
+
+  # Draw pie chart
+  - title: Patrol events pie chart
+    type: task-group
+    description: Create the patrol events pie chart.
+    tasks:
+      - name: Draw Pie Chart for Patrols Events
+        id: patrol_events_pie_chart
+        task: draw_pie_chart
+        partial:
+          value_column: event_type_display
+          plot_style:
+            textinfo: value
+          label_column: null
+          color_column: event_type_colormap
+          layout_style: null
+          widget_id: ${{ workflow.set_pie_chart_title.return }}
+        mapvalues:
+          argnames: dataframe
+          argvalues: ${{ workflow.split_pe_groups.return }}
+
+      - name: Persist Patrols Pie Chart as Text
+        id: pe_pie_chart_html_urls
+        task: persist_text
+        partial:
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          filename_suffix: patrols_pie_chart
+        mapvalues:
+          argnames: text
+          argvalues: ${{ workflow.patrol_events_pie_chart.return }}
+
+      - name: Create Plot Widget for Patrol Events
+        id: patrol_events_pie_chart_widgets
+        task: create_plot_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: ${{ workflow.set_pie_chart_title.return }}
+        map:
+          argnames:
+            - view
+            - data
+          argvalues: ${{ workflow.pe_pie_chart_html_urls.return }}
+
+      - name: Merge Pie Chart Widget Views
+        id: patrol_events_pie_widget_grouped
+        task: merge_widget_views
+        partial:
+          widgets: ${{ workflow.patrol_events_pie_chart_widgets.return }}
+
+      - name: Convert patrol events pie chart html to png 
+        id: patrol_pie_chart_png
+        task: html_to_png
+        partial:  
+          output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          config: 
+            full_page: false
+            device_scale_factor: 2.0 
+            wait_for_timeout: 10 
+            max_concurrent_pages: 1
+        mapvalues:
+          argnames: html_path
+          argvalues: ${{ workflow.pe_pie_chart_html_urls.return }}
+
+
+  - title: Time Density Map
+    type: task-group
+    description: These settings show a grid-based heatmap showing where subjects spent the most time.
+    tasks:
+      - name: null
+        id: ltd_meshgrid
+        task: create_meshgrid
+        partial:
+          aoi: ${{ workflow.patrol_traj_cols_to_string.return }}
+          intersecting_only: false
+
+      - name: Crate Linear Time Density from Trajectory
+        id: ltd
+        task: calculate_linear_time_density
+        partial:
+          meshgrid: ${{ workflow.ltd_meshgrid.return }}
+          percentiles:
+            - 50.000000
+            - 60.000000
+            - 70.000000
+            - 80.000000
+            - 90.000000
+            - 100.000000
+        mapvalues:
+          argnames: trajectory_gdf
+          argvalues: ${{ workflow.split_patrol_traj_groups.return }}
+
+      - name: Drop nan percentiles for map display
+        id: drop_nan_percentiles
+        task: drop_nan_values_by_column
+        partial:
+          column_name: percentile
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.ltd.return }}
+
+      - name: Sort LTD by percentile
+        id: sort_percentile_values
+        task: sort_values
+        partial:
+          column_name: percentile
+          ascending: true
+          na_position: last
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.drop_nan_percentiles.return }}
+
+      - name: Cast Percentile Column
+        id: percentile_col_to_string
+        task: convert_column_values_to_string
+        partial:
+          columns:
+            - percentile
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.sort_percentile_values.return }}
+
+      - name: Time Density Colormap
+        id: td_colormap
+        task: apply_color_map
+        partial:
+          input_column_name: percentile
+          colormap: RdYlGn
+          output_column_name: percentile_colormap
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.percentile_col_to_string.return }}
+
+      - name: Rename patrol traj columns for map tooltip display
+        id: patrol_td_rename_columns
+        task: map_columns
+        partial:
+          drop_columns: []
+          retain_columns: []
+          rename_columns:
+            percentile: Percentile
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.td_colormap.return }}
+
+      - name: Create map layer from Time Density
+        id: td_map_layer
+        task: create_geojson_layer
+        skipif:
+          conditions:
+            - any_is_empty_df
+            - any_dependency_skipped
+            - all_geometry_are_none
+        partial:
+          layer_style:
+            get_fill_color: percentile_colormap
+            get_line_color: percentile_colormap
+            opacity: 0.45
+            get_line_width: 1.55
+            stroked: true
+            filled: true 
+            get_elevation: 0
+            get_point_radius: 1
+            line_width_units: pixels 
+            line_width_scale: 1 
+            line_width_min_pixels: 1
+            line_width_max_pixels: 5
+            extruded: false 
+            wireframe: false
+          legend:
+            title: Time Spent 
+            label_column: Percentile
+            color_column: percentile_colormap
+            sort: ascending 
+            label_suffix: null
+        mapvalues:
+          argnames: geodataframe
+          argvalues: ${{ workflow.patrol_td_rename_columns.return }}
+
+      - name: Combine styled layers with trajectories and events  
+        id: merged_time_density_layers
+        task: combine_deckgl_map_layers
+        partial:
+          static_layers: 
+            - ${{ workflow.custom_amboseli_layer.return }}
+            - ${{ workflow.custom_hotspot_layer.return }}
+            - ${{ workflow.custom_protected_layer.return }}
+            - ${{ workflow.create_hotspot_text_layer.return }}
+        mapvalues: 
+          argnames: grouped_layers
+          argvalues: ${{ workflow.td_map_layer.return }}
+
+      - name: Draw Ecomap from Time Density
+        id: td_ecomap
+        task: draw_map
+        partial:
+          tile_layers: ${{ workflow.base_map_defs.return }}
+          legend_style:
+            title: Time Spent
+            placement: bottom-right
+          static: false
+          title: null
+          max_zoom: 10
+          widget_id: ${{ workflow.set_ltd_map_title.return }}
+          view_state: ${{ workflow.zoom_view_state.return }}
+        mapvalues:
+          argnames: geo_layers
+          argvalues: ${{ workflow.merged_time_density_layers.return }}
+
+      - name: Persist Ecomap as Text
+        id: td_ecomap_html_url
+        task: persist_text
+        partial:
+          root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          filename_suffix: time_density
+        mapvalues:
+          argnames: text
+          argvalues: ${{ workflow.td_ecomap.return }}
+
+      - name: Create time density map widget
+        id: td_map_widget
+        task: create_map_widget_single_view
+        skipif:
+          conditions:
+            - never
+        partial:
+          title: Home Range Metrics
+        map:
+          argnames:
+            - view
+            - data
+          argvalues: ${{ workflow.td_ecomap_html_url.return }}
+
+      - name: Merge Time Density Map Widget Views
+        id: td_grouped_map_widget
+        task: merge_widget_views
+        partial:
+          widgets: ${{ workflow.td_map_widget.return }}  
+
+      - name: Convert time density ecomap html to png 
+        id: td_html_png
+        task: html_to_png
+        partial:  
+          output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+          config: 
+            full_page: false
+            device_scale_factor: 2.0
+            wait_for_timeout: 20000
+            max_concurrent_pages: 1
+        mapvalues:
+          argnames: html_path
+          argvalues: ${{ workflow.td_ecomap_html_url.return }}
+
+  # Create summary tables 
+  # guardian stats
+  - name: Summarize patrol efforts by ranger
+    id: summarize_ranger_patrol
+    task: summarize_df
+    partial:  
+      groupby_cols: 
+        - patrol_subject
+      reset_index: true
+      summary_params:
+        - display_name: no_of_patrols
+          aggregator: nunique
+          column: extra__patrol_id
+        
+        - display_name: total_distance
+          aggregator: sum 
+          column: dist_meters
+          original_unit: m
+          new_unit: km 
+        
+        - display_name: total_time
+          aggregator: sum
+          column : timespan_seconds
+          original_unit: s
+          new_unit: h
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_patrol_traj_groups.return }}
+
+  # guardian stats
+  - name: Persist ranger patrol efforts
+    id: persist_ranger_patrol_efforts
+    task: persist_df
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filetype: csv
+      filename: null
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summarize_ranger_patrol.return }}
+
+  # Patrol type effort /metrics
+  - name: Summarize patrol by type
+    id: summarized_patrol_types
+    task: summarize_df
+    partial:  
+      groupby_cols: 
+        - patrol_type
+      reset_index: true
+      summary_params:
+        - display_name: no_of_patrols
+          aggregator: nunique
+          column: extra__patrol_id
+        
+        - display_name: total_distance
+          aggregator: sum 
+          column: dist_meters
+          original_unit: m
+          new_unit: km 
+        
+        - display_name: total_time
+          aggregator: sum
+          column : timespan_seconds
+          original_unit: s
+          new_unit: h
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_patrol_traj_groups.return }}
+
+  - name: Add total row on patrol types summary table
+    id: add_total_patrol_summary
+    task: add_totals_row
+    partial:  
+      label_col: patrol_type
+      label: Total 
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summarized_patrol_types.return }}
+
+  # patrol metrics
+  - name: Persist patrol types
+    id: persist_patrol_types
+    task: persist_df
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filetype: csv
+      filename: null
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.add_total_patrol_summary.return }}
+
+  # Guardians events -- patrol events
+  - name: Summarize events by guardian
+    id: summarize_guardian_events
+    task: summarize_df
+    partial:  
+      groupby_cols: 
+        - patrol_subject
+      reset_index: true
+      summary_params:
+        - display_name: no_of_events
+          aggregator: nunique
+          column: id
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.pe_rename_display_columns.return }}
+
+  - name: Persist guardian patrol efforts
+    id: persist_gua_patrol_efforts
+    task: persist_df
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filetype: csv
+      filename: null
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summarize_guardian_events.return }}
+
+  # Event types and events --event_efforts
+  - name: Event types grouped by events total
+    id: summarized_event_types
+    task: summarize_df
+    partial:  
+      groupby_cols: 
+        - event_type
+      reset_index: true
+      summary_params:
+        - display_name: no_of_events
+          aggregator: nunique
+          column: id
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.pe_rename_display_columns.return }}
+
+  - name: Persist event types 
+    id: persist_event_tefforts
+    task: persist_df
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filetype: csv
+      filename: null
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summarized_event_types.return }}
+
+  # add month name , month on trajs -- month_stats
+  - name: Add month name on trajs
+    id: add_month_name
+    task: extract_date_parts
+    partial:
+      date_column: extra__patrol_start_time
+      parts:
+        - month
+        - day
+        - month_name
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_patrol_traj_groups.return }}
+
+  # patrol efforts by month name
+  - name: Summarize patrol efforts by month name
+    id: summarize_month_patrol
+    task: summarize_df
+    partial:  
+      groupby_cols: 
+        - month_name
+      reset_index: true
+      summary_params:
+        - display_name: no_of_patrols
+          aggregator: nunique
+          column: extra__patrol_id
+        
+        - display_name: total_distance
+          aggregator: sum 
+          column: dist_meters
+          original_unit: m
+          new_unit: km 
+        
+        - display_name: total_time
+          aggregator: sum
+          column : timespan_seconds
+          original_unit: s
+          new_unit: h
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.add_month_name.return }}
+
+  - name: Persist month  patrol efforts
+    id: persist_month_patrol_efforts
+    task: persist_df
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filetype: csv
+      filename: null
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summarize_month_patrol.return }}
+
+  # -- no of events recorded by guardian 
+  - name: Render no of events recorded 
+    id: no_of_events_recorded
+    task: draw_table 
+    partial:
+      widget_id: "No of events recorded by guardian"
+      columns: null
+      table_config: 
+        enable_sorting: true
+        enable_filtering: true 
+        enable_download: true
+        hide_header: false
+    mapvalues: 
+      argnames: dataframe 
+      argvalues: ${{ workflow.summarize_guardian_events.return }}
+  
+  - name: Persist no of events recorded table
+    id: no_of_events_recorded_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: "no_of_events_recorded_table"
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.no_of_events_recorded.return }}
+
+  - name: Create table widget for no of events recorded (SV)
+    id: no_events_recorded_sv
+    task: create_plot_widget_single_view
+    partial:
+      title: "No of events recorded by Guardian"
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.no_of_events_recorded_url.return }}
+
+  - name: Merge no of events table widgets
+    id: no_of_events_table_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.no_events_recorded_sv.return }}
+
+  # -- ranger patrol
+  - name: Render ranger patrols recorded 
+    id: ranger_patrol_recorded
+    task: draw_table 
+    partial:
+      widget_id: "Ranger patrols summary"
+      columns: null
+      table_config: 
+        enable_sorting: true
+        enable_filtering: true 
+        enable_download: true
+        hide_header: false
+    mapvalues: 
+      argnames: dataframe 
+      argvalues: ${{ workflow.summarize_ranger_patrol.return }}
+  
+  - name: Persist ranger patrols recorded table
+    id: ranger_patrol_recorded_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: "ranger_patrol_recorded_table"
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.ranger_patrol_recorded.return }}
+
+  - name: Create table widget for ranger patrols recorded (SV)
+    id: ranger_patrols_sv
+    task: create_plot_widget_single_view
+    partial:
+      title: "Ranger patrol summary by Guardian"
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.ranger_patrol_recorded_url.return }}
+
+  - name: Merge ranger patrols table widgets
+    id: ranger_patrol_table_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.ranger_patrols_sv.return }}
+
+  # -- patrol types 
+  - name: Render patrol types recorded 
+    id: patrol_types_recorded
+    task: draw_table 
+    partial:
+      widget_id: "Patrol types summary"
+      columns: null
+      table_config: 
+        enable_sorting: true
+        enable_filtering: true 
+        enable_download: true
+        hide_header: false
+    mapvalues: 
+      argnames: dataframe 
+      argvalues: ${{ workflow.summarized_patrol_types.return }}
+  
+  - name: Persist patrol types recorded table
+    id: patrol_types_recorded_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: "patrol_types_recorded_table"
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.patrol_types_recorded.return }}
+
+  - name: Create table widget for patrol types recorded (SV)
+    id: patrol_types_sv
+    task: create_plot_widget_single_view
+    partial:
+      title: "Patrol types summary"
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.patrol_types_recorded_url.return }}
+
+  - name: Merge patrol types table widgets
+    id: patrol_types_table_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.patrol_types_sv.return }}
+
+  # -- event types
+  - name: Render event types recorded 
+    id: event_types_recorded
+    task: draw_table 
+    partial:
+      widget_id: "Event types summary"
+      columns: null
+      table_config: 
+        enable_sorting: true
+        enable_filtering: true 
+        enable_download: true
+        hide_header: false
+    mapvalues: 
+      argnames: dataframe 
+      argvalues: ${{ workflow.summarized_event_types.return }}
+  
+  - name: Persist event types recorded table
+    id: event_types_recorded_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: "event_types_recorded_table"
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.event_types_recorded.return }}
+
+  - name: Create table widget for event types recorded (SV)
+    id: event_types_sv
+    task: create_plot_widget_single_view
+    partial:
+      title: "Event types summary"
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.event_types_recorded_url.return }}
+
+  - name: Merge event types table widgets
+    id: event_types_table_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.event_types_sv.return }}
+
+  # Create context cover page
+  - name: Create context cover page
+    id: context_cover_page
+    task: create_guardians_ctx_cover
+    partial:  
+      report_period: ${{ workflow.time_range.return}}
+      prepared_by: Ecoscope
+
+  - name: Persist context page for guardians report 
+    id: persist_ctx_page 
+    task: create_context_page_lg 
+    partial:  
+      template_path: ${{ workflow.persist_cover_page.return }}
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      context: ${{ workflow.context_cover_page.return }}
+      filename: context_page.docx
+
+  - name: Group context values together 
+    id: group_context_values
+    task: zip_groupbykey
+    partial: 
+      sequences: 
+        - ${{ workflow.split_patrol_traj_groups.return }} # df 
+        - ${{ workflow.total_patrols.return }} # total_patrols
+        - ${{ workflow.total_patrol_dist.return }} # total_distance
+        - ${{ workflow.total_patrol_time.return }} # total_time 
+        - ${{ workflow.patrol_html_png.return }} # patrol events track map 
+        - ${{ workflow.td_html_png.return }} # patrol time density map
+        - ${{ workflow.patrol_pie_chart_png.return }} # events_pie_chart
+        - ${{ workflow.patrol_bar_chart_png.return }} # events_time_series_bar_chart 
+        - ${{ workflow.persist_gua_patrol_efforts.return }} # patrol events 
+        - ${{ workflow.persist_event_tefforts.return }} # event_efforts 
+        - ${{ workflow.persist_month_patrol_efforts.return }} # month_stats 
+        - ${{ workflow.persist_ranger_patrol_efforts.return }} # guardian_stats
+
+  - name: Create individual patrol context page 
+    id: indv_cl_ctx
+    task: create_guardians_grouper_ctx
+    partial: 
+      grouper_name: ${{ workflow.groupers.return }}
+    mapvalues: 
+      argnames: 
+        - df 
+        - total_patrols 
+        - total_distance
+        - total_time 
+        - patrol_events_track_map 
+        - patrol_time_density_map 
+        - events_pie_chart
+        - events_time_series_bar_chart
+        - patrol_events
+        - event_efforts
+        - month_stats 
+        - guardian_stats 
+      argvalues: ${{ workflow.group_context_values.return }}
+
+  - name: Create grouper word doc
+    id: create_grouper_doc
+    task: create_grouper_page
+    partial:  
+      template_path: ${{ workflow.persist_indv_subject_page.return }}
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename: null
+      validate_images: true
+      box_h_cm: 6.5
+      box_w_cm: 11.11
+    mapvalues:
+      argnames: context 
+      argvalues: ${{ workflow.indv_cl_ctx.return }}
+
+  - name: Merge word docs
+    id: merge_docx
+    task: merge_cl_files 
+    partial: 
+      cover_page_path: ${{ workflow.persist_ctx_page.return }}
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      context_page_items: ${{ workflow.create_grouper_doc.return }}
+      filename: null
+
+  - name: Create Dashboard with Patrol Map Widgets
+    id: patrol_dashboard
+    task: gather_dashboard
+    partial:
+      details: ${{ workflow.workflow_details.return}}
+      widgets:
+        - ${{ workflow.traj_pe_grouped_map_widget.return }}
+        - ${{ workflow.td_grouped_map_widget.return }}
+        - ${{ workflow.grouped_bar_plot_widget_merge.return }}
+        - ${{ workflow.patrol_events_pie_widget_grouped.return }}
+        - ${{ workflow.total_patrols_grouped_sv_widget.return }}
+        - ${{ workflow.patrol_time_grouped_widget.return }}
+        - ${{ workflow.patrol_dist_grouped_widget.return }}
+        - ${{ workflow.avg_speed_grouped_widget.return }}
+        - ${{ workflow.max_speed_grouped_widget.return }}
+        - ${{ workflow.no_of_events_table_widget.return }}
+        - ${{ workflow.ranger_patrol_table_widget.return }}
+        - ${{ workflow.patrol_types_table_widget.return }}
+        - ${{ workflow.event_types_table_widget.return }}
+
+      groupers: ${{ workflow.groupers.return }}
+      time_range: ${{ workflow.time_range.return}}

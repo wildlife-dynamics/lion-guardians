@@ -1,0 +1,46 @@
+workflow_details:
+  description: ''
+  name: Sample
+groupers:
+  groupers: []
+er_client_name:
+  data_source:
+    name: lg
+base_map_defs:
+  base_maps:
+    - url: >-
+        https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}
+      opacity: 1
+      max_zoom: 20
+er_patrol_and_events_params:
+  patrol_types: []
+  event_types: []
+  status:
+    - done
+  include_null_geometry: true
+patrol_traj:
+  trajectory_segment_filter:
+    min_length_meters: 0.001
+    max_length_meters: 5000
+    min_time_secs: 1
+    max_time_secs: 21600
+    min_speed_kmhr: 0.01
+    max_speed_kmhr: 25
+filter_patrol_events:
+  bounding_box:
+    min_y: -90
+    max_y: 90
+    min_x: -180
+    max_x: 180
+  filter_point_coords: []
+ltd_meshgrid:
+  auto_scale_or_custom_cell_size:
+    auto_scale_or_custom: Auto-scale
+  crs: EPSG:3857
+time_range:
+  since: '2026-01-17T09:53:00.000Z'
+  until: '2026-01-22T09:53:00.000Z'
+patrol_events_bar_chart:
+  time_interval: day
+set_patrol_traj_color_column:
+  var: patrol_type
