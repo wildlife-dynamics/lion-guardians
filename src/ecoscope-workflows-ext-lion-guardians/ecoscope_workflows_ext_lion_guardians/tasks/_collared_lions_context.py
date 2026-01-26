@@ -491,9 +491,9 @@ def create_guardians_grouper_ctx(
     # Build context with the required keys
     ctx = {
         "grouper_value": grouper_value,
-        "total_patrols": str(total_patrols) if total_patrols is not None else "0",
-        "total_distance": str(total_distance) if total_distance is not None else "0",
-        "total_time": str(total_time_hours) if total_time_hours is not None else "0",
+        "total_patrols": str(round(total_patrols, 1)) if total_patrols is not None else "0",
+        "total_distance": str(round(total_distance, 1)) if total_distance is not None else "0",
+        "total_time": str(round(total_time_hours, 1)) if total_time_hours is not None else "0",
         "patrol_events_track_map": patrol_events_track_map,
         "patrol_time_density_map": patrol_time_density_map,
         "events_pie_chart": events_pie_chart,
