@@ -32,7 +32,6 @@ from ecoscope_workflows_core.tasks.filter import (
     get_timezone_from_time_range as get_timezone_from_time_range,
 )
 from ecoscope_workflows_core.tasks.filter import set_time_range as set_time_range
-from ecoscope_workflows_core.tasks.groupby import groupbykey as groupbykey
 from ecoscope_workflows_core.tasks.groupby import set_groupers as set_groupers
 from ecoscope_workflows_core.tasks.groupby import split_groups as split_groups
 from ecoscope_workflows_core.tasks.io import persist_text as persist_text
@@ -524,7 +523,7 @@ persist_indv_subject_page = (
         unpack_depth=1,
     )
     .partial(
-        url="https://www.dropbox.com/scl/fi/kp9mkc9dd5qbast86ufk4/custom_patrol_template.docx?rlkey=ea12bxesuu9dnnj1ngfahhqvr&st=smoaj6kw&dl=0",
+        url="https://www.dropbox.com/scl/fi/kp9mkc9dd5qbast86ufk4/custom_patrol_template.docx?rlkey=ea12bxesuu9dnnj1ngfahhqvr&st=w7q7uf3l&dl=0",
         output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         overwrite_existing=False,
         retries=3,
@@ -2077,7 +2076,7 @@ combined_traj_and_pe_map_layers_params = dict()
 
 
 combined_traj_and_pe_map_layers = (
-    groupbykey.set_task_instance_id("combined_traj_and_pe_map_layers")
+    zip_groupbykey.set_task_instance_id("combined_traj_and_pe_map_layers")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2087,7 +2086,7 @@ combined_traj_and_pe_map_layers = (
         unpack_depth=1,
     )
     .partial(
-        iterables=[patrol_traj_map_layers, patrol_events_map_layers],
+        sequences=[patrol_traj_map_layers, patrol_events_map_layers],
         **combined_traj_and_pe_map_layers_params,
     )
     .call()
@@ -3469,8 +3468,6 @@ td_map_layer = (
             "title": "Time Spent",
             "label_column": "Percentile",
             "color_column": "percentile_colormap",
-            "sort": "ascending",
-            "label_suffix": None,
         },
         **td_map_layer_params,
     )

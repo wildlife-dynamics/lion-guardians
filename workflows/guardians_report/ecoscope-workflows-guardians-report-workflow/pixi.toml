@@ -3,6 +3,7 @@
 [workspace]
 name = "ecoscope-workflows-guardians-report-workflow"
 channels = [
+    "file:///tmp/ecoscope-workflows-custom/release/artifacts/",
     "https://repo.prefix.dev/ecoscope-workflows-custom/",
     "https://repo.prefix.dev/ecoscope-workflows/",
     "conda-forge",
@@ -38,9 +39,13 @@ channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 version = "0.0.0.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 
-[dependencies.ecoscope-workflows-ext-lion-guardians]
-version = "0.0.3.*"
+[dependencies.ecoscope-workflows-ext-icf]
+version = "0.0.0.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
+
+[dependencies.ecoscope-workflows-ext-lion-guardians]
+version = "*"
+channel = "file:///tmp/ecoscope-workflows-custom/release/artifacts/"
 
 [feature.runner.dependencies.ecoscope-workflows-runner]
 version = "0.20.4.*"
@@ -136,5 +141,5 @@ solve-group = "test"
 no-default-feature = true
 
 [tasks]
-docker-build = "docker buildx build -t ecoscope-workflows-guardians-report-workflow ."
+docker-build = "mkdir -p .tmp/ecoscope-workflows/release/artifacts/\n&& cp -r /tmp/ecoscope-workflows/release/artifacts/* .tmp/ecoscope-workflows/release/artifacts/\n&& docker buildx build -t ecoscope-workflows-guardians-report-workflow .\n"
 ecoscope-workflows-guardians-report-workflow = "python -m ecoscope_workflows_guardians_report_workflow.cli"

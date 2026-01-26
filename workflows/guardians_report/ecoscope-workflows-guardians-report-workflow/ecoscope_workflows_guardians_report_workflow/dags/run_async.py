@@ -23,7 +23,6 @@ from ecoscope_workflows_core.tasks.filter import (
     get_timezone_from_time_range as get_timezone_from_time_range,
 )
 from ecoscope_workflows_core.tasks.filter import set_time_range as set_time_range
-from ecoscope_workflows_core.tasks.groupby import groupbykey as groupbykey
 from ecoscope_workflows_core.tasks.groupby import set_groupers as set_groupers
 from ecoscope_workflows_core.tasks.groupby import split_groups as split_groups
 from ecoscope_workflows_core.tasks.io import persist_text as persist_text
@@ -597,7 +596,7 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "url": "https://www.dropbox.com/scl/fi/kp9mkc9dd5qbast86ufk4/custom_patrol_template.docx?rlkey=ea12bxesuu9dnnj1ngfahhqvr&st=smoaj6kw&dl=0",
+                "url": "https://www.dropbox.com/scl/fi/kp9mkc9dd5qbast86ufk4/custom_patrol_template.docx?rlkey=ea12bxesuu9dnnj1ngfahhqvr&st=w7q7uf3l&dl=0",
                 "output_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "overwrite_existing": False,
                 "retries": 3,
@@ -1704,7 +1703,7 @@ def main(params: Params):
             },
         ),
         "combined_traj_and_pe_map_layers": Node(
-            async_task=groupbykey.validate()
+            async_task=zip_groupbykey.validate()
             .set_task_instance_id("combined_traj_and_pe_map_layers")
             .handle_errors()
             .with_tracing()
@@ -1716,7 +1715,7 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "iterables": [
+                "sequences": [
                     DependsOn("patrol_traj_map_layers"),
                     DependsOn("patrol_events_map_layers"),
                 ],
@@ -2779,8 +2778,6 @@ def main(params: Params):
                     "title": "Time Spent",
                     "label_column": "Percentile",
                     "color_column": "percentile_colormap",
-                    "sort": "ascending",
-                    "label_suffix": None,
                 },
             }
             | (params_dict.get("td_map_layer") or {}),
