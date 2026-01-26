@@ -63,7 +63,6 @@ from ecoscope_workflows_core.tasks.analysis import (
     dataframe_column_sum as dataframe_column_sum,
 )
 from ecoscope_workflows_core.tasks.config import set_string_var as set_string_var
-from ecoscope_workflows_core.tasks.groupby import groupbykey as groupbykey
 from ecoscope_workflows_core.tasks.groupby import split_groups as split_groups
 from ecoscope_workflows_core.tasks.io import persist_text as persist_text
 from ecoscope_workflows_core.tasks.results import (
@@ -390,7 +389,7 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            url="https://www.dropbox.com/scl/fi/kp9mkc9dd5qbast86ufk4/custom_patrol_template.docx?rlkey=ea12bxesuu9dnnj1ngfahhqvr&st=smoaj6kw&dl=0",
+            url="https://www.dropbox.com/scl/fi/kp9mkc9dd5qbast86ufk4/custom_patrol_template.docx?rlkey=ea12bxesuu9dnnj1ngfahhqvr&st=w7q7uf3l&dl=0",
             output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             overwrite_existing=False,
             retries=3,
@@ -1411,7 +1410,7 @@ def main(params: Params):
     )
 
     combined_traj_and_pe_map_layers = (
-        groupbykey.validate()
+        zip_groupbykey.validate()
         .set_task_instance_id("combined_traj_and_pe_map_layers")
         .handle_errors()
         .with_tracing()
@@ -1422,7 +1421,7 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            iterables=[patrol_traj_map_layers, patrol_events_map_layers],
+            sequences=[patrol_traj_map_layers, patrol_events_map_layers],
             **(params_dict.get("combined_traj_and_pe_map_layers") or {}),
         )
         .call()
@@ -2330,8 +2329,6 @@ def main(params: Params):
                 "title": "Time Spent",
                 "label_column": "Percentile",
                 "color_column": "percentile_colormap",
-                "sort": "ascending",
-                "label_suffix": None,
             },
             **(params_dict.get("td_map_layer") or {}),
         )

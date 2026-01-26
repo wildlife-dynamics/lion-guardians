@@ -20,9 +20,13 @@ requirements:
     version: "0.0.0.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
-  - name: ecoscope-workflows-ext-lion-guardians
-    version: "0.0.3.*"
+  - name: ecoscope-workflows-ext-icf
+    version: "0.0.0.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+  - name: ecoscope-workflows-ext-lion-guardians
+    version: "*"
+    channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
 
 rjsf-overrides:
   properties:
@@ -129,7 +133,7 @@ workflow:
     id: persist_indv_subject_page
     task: fetch_and_persist_file
     partial:
-      url: https://www.dropbox.com/scl/fi/kp9mkc9dd5qbast86ufk4/custom_patrol_template.docx?rlkey=ea12bxesuu9dnnj1ngfahhqvr&st=smoaj6kw&dl=0
+      url: https://www.dropbox.com/scl/fi/kp9mkc9dd5qbast86ufk4/custom_patrol_template.docx?rlkey=ea12bxesuu9dnnj1ngfahhqvr&st=w7q7uf3l&dl=0
       output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       overwrite_existing: false
       retries: 3
@@ -632,9 +636,9 @@ workflow:
           conditions:
             - all_keyed_iterables_are_skips
           unpack_depth: 1
-        task: groupbykey
+        task: zip_groupbykey
         partial:
-          iterables:
+          sequences:
             - ${{ workflow.patrol_traj_map_layers.return }}
             - ${{ workflow.patrol_events_map_layers.return }}
 
@@ -1162,8 +1166,6 @@ workflow:
             title: Time Spent 
             label_column: Percentile
             color_column: percentile_colormap
-            sort: ascending 
-            label_suffix: null
         mapvalues:
           argnames: geodataframe
           argvalues: ${{ workflow.patrol_td_rename_columns.return }}

@@ -65,6 +65,7 @@ ecoscope-workflows-ext-ste = "0.0.6.*"
 ecoscope-workflows-core =">=0.20.4"
 ecoscope-workflows-ext-ecoscope=">=0.20.4"
 ecoscope-workflows-ext-custom = "0.0.20.*"
+ecoscope-workflows-ext-icf ="0.0.0.*"
 docxtpl="*"
 playwright="*"
 
