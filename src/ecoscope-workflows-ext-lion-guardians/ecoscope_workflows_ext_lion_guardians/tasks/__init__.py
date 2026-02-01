@@ -16,7 +16,10 @@ from ._retrieve_patrols import (
     get_event_type_display_names_from_events_aliased,
 )
 
+from ._example import add_two_thousand
+
 __all__ = [
+    "add_two_thousand",
     "create_cl_ctx_cover",
     "create_context_page_lg",
     "merge_cl_files",
