@@ -13,7 +13,7 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-ste
-    version: "0.0.6.*"
+    version: "0.0.7.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-mnc
@@ -21,8 +21,8 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-lion-guardians
-    version: "0.0.0.*"
-    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+    version: "*"
+    channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
 
 rjsf-overrides:
   $defs:
@@ -196,7 +196,7 @@ workflow:
         get_line_color: [169, 169, 169]
         get_fill_color: [169, 169, 169]
         get_line_width: 4.00
-        opacity: 0.75
+        opacity: 0.85
         extruded: false
         stroked: true
         filled: false
@@ -214,9 +214,9 @@ workflow:
       style: 
         get_line_color: [220, 20, 60]
         get_fill_color: [220, 20, 60]
-        get_radius: 6 
+        get_radius: 2.55 
         get_line_width: 1.95
-        opacity: 0.95
+        opacity: 0.85
         extruded: false
         stroked: true
         filled: true
@@ -235,7 +235,7 @@ workflow:
         get_line_color: [77, 102, 0]
         get_fill_color: [77, 102, 0]
         get_line_width: 1.95
-        opacity: 0.15
+        opacity: 0.20
         extruded: false
         stroked: true
         filled: true
@@ -258,7 +258,7 @@ workflow:
         size_units: meters 
         size_min_pixels: 65 #65 
         size_max_pixels: 100
-        size_scale: 2.05 
+        size_scale: 2.00 
 
         font_family: Calibri 
         font_weight: "700" 
@@ -589,67 +589,13 @@ workflow:
       argnames: html_path
       argvalues: ${{ workflow.td_ecomap_html_url.return }}
 
-  # Speedmap
-  - name: Sort trajectories by speed bins 
-    id: sort_trajs_by_speed 
-    task: sort_values
-    partial: 
-      column_name: speed_bins 
-      na_position: first 
-      ascending: true 
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.split_subject_traj_groups.return }} 
-  
-  - name: Apply colormap to speed bins 
-    id: apply_speed_colormap 
-    task: apply_color_map 
-    partial: 
-      input_column_name: speed_bins
-      output_column_name: speed_bins_colormap 
-      colormap: 
-        - '#1a9850'
-        - '#91cf60'
-        - '#d9ef8b'
-        - '#fee08b'
-        - '#fc8d59'
-        - '#d73027'
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.sort_trajs_by_speed.return }}
-    
-  - name: Format speed bins for legend 
-    id: format_speed_bin_labels 
-    task: map_values_with_unit 
-    partial: 
-      input_column_name: speed_bins 
-      output_column_name: speed_bins_formatted 
-      original_unit: km/h
-      new_unit: km/h
-      decimal_places: 1 
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.apply_speed_colormap.return }}  
-
-  - name: Format speed values for display 
-    id: format_speed_values 
-    task: map_values_with_unit
-    partial: 
-      input_column_name: speed_kmhr 
-      output_column_name: speed_kmhr 
-      original_unit: km/h
-      new_unit: km/h
-      decimal_places: 1
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.format_speed_bin_labels.return }}
-  
-  - name: Generate speedmap layers 
-    id: generate_speedmap_layers 
+  # Subject tracks
+  - name: Generate track layers 
+    id: generate_track_layers 
     task: create_path_layer 
     partial: 
       layer_style:
-        get_color: speed_bins_colormap
+        get_color: [0, 0, 255]
         get_width: 2.85
         width_scale: 1 
         width_min_pixels: 2 
@@ -661,29 +607,28 @@ workflow:
         opacity: 0.55
         stroked: true 
       legend:
-        title: Speed (km/h)
-        label_column: speed_bins_formatted
-        color_column: speed_bins_colormap
-        sort: ascending 
-        label_suffix: null
+        title: Subject tracks 
+        values: 
+          - label: Tracks 
+            color: "#0000ff"
     mapvalues:
       argnames: geodataframe
-      argvalues: ${{ workflow.format_speed_values.return }}
+      argvalues: ${{ workflow.split_subject_traj_groups.return }} 
   
   # # should be used globally 
   - name: Zoom to gdf extent 
-    id: zoom_speed_gdf_extent
+    id: zoom_track_gdf_extent
     task: view_state_deck_gdf
     partial: 
       pitch: 0
       bearing: 0
     mapvalues:
       argnames: gdf
-      argvalues: ${{ workflow.format_speed_values.return }}
+      argvalues: ${{ workflow.split_subject_traj_groups.return }}
 
     # Combine layers ie static and grouped
   - name: Combine map layers
-    id: combine_speed_layers
+    id: combine_track_layers
     task: combine_deckgl_map_layers
     partial:
       static_layers: 
@@ -694,18 +639,18 @@ workflow:
         - ${{ workflow.create_hotspot_text_layer.return }}
     mapvalues:
       argnames: grouped_layers
-      argvalues: ${{ workflow.generate_speedmap_layers.return }}
+      argvalues: ${{ workflow.generate_track_layers.return }}
 
   - name: Zip layers and viewstate
-    id: zip_speed_layers_view
+    id: zip_track_layers_view
     task: zip_groupbykey
     partial:
       sequences:
-        - ${{ workflow.combine_speed_layers.return }}
-        - ${{ workflow.zoom_speed_gdf_extent.return }}
+        - ${{ workflow.combine_track_layers.return }}
+        - ${{ workflow.zoom_track_gdf_extent.return }}
 
-  - name: Draw speedmap
-    id: draw_speedmap
+  - name: Draw track map
+    id: draw_track_map
     task: draw_map
     partial:
       tile_layers: ${{ workflow.base_map_defs.return }}
@@ -718,21 +663,21 @@ workflow:
       argnames:
         - geo_layers
         - view_state
-      argvalues: ${{ workflow.zip_speed_layers_view.return }}
+      argvalues: ${{ workflow.zip_track_layers_view.return }}
 
-  - name: Persist speedmap as text
-    id: speedmap_html_url
+  - name: Persist tracks as text
+    id: track_html_url
     task: persist_text
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      filename_suffix: speedmap
+      filename_suffix: tracks
     mapvalues:
       argnames: text
-      argvalues: ${{ workflow.draw_speedmap.return }}
+      argvalues: ${{ workflow.draw_track_map.return }}
 
   # convert html to png 
-  - name: Convert speedmap html to png
-    id: speed_html_png 
+  - name: Convert track html to png
+    id: track_html_png 
     task: html_to_png
     partial:
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
@@ -743,27 +688,27 @@ workflow:
         max_concurrent_pages: 1
     mapvalues:
       argnames: html_path
-      argvalues: ${{ workflow.speedmap_html_url.return }}
+      argvalues: ${{ workflow.track_html_url.return }}
 
-  - name: Create speedmap widget
-    id: speedmap_widget
+  - name: Create trackmap widget
+    id: trackmap_widget
     task: create_map_widget_single_view
     skipif:
       conditions:
         - never
     partial:
-      title: Speedmap
+      title: Subject tracks
     map:
       argnames:
         - view
         - data
-      argvalues: ${{ workflow.speedmap_html_url.return }}
+      argvalues: ${{ workflow.track_html_url.return }}
 
-  - name: Merge speedmap widget view
+  - name: Merge trackmap widget view
     id: sm_grouped_map_widget
     task: merge_widget_views
     partial:
-      widgets: ${{ workflow.speedmap_widget.return }}
+      widgets: ${{ workflow.trackmap_widget.return }}
 
   # Metric summary widgets 
   - name: Calculate mean speed 
@@ -871,7 +816,7 @@ workflow:
         - ${{ workflow.split_subject_traj_groups.return }} # df
         - ${{ workflow.round_total_distance.return }} # total distance
         - ${{ workflow.collared_html_png.return }} # home range
-        - ${{ workflow.speed_html_png.return }} # speed map
+        - ${{ workflow.track_html_png.return }} # speed map
 
 
   - name: Create individual grouper context 
