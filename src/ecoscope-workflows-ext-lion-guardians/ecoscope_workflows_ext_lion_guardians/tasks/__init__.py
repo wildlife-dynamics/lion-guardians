@@ -17,6 +17,7 @@ from ._retrieve_patrols import (
 )
 
 __all__ = [
+    "add_two_thousand",
     "create_cl_ctx_cover",
     "create_context_page_lg",
     "merge_cl_files",
