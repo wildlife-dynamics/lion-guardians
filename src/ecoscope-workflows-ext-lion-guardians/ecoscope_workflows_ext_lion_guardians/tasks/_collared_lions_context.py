@@ -506,3 +506,118 @@ def create_guardians_grouper_ctx(
 
     print(f"Guardians Context: {ctx}")
     return ctx
+
+
+@task
+def create_vehicles_grouper_ctx(
+    grouper_name: tuple | list | str | None,
+    df: AnyDataFrame,
+    summary_table: str | None,
+    speedmap: str | None,
+    tracks_map: str | None,
+    line_chart: str | None,
+) -> Dict[str, str | int | float | None]:
+    """
+    Create context dictionary for mapbook with grouper information and map paths.
+
+    Args:
+        grouper_name: The grouper identifier (can be various types)
+        df: The dataframe to extract grouper values from
+        summary_table: Path to the summary table CSV file
+        speedmap: Path to the speed map image
+        tracks_map: Path to the tracks map image
+        line_chart: Path to the line chart image
+
+    Returns:
+        Dictionary containing grouper_value and map paths
+    """
+
+    # Extract grouper value dynamically
+    grouper_value = "All"
+    print(f"grouper name raw: {grouper_name} (type: {type(grouper_name)})")
+
+    if grouper_name:
+        if isinstance(grouper_name, str):
+            grouper_value = grouper_name
+        elif isinstance(grouper_name, (list, tuple)) and len(grouper_name) > 0:
+            # Check if it's a tuple structure like (('index_name', 'All'),)
+            first_item = grouper_name[0]
+
+            # Handle tuple structure (('index_name', 'All'),)
+            if isinstance(first_item, tuple) and len(first_item) == 2:
+                key, value = first_item
+                if key == "index_name" and value == "All":
+                    grouper_value = "All"
+                else:
+                    grouper_value = str(value)
+                print(f"Extracted from tuple structure: {grouper_value}")
+            # Handle grouper objects
+            elif hasattr(first_item, "__class__"):
+                grouper = first_item
+                grouper_type = grouper.__class__.__name__
+                print(f"grouper_type: {grouper_type}")
+
+                if grouper_type == "ValueGrouper":
+                    index_name = getattr(grouper, "index_name", None)
+                    if df is not None and index_name and index_name in df.columns:
+                        unique_values = df[index_name].unique()
+                        if len(unique_values) == 1:
+                            grouper_value = str(unique_values[0])
+                        else:
+                            grouper_value = index_name
+                    else:
+                        grouper_value = index_name if index_name else "Value"
+
+                elif grouper_type == "TemporalGrouper":
+                    grouper_value = _format_temporal_grouper(grouper, df)
+
+                elif grouper_type == "AllGrouper":
+                    grouper_value = "All"
+                else:
+                    grouper_value = str(grouper_name)
+            else:
+                grouper_value = str(first_item)
+        else:
+            grouper_value = str(grouper_name)
+
+    print(f"grouper_value: {grouper_value}")
+
+    # Read the CSV as a DataFrame (not converting to list)
+    min_speed = None
+    mean_speed = None
+    max_speed = None
+    total_distance = None
+
+    if summary_table:
+        try:
+            vehicle_stats_df = pd.read_csv(summary_table)
+
+            # Extract values from the last row
+            if not vehicle_stats_df.empty:
+                if "min_speed" in vehicle_stats_df.columns:
+                    min_speed = round(vehicle_stats_df["min_speed"].iloc[-1], 2)
+                if "mean_speed" in vehicle_stats_df.columns:
+                    mean_speed = round(vehicle_stats_df["mean_speed"].iloc[-1], 2)
+                if "max_speed" in vehicle_stats_df.columns:
+                    max_speed = round(vehicle_stats_df["max_speed"].iloc[-1], 2)
+                if "total_distance" in vehicle_stats_df.columns:
+                    total_distance = round(vehicle_stats_df["total_distance"].iloc[-1], 2)
+        except Exception as e:
+            print(f"Error reading summary table {summary_table}: {e}")
+    else:
+        print("Warning: summary_table path is None")
+
+    # Build context with the required keys
+    ctx = {
+        "grouper_value": grouper_value,
+        "min_speed": min_speed,
+        "mean_speed": mean_speed,
+        "max_speed": max_speed,
+        "total_distance": total_distance,
+        "vehicle_speedmap": speedmap,
+        "vehicle_tracks_map": tracks_map,
+        "vehicle_speed_line_chart": line_chart,
+    }
+
+    print(f"Context: {ctx}")
+    return ctx

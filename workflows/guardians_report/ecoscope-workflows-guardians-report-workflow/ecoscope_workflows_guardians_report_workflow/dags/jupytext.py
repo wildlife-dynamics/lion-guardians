@@ -1530,6 +1530,7 @@ traj_colormap = (
 filter_patrol_events_params = dict(
     bounding_box=...,
     filter_point_coords=...,
+    reset_index=...,
 )
 
 # %%

@@ -193,94 +193,15 @@ class BaseMapDefs(BaseModel):
     )
 
 
-class StatusEnum(str, Enum):
-    active = "active"
-    overdue = "overdue"
-    done = "done"
-    cancelled = "cancelled"
-
-
-class ErPatrolAndEventsParams(BaseModel):
+class SubjectObs(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    patrol_types: list[str] = Field(
+    subject_group_name: str = Field(
         ...,
-        description="Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types.",
-        title="Patrol Types",
+        description="⚠️ The use of a group with mixed subtypes could lead to unexpected results",
+        title="Subject Group Name",
     )
-    event_types: list[str] = Field(
-        ...,
-        description="Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types.",
-        title="Event Types",
-    )
-    status: list[StatusEnum] | None = Field(
-        ["done"],
-        description="Choose to analyze patrols with a certain status. If left empty, patrols of all status will be analyzed",
-        title="Patrol Status",
-    )
-    include_null_geometry: bool | None = Field(
-        True, title="Include Events Without a Geometry (point or polygon)"
-    )
-
-
-class PatrolAndEventTypes(BaseModel):
-    er_patrol_and_events_params: ErPatrolAndEventsParams | None = Field(None, title="")
-
-
-class Var(str, Enum):
-    patrol_type = "patrol_type"
-    patrol_subject = "patrol_subject"
-    patrol_serial_number = "patrol_serial_number"
-
-
-class SetPatrolTrajColorColumn(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    var: Var = Field(..., title="")
-
-
-class TrajectoryCategory(BaseModel):
-    set_patrol_traj_color_column: SetPatrolTrajColorColumn | None = Field(
-        None, title=""
-    )
-
-
-class TimeInterval(str, Enum):
-    year = "year"
-    month = "month"
-    week = "week"
-    day = "day"
-    hour = "hour"
-
-
-class PatrolEventsBarChart1(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    time_interval: TimeInterval = Field(..., title="Time Interval")
-
-
-class PatrolEventsBarChart(BaseModel):
-    patrol_events_bar_chart: PatrolEventsBarChart1 | None = Field(None, title="")
-
-
-class TemporalGrouper(str, Enum):
-    field_Y = "%Y"
-    field_B = "%B"
-    field_Y__m = "%Y-%m"
-    field_j = "%j"
-    field_d = "%d"
-    field_A = "%A"
-    field_H = "%H"
-    field_Y__m__d = "%Y-%m-%d"
-
-
-class ValueGrouper(str, Enum):
-    patrol_type = "patrol_type"
-    patrol_serial_number = "patrol_serial_number"
-    patrol_subject = "patrol_subject"
 
 
 class EarthRangerConnection(BaseModel):
@@ -308,54 +229,6 @@ class TrajectorySegmentFilter(BaseModel):
     )
 
 
-class BoundingBox(BaseModel):
-    min_y: float | None = Field(-90.0, title="Min Latitude")
-    max_y: float | None = Field(90.0, title="Max Latitude")
-    min_x: float | None = Field(-180.0, title="Min Longitude")
-    max_x: float | None = Field(180.0, title="Max Longitude")
-
-
-class Coordinate(BaseModel):
-    y: float = Field(..., description="Example -0.15293", title="Latitude")
-    x: float = Field(..., description="Example 37.30906", title="Longitude")
-
-
-class AutoScaleOrCustom(str, Enum):
-    Auto_scale = "Auto-scale"
-
-
-class AutoScaleGridCellSize(BaseModel):
-    auto_scale_or_custom: Literal["Auto-scale"] = Field(
-        "Auto-scale", title="Grid Cell Size"
-    )
-
-
-class AutoScaleOrCustom1(str, Enum):
-    Customize = "Customize"
-
-
-class CustomGridCellSize(BaseModel):
-    auto_scale_or_custom: Literal["Customize"] = Field(
-        "Customize", title="Grid Cell Size"
-    )
-    grid_cell_size: confloat(lt=10000.0, gt=0.0) | None = Field(
-        5000,
-        description="Define the resolution of the raster grid (in the unit of measurement defined by the coordinate reference system set below). A smaller grid cell size provides more detail, while a larger size generalizes the data.",
-        title="Custom Grid Cell Size",
-    )
-
-
-class Groupers(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    groupers: list[ValueGrouper | TemporalGrouper] | None = Field(
-        None,
-        description="            Specify how the data should be grouped to create the views for your dashboard.\n            This field is optional; if left blank, all the data will appear in a single view.\n            ",
-        title=" ",
-    )
-
-
 class ErClientName(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
@@ -365,7 +238,7 @@ class ErClientName(BaseModel):
     )
 
 
-class PatrolTraj(BaseModel):
+class SubjectTraj(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -385,59 +258,7 @@ class PatrolTraj(BaseModel):
     )
 
 
-class TrajectorySegmentFilterModel(BaseModel):
-    patrol_traj: PatrolTraj | None = Field(None, title="")
-
-
-class FilterPatrolEvents(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    bounding_box: BoundingBox | None = Field(
-        default_factory=lambda: BoundingBox.model_validate(
-            {"min_y": -90.0, "max_y": 90.0, "min_x": -180.0, "max_x": 180.0}
-        ),
-        description="Filter events to inside these bounding coordinates.",
-        title="Bounding Box",
-    )
-    filter_point_coords: list[Coordinate] | None = Field(
-        default_factory=list,
-        description="By adding a filter, the workflow will not include events recorded at the specified coordinates.",
-        title="Filter Exact Point Coordinates",
-    )
-    reset_index: bool | None = Field(
-        True, description="Reset index after filtering", title="Reset Index"
-    )
-
-
-class PatrolEventLocationFilter(BaseModel):
-    filter_patrol_events: FilterPatrolEvents | None = Field(None, title="")
-
-
-class LtdMeshgrid(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    auto_scale_or_custom_cell_size: (
-        AutoScaleGridCellSize | CustomGridCellSize | None
-    ) = Field(
-        default_factory=lambda: AutoScaleGridCellSize.model_validate(
-            {"auto_scale_or_custom": "Auto-scale"}
-        ),
-        title="Grid Cell Size",
-    )
-    crs: str | None = Field(
-        "EPSG:3857",
-        description="The coordinate reference system in which to perform the density calculation, must be a valid CRS authority code, for example ESRI:53042",
-        title="Coordinate Reference System",
-    )
-
-
-class TimeDensityMap(BaseModel):
-    ltd_meshgrid: LtdMeshgrid | None = Field(None, title="")
-
-
-class FormData(BaseModel):
+class Params(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
@@ -447,34 +268,15 @@ class FormData(BaseModel):
         title="Set Workflow Details",
     )
     time_range: TimeRange | None = Field(
-        None, description="Choose the period of time to analyze.", title="Time range"
-    )
-    groupers: Groupers | None = Field(None, title="Set groupers")
-    er_client_name: ErClientName | None = Field(None, title="Connect to ER")
-    base_map_defs: BaseMapDefs | None = Field(None, title="Configure base map layers")
-    Patrol_and_Event_Types: PatrolAndEventTypes | None = Field(
-        None, alias="Patrol and Event Types", description=" "
-    )
-    Trajectory_Category: TrajectoryCategory | None = Field(
         None,
-        alias="Trajectory Category",
-        description="Differentiate tracks by color using the selected category.",
+        description="Choose the period of time to analyze.",
+        title="Define time range",
     )
-    Trajectory_Segment_Filter: TrajectorySegmentFilterModel | None = Field(
-        None, alias="Trajectory Segment Filter", description=" "
+    er_client_name: ErClientName | None = Field(None, title="Data Source")
+    base_map_defs: BaseMapDefs | None = Field(None, title="Base Maps")
+    subject_obs: SubjectObs | None = Field(
+        None, title="Get Subject Group observations from EarthRanger"
     )
-    Patrol_Event_Location_Filter: PatrolEventLocationFilter | None = Field(
-        None,
-        alias="Patrol Event Location Filter",
-        description="Filter events based on their location.",
-    )
-    Patrol_Events_Bar_Chart: PatrolEventsBarChart | None = Field(
-        None,
-        alias="Patrol Events Bar Chart",
-        description="The bar chart shows how many events of different types occurred over time. Choose the time interval for the x-axis to control how event counts are summarized over time.",
-    )
-    Time_Density_Map: TimeDensityMap | None = Field(
-        None,
-        alias="Time Density Map",
-        description="These settings show a grid-based heatmap showing where subjects spent the most time.",
+    subject_traj: SubjectTraj | None = Field(
+        None, title="Transform relocations to trajectories"
     )

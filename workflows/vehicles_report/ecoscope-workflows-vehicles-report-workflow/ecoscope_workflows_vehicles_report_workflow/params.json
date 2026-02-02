@@ -42,32 +42,7 @@
       ],
       "type": "object",
       "description": "Choose the period of time to analyze.",
-      "title": "Time range"
-    },
-    "groupers": {
-      "additionalProperties": false,
-      "properties": {
-        "groupers": {
-          "default": null,
-          "items": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/ValueGrouper"
-              },
-              {
-                "$ref": "#/$defs/TemporalGrouper"
-              }
-            ],
-            "title": "Group by"
-          },
-          "title": " ",
-          "type": "array",
-          "description": "            Specify how the data should be grouped to create the views for your dashboard.\n            This field is optional; if left blank, all the data will appear in a single view.\n            "
-        }
-      },
-      "type": "object",
-      "required": [],
-      "title": "Set groupers"
+      "title": "Define time range"
     },
     "er_client_name": {
       "additionalProperties": false,
@@ -82,7 +57,7 @@
         "data_source"
       ],
       "type": "object",
-      "title": "Connect to ER"
+      "title": "Data Source"
     },
     "base_map_defs": {
       "additionalProperties": false,
@@ -284,74 +259,24 @@
       },
       "type": "object",
       "required": [],
-      "title": "Configure base map layers"
+      "title": "Base Maps"
     },
-    "er_patrol_and_events_params": {
+    "subject_obs": {
       "additionalProperties": false,
       "properties": {
-        "patrol_types": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Patrol Types",
-          "type": "array",
-          "description": "Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types."
-        },
-        "event_types": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Event Types",
-          "type": "array",
-          "description": "Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types."
-        },
-        "status": {
-          "default": [
-            "done"
-          ],
-          "items": {
-            "enum": [
-              "active",
-              "overdue",
-              "done",
-              "cancelled"
-            ],
-            "type": "string"
-          },
-          "title": "Patrol Status",
-          "type": "array",
-          "description": "Choose to analyze patrols with a certain status. If left empty, patrols of all status will be analyzed",
-          "uniqueItems": true,
-          "ecoscope:advanced": true
-        },
-        "include_null_geometry": {
-          "default": true,
-          "title": "Include Events Without a Geometry (point or polygon)",
-          "type": "boolean"
+        "subject_group_name": {
+          "title": "Subject Group Name",
+          "type": "string",
+          "description": "\u26a0\ufe0f The use of a group with mixed subtypes could lead to unexpected results"
         }
       },
       "required": [
-        "patrol_types",
-        "event_types"
+        "subject_group_name"
       ],
       "type": "object",
-      "title": ""
+      "title": "Get Subject Group observations from EarthRanger"
     },
-    "set_patrol_traj_color_column": {
-      "additionalProperties": false,
-      "properties": {
-        "var": {
-          "title": "",
-          "type": "string"
-        }
-      },
-      "required": [
-        "var"
-      ],
-      "type": "object",
-      "title": ""
-    },
-    "patrol_traj": {
+    "subject_traj": {
       "additionalProperties": false,
       "properties": {
         "trajectory_segment_filter": {
@@ -375,145 +300,10 @@
       },
       "required": [],
       "type": "object",
-      "title": ""
-    },
-    "filter_patrol_events": {
-      "additionalProperties": false,
-      "properties": {
-        "bounding_box": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/BoundingBox"
-            }
-          ],
-          "default": {
-            "min_y": -90.0,
-            "max_y": 90.0,
-            "min_x": -180.0,
-            "max_x": 180.0
-          },
-          "title": "Bounding Box",
-          "description": "Filter events to inside these bounding coordinates.",
-          "ecoscope:advanced": true
-        },
-        "filter_point_coords": {
-          "default": [],
-          "items": {
-            "$ref": "#/$defs/Coordinate"
-          },
-          "title": "Filter Exact Point Coordinates",
-          "type": "array",
-          "description": "By adding a filter, the workflow will not include events recorded at the specified coordinates.",
-          "ecoscope:advanced": true
-        },
-        "reset_index": {
-          "default": true,
-          "title": "Reset Index",
-          "type": "boolean",
-          "description": "Reset index after filtering",
-          "ecoscope:advanced": true
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": ""
-    },
-    "patrol_events_bar_chart": {
-      "additionalProperties": false,
-      "properties": {
-        "time_interval": {
-          "enum": [
-            "year",
-            "month",
-            "week",
-            "day",
-            "hour"
-          ],
-          "title": "Time Interval",
-          "type": "string"
-        }
-      },
-      "required": [
-        "time_interval"
-      ],
-      "type": "object",
-      "title": ""
-    },
-    "ltd_meshgrid": {
-      "additionalProperties": false,
-      "properties": {
-        "auto_scale_or_custom_cell_size": {
-          "anyOf": [
-            {
-              "$ref": "#/$defs/AutoScaleGridCellSize"
-            },
-            {
-              "$ref": "#/$defs/CustomGridCellSize"
-            }
-          ],
-          "default": {
-            "auto_scale_or_custom": "Auto-scale"
-          },
-          "title": "Grid Cell Size",
-          "ecoscope:advanced": true
-        },
-        "crs": {
-          "default": "EPSG:3857",
-          "title": "Coordinate Reference System",
-          "type": "string",
-          "description": "The coordinate reference system in which to perform the density calculation, must be a valid CRS authority code, for example ESRI:53042",
-          "ecoscope:advanced": true
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": ""
+      "title": "Transform relocations to trajectories"
     }
   },
   "$defs": {
-    "TemporalGrouper": {
-      "oneOf": [
-        {
-          "const": "%Y",
-          "title": "Year (example: 2024)"
-        },
-        {
-          "const": "%B",
-          "title": "Month (example: September)"
-        },
-        {
-          "const": "%Y-%m",
-          "title": "Year and Month (example: 2023-01)"
-        },
-        {
-          "const": "%j",
-          "title": "Day of the year as a number (example: 365)"
-        },
-        {
-          "const": "%d",
-          "title": "Day of the month as a number (example: 31)"
-        },
-        {
-          "const": "%A",
-          "title": "Day of the week (example: Sunday)"
-        },
-        {
-          "const": "%H",
-          "title": "Hour (24-hour clock) as number (example: 22)"
-        },
-        {
-          "const": "%Y-%m-%d",
-          "title": "Date (example: 2025-01-31)"
-        }
-      ],
-      "title": "Time",
-      "type": "string"
-    },
-    "ValueGrouper": {
-      "oneOf": [],
-      "title": "Category",
-      "type": "string"
-    },
     "EarthRangerConnection": {
       "properties": {
         "name": {
@@ -574,98 +364,6 @@
       },
       "title": "TrajectorySegmentFilter",
       "type": "object"
-    },
-    "BoundingBox": {
-      "properties": {
-        "min_y": {
-          "default": -90.0,
-          "ecoscope:advanced": true,
-          "title": "Min Latitude",
-          "type": "number"
-        },
-        "max_y": {
-          "default": 90.0,
-          "ecoscope:advanced": true,
-          "title": "Max Latitude",
-          "type": "number"
-        },
-        "min_x": {
-          "default": -180.0,
-          "ecoscope:advanced": true,
-          "title": "Min Longitude",
-          "type": "number"
-        },
-        "max_x": {
-          "default": 180.0,
-          "ecoscope:advanced": true,
-          "title": "Max Longitude",
-          "type": "number"
-        }
-      },
-      "title": "BoundingBox",
-      "type": "object"
-    },
-    "Coordinate": {
-      "properties": {
-        "y": {
-          "description": "Example -0.15293",
-          "title": "Latitude",
-          "type": "number"
-        },
-        "x": {
-          "description": "Example 37.30906",
-          "title": "Longitude",
-          "type": "number"
-        }
-      },
-      "required": [
-        "y",
-        "x"
-      ],
-      "title": "Coordinate",
-      "type": "object"
-    },
-    "AutoScaleGridCellSize": {
-      "properties": {
-        "auto_scale_or_custom": {
-          "const": "Auto-scale",
-          "default": "Auto-scale",
-          "ecoscope:advanced": true,
-          "enum": [
-            "Auto-scale"
-          ],
-          "title": "Grid Cell Size",
-          "type": "string"
-        }
-      },
-      "title": "Auto-scale",
-      "type": "object"
-    },
-    "CustomGridCellSize": {
-      "properties": {
-        "auto_scale_or_custom": {
-          "const": "Customize",
-          "default": "Customize",
-          "ecoscope:advanced": true,
-          "enum": [
-            "Customize"
-          ],
-          "title": "Grid Cell Size",
-          "type": "string"
-        },
-        "grid_cell_size": {
-          "default": 5000,
-          "description": "Define the resolution of the raster grid (in the unit of measurement defined by the coordinate reference system set below). A smaller grid cell size provides more detail, while a larger size generalizes the data.",
-          "exclusiveMaximum": 10000,
-          "exclusiveMinimum": 0,
-          "gt": 0,
-          "lt": 10000,
-          "title": "Custom Grid Cell Size",
-          "type": "number"
-        }
-      },
-      "title": "Customize",
-      "type": "object"
     }
   },
   "uiSchema": {
@@ -681,39 +379,13 @@
         "until"
       ]
     },
-    "er_patrol_and_events_params": {
-      "ui:order": [
-        "patrol_types",
-        "event_types",
-        "status",
-        "include_null_geometry"
-      ]
-    },
-    "filter_patrol_events": {
-      "ui:order": [
-        "bounding_box",
-        "filter_point_coords",
-        "reset_index"
-      ]
-    },
-    "ltd_meshgrid": {
-      "ui:order": [
-        "auto_scale_or_custom_cell_size",
-        "crs"
-      ]
-    },
     "ui:order": [
       "workflow_details",
       "time_range",
-      "groupers",
       "er_client_name",
       "base_map_defs",
-      "er_patrol_and_events_params",
-      "set_patrol_traj_color_column",
-      "patrol_traj",
-      "filter_patrol_events",
-      "patrol_events_bar_chart",
-      "ltd_meshgrid"
+      "subject_obs",
+      "subject_traj"
     ]
   },
   "additionalProperties": false

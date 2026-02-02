@@ -445,6 +445,13 @@
               "type": "array",
               "description": "By adding a filter, the workflow will not include events recorded at the specified coordinates.",
               "ecoscope:advanced": true
+            },
+            "reset_index": {
+              "default": true,
+              "title": "Reset Index",
+              "type": "boolean",
+              "description": "Reset index after filtering",
+              "ecoscope:advanced": true
             }
           },
           "required": [],
@@ -757,7 +764,8 @@
       "filter_patrol_events": {
         "ui:order": [
           "bounding_box",
-          "filter_point_coords"
+          "filter_point_coords",
+          "reset_index"
         ]
       }
     },

@@ -1,0 +1,1069 @@
+id: vehicles_report
+requirements:
+  - name: ecoscope-workflows-core
+    version: "0.21.4.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows/
+
+  - name: ecoscope-workflows-ext-ecoscope
+    version: "0.21.4.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows/
+
+  - name: ecoscope-workflows-ext-custom
+    version: "0.0.22.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+  - name: ecoscope-workflows-ext-ste
+    version: "0.0.7.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+  - name: ecoscope-workflows-ext-mnc
+    version: "0.0.0.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+  - name: ecoscope-workflows-ext-icf
+    version: "0.0.0.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+  - name: ecoscope-workflows-ext-lion-guardians
+    version: "*"
+    channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
+
+rjsf-overrides:
+  $defs:
+    ValueGrouper.oneOf:
+      - const: subject_name
+        title: Subject Name
+      - const: subject_sex 
+        title: Subject Sex
+      - const: subject_subtype
+        title: Subject Subtype
+
+task-instance-defaults:
+  skipif:
+    conditions:
+      - any_is_empty_df
+      - any_dependency_skipped
+
+workflow:
+  #Set workflow details
+  - name: Set Workflow Details
+    id: workflow_details
+    task: set_workflow_details
+
+  #Enter time range 
+  - name: Define time range
+    id: time_range
+    task: set_time_range
+    partial:
+      time_format: "%d %b %Y %H:%M:%S %Z"
+      timezone: 
+        label: UTC 
+        tzCode: UTC 
+        name: UTC 
+        utc_offset: "+03:00"
+
+  #Set groupers
+  - name: Set Groupers
+    id: groupers
+    task: set_groupers
+    partial: 
+      groupers: 
+        - subject_name
+
+  #connect to ER 
+  - name: Data Source
+    id: er_client_name
+    task: set_er_connection
+
+  # Set base maps
+  - name: Base Maps
+    id: base_map_defs
+    task: set_base_maps_pydeck
+
+  # Download amboseli group ranches and the collared lions templates
+  - name: Download amboseli group ranches
+    id: persist_ambo_gpkg
+    task: fetch_and_persist_file
+    partial:
+      url: https://www.dropbox.com/scl/fi/fcy57d5x5y67gh0xje6rw/lg_group_ranch_boundaries.gpkg?rlkey=yte99xhkte7f1r7n9nemgy7p0&st=sxx1emc1&dl=0
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: false
+      retries: 3
+      unzip: false
+  
+  - name: Download hotspot areas gpkg 
+    id: persist_hotspot_areas
+    task: fetch_and_persist_file
+    partial: 
+      url: https://www.dropbox.com/scl/fi/nlozcti0oqhj6bzvsr46g/lg_conflict_hotspots.gpkg?rlkey=giwdizp1j6e24btgh48uxf5v0&st=jivblame&dl=0
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: false
+      retries: 3
+      unzip: false
+
+  - name: Download protected areas gpkg 
+    id: persist_protected_gpkg 
+    task: fetch_and_persist_file
+    partial:  
+      url: https://www.dropbox.com/scl/fi/i5yczgyln3zh1n8c4ppl5/lg_protected_areas.gpkg?rlkey=5ea21haq2tmsmx7g502p3qag5&st=zt6ztcku&dl=0
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: false
+      retries: 3
+      unzip: false
+
+  - name: Load amboseli group ranches 
+    id: load_ambo_group_ranches 
+    task: load_df 
+    partial: 
+      file_path: ${{ workflow.persist_ambo_gpkg.return }}
+      layer: null
+      deserialize_json: false 
+
+  - name: Load amboseli group ranches 
+    id: load_hotspot_areas
+    task: load_df 
+    partial: 
+      file_path: ${{ workflow.persist_hotspot_areas.return }}
+      layer: null
+      deserialize_json: false 
+
+  - name: Load protected areas
+    id: load_protected_areas
+    task: load_df 
+    partial: 
+      file_path: ${{ workflow.persist_protected_gpkg.return }}
+      layer: null
+      deserialize_json: false 
+
+  - name: Reproject gdf to 4326 for ambo layers
+    id: reproject_ambo_boundaries 
+    task: reproject_gdf
+    partial: 
+      gdf: ${{ workflow.load_ambo_group_ranches.return }}
+      target_crs: "EPSG:4326"
+
+  - name: Reproject gdf to 4326 for hotspot areas
+    id: reproject_hotspot_areas
+    task: reproject_gdf
+    partial: 
+      gdf: ${{ workflow.load_hotspot_areas.return }}
+      target_crs: "EPSG:4326"
+
+  - name: Reproject gdf to 4326 for protected areas
+    id: reproject_protected_areas
+    task: reproject_gdf
+    partial: 
+      gdf: ${{ workflow.load_protected_areas.return }}
+      target_crs: "EPSG:4326"
+
+  - name: Annotate amboseli layers with geom type 
+    id: annotate_ambo_layers
+    task: get_gdf_geom_type
+    partial:  
+      gdf: ${{ workflow.reproject_ambo_boundaries.return }}
+
+  - name: Annotate hotspot layers with geom type 
+    id: annotate_hotspot_layers
+    task: get_gdf_geom_type
+    partial:  
+      gdf: ${{ workflow.reproject_hotspot_areas.return }}
+
+  - name: Annotate protected areas with geom type 
+    id: annotate_protected_layers
+    task: get_gdf_geom_type
+    partial:  
+      gdf: ${{ workflow.reproject_protected_areas.return }}
+
+  - name: Create layer for amboseli group ranch 
+    id: custom_amboseli_layer 
+    task: create_deckgl_layer_from_gdf
+    partial: 
+      gdf: ${{ workflow.annotate_ambo_layers.return }}
+      style: 
+        get_line_color: [169, 169, 169]
+        get_fill_color: [169, 169, 169]
+        get_line_width: 4.00
+        opacity: 0.85
+        extruded: false
+        stroked: true
+        filled: false
+      legend: 
+        title: Map layers 
+        values:
+          - label: Group ranch boundaries 
+            color: "#a9a9a9"
+
+  - name: Create layer for hotspot areas 
+    id: custom_hotspot_layer 
+    task: create_deckgl_layer_from_gdf
+    partial: 
+      gdf: ${{ workflow.annotate_hotspot_layers.return }}
+      style: 
+        get_line_color: [220, 20, 60]
+        get_fill_color: [220, 20, 60]
+        get_radius: 2.55 
+        get_line_width: 1.95
+        opacity: 0.85
+        extruded: false
+        stroked: true
+        filled: true
+      legend: 
+        title: ""
+        values:
+          - label: Hotspot areas
+            color: "#dc143c"
+
+  - name: Create layer for protected areas 
+    id: custom_protected_layer 
+    task: create_deckgl_layer_from_gdf
+    partial: 
+      gdf: ${{ workflow.annotate_protected_layers.return }}
+      style: 
+        get_line_color: [77, 102, 0]
+        get_fill_color: [77, 102, 0]
+        get_line_width: 1.95
+        opacity: 0.20
+        extruded: false
+        stroked: true
+        filled: true
+      legend: 
+        title: ""
+        values:
+          - label: National parks and reserves 
+            color: "#4d6600"
+
+  # - name: Create text layer for conflict hotspots 
+  #   id: create_hotspot_text_layer 
+  #   task: create_custom_text_layer
+  #   partial: 
+  #     geodataframe: ${{ workflow.reproject_hotspot_areas.return }}
+  #     layer_style: 
+  #       get_text: name 
+  #       get_color: [0,0,0,255]
+        
+  #       get_size: 1500
+  #       size_units: meters 
+  #       size_min_pixels: 65 #65 
+  #       size_max_pixels: 100
+  #       size_scale: 2.00 
+
+  #       font_family: Calibri 
+  #       font_weight: "700" 
+  #       get_text_anchor: middle 
+  #       get_alignment_baseline: center
+  #       billboard: true 
+
+  #       background_padding: [4,8]
+  #       pickable: true 
+  #       auto_highlight: false 
+  #     use_centroid: true 
+  #     legend: null 
+
+  #Get subject group observations
+  - name: Get Subject Group observations from EarthRanger
+    id: subject_obs
+    task: get_subjectgroup_observations
+    partial:
+      client: ${{ workflow.er_client_name.return }}
+      time_range: ${{ workflow.time_range.return }}
+      raise_on_empty: false
+      include_details: false
+      include_subjectsource_details: false
+  
+  #Process relocations 
+  - name: Transform observations to relocations
+    id: subject_reloc
+    task: process_relocations
+    partial:
+      observations: ${{ workflow.subject_obs.return }}
+      relocs_columns:
+        - groupby_col
+        - fixtime
+        - junk_status
+        - geometry
+        - extra__subject__name
+        - extra__subject__subject_subtype
+        - extra__subject__sex
+      filter_point_coords:
+        - x: 180.000000
+          y: 90.000000
+        - x: 0.000000
+          y: 0.000000
+        - x: 1.000000
+          y: 1.000000
+
+  - name: Persist relocations 
+    id: persist_relocs
+    task: persist_df 
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filetype: geoparquet 
+      filename: relocations
+      df: ${{ workflow.subject_reloc.return }}
+
+  # Convert Relocs to Trajectories
+  - name: Transform relocations to trajectories
+    id: subject_traj
+    task: relocations_to_trajectory
+    partial:
+      relocations: ${{ workflow.subject_reloc.return }}
+
+  - name: Persist trajectories 
+    id: persist_trajs
+    task: persist_df 
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filetype: geoparquet 
+      filename: trajectories
+      df: ${{ workflow.subject_traj.return }}
+
+  # Add temporal index
+  - name: Add temporal index to Subject Trajectories
+    id: traj_add_temporal_index
+    task: add_temporal_index
+    partial:
+      df: ${{ workflow.subject_traj.return }}
+      time_col: segment_start
+      groupers: ${{ workflow.groupers.return }}
+      cast_to_datetime: true
+      format: mixed
+
+  - name: Classify trajectories by speed 
+    id: classify_trajectories_speed_bins 
+    task: apply_classification 
+    partial: 
+      df: ${{ workflow.traj_add_temporal_index.return }}
+      input_column_name: speed_kmhr
+      output_column_name: speed_bins
+      classification_options: 
+        scheme: equal_interval 
+        k: 6 
+      label_options: 
+        label_range: false 
+        label_decimals: 1 
+
+  - name: Rename trajectory columnns
+    id: rename_traj_cols
+    task: map_columns
+    partial:
+      drop_columns: []
+      retain_columns: []
+      rename_columns:
+        extra__name: subject_name
+        extra__sex: subject_sex
+        extra__subject_subtype: subject_subtype
+
+      df: ${{ workflow.classify_trajectories_speed_bins.return }}
+
+  # Split subjects trajectories by group
+  - name: Split subject trajectories by group
+    id: split_subject_traj_groups
+    task: split_groups
+    partial:
+      df: ${{ workflow.rename_traj_cols.return }}
+      groupers: ${{ workflow.groupers.return }}
+
+  # generate speedmap 
+  - name: Sort trajectories by speed bins 
+    id: sort_trajs_by_speed 
+    task: sort_values
+    partial: 
+      column_name: speed_bins 
+      na_position: first 
+      ascending: true 
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_subject_traj_groups.return }}
+
+  - name: Apply colormap to speed bins 
+    id: apply_speed_colormap 
+    task: apply_color_map 
+    partial: 
+      input_column_name: speed_bins
+      output_column_name: speed_bins_colormap 
+      colormap: 
+        - '#1a9850'
+        - '#91cf60'
+        - '#d9ef8b'
+        - '#fee08b'
+        - '#fc8d59'
+        - '#d73027'
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.sort_trajs_by_speed.return }}
+    
+  - name: Format speed bins for legend 
+    id: format_speed_bin_labels 
+    task: map_values_with_unit 
+    partial: 
+      input_column_name: speed_bins 
+      output_column_name: speed_bins_formatted 
+      original_unit: km/h
+      new_unit: km/h
+      decimal_places: 1 
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.apply_speed_colormap.return }}  
+
+  - name: Format speed values for display 
+    id: format_speed_values 
+    task: map_values_with_unit
+    partial: 
+      input_column_name: speed_kmhr 
+      output_column_name: speed_kmhr 
+      original_unit: km/h
+      new_unit: km/h
+      decimal_places: 1
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.format_speed_bin_labels.return }}
+  
+  - name: Exclude unnecessary columns from speedmap gdf 
+    id: filter_speed_cols 
+    task: filter_df_cols 
+    partial: 
+      columns: 
+        - dist_meters
+        - speed_bins_colormap
+        - geometry
+        - speed_kmhr
+        - speed_bins_formatted
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.format_speed_values.return }}
+
+  - name: Generate speedmap layers 
+    id: generate_speedmap_layers 
+    task: create_path_layer 
+    partial: 
+      layer_style:
+        get_color: speed_bins_colormap
+        get_width: 2.85
+        width_scale: 1 
+        width_min_pixels: 2 
+        width_max_pixels: 8 
+        width_units: pixels
+        cap_rounded: true 
+        joint_rounded: true
+        billboard: false
+        opacity: 0.55
+        stroked: true 
+      legend:
+        title: Speed (km/h)
+        label_column: speed_bins_formatted
+        color_column: speed_bins_colormap
+        sort: ascending 
+        label_suffix: null
+    mapvalues:
+      argnames: geodataframe
+      argvalues: ${{ workflow.filter_speed_cols.return }}
+  
+  # # should be used globally 
+  - name: Zoom to gdf extent 
+    id: zoom_speed_gdf_extent
+    task: view_state_deck_gdf
+    partial: 
+      pitch: 0
+      bearing: 0
+    mapvalues:
+      argnames: gdf
+      argvalues: ${{ workflow.filter_speed_cols.return }}
+    
+  - name: Combine ldx layers and speedmap layers 
+    id: combined_ldx_speed_layers 
+    task: combine_deckgl_map_layers
+    partial: 
+      static_layers: 
+        - ${{ workflow.custom_amboseli_layer.return }}
+        - ${{ workflow.custom_hotspot_layer.return }}
+        - ${{ workflow.custom_protected_layer.return }}
+        # - ${{ workflow.create_hotspot_text_layer.return }}
+    mapvalues:
+      argnames: grouped_layers
+      argvalues: ${{ workflow.generate_speedmap_layers.return }}
+
+  - name: Combine speedmap layers with view state 
+    id: zip_speedmap_with_viewstate
+    task: zip_groupbykey 
+    partial: 
+      sequences: 
+        - ${{ workflow.combined_ldx_speed_layers.return }}
+        - ${{ workflow.zoom_speed_gdf_extent.return }}
+    
+  - name: Draw speedmap 
+    id: draw_speedmap
+    task: draw_map 
+    partial: 
+      tile_layers: ${{ workflow.base_map_defs.return }}
+      static: false
+      title: null 
+      max_zoom: 10
+      legend_style: 
+        placement: bottom-right
+    mapvalues:
+      argnames: 
+        - geo_layers 
+        - view_state
+      argvalues: ${{ workflow.zip_speedmap_with_viewstate.return }}
+
+  - name: Persist speedmap html 
+    id: persist_speedmap_html
+    task: persist_text 
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: speedmap 
+    mapvalues:
+      argnames: text 
+      argvalues: ${{ workflow.draw_speedmap.return }}
+    
+  - name: Create speedmap widgets 
+    id: create_speedmap_widgets 
+    task: create_map_widget_single_view 
+    partial: 
+      title: Speed Map 
+    map: 
+      argnames: 
+        - view 
+        - data 
+      argvalues: ${{ workflow.persist_speedmap_html.return }}
+
+  - name: Merge speedmap widgets 
+    id: merge_speedmap_widgets 
+    task: merge_widget_views 
+    partial: 
+      widgets: ${{ workflow.create_speedmap_widgets.return }}
+    
+  # 2. Generate tracks map
+  - name: Generate track layers 
+    id: generate_track_layers 
+    task: create_path_layer 
+    partial: 
+      layer_style:
+        get_color: [0, 0, 255]
+        get_width: 2.85
+        width_scale: 1 
+        width_min_pixels: 2 
+        width_max_pixels: 8 
+        width_units: pixels
+        cap_rounded: true 
+        joint_rounded: true
+        billboard: false
+        opacity: 0.55
+        stroked: true 
+      legend:
+        title: Vehicle tracks
+        values: 
+          - label: Tracks 
+            color: "#0000ff"
+    mapvalues:
+      argnames: geodataframe
+      argvalues: ${{ workflow.split_subject_traj_groups.return }} 
+  
+  # # should be used globally 
+  - name: Zoom to gdf extent 
+    id: zoom_track_gdf_extent
+    task: view_state_deck_gdf
+    partial: 
+      pitch: 0
+      bearing: 0
+    mapvalues:
+      argnames: gdf
+      argvalues: ${{ workflow.split_subject_traj_groups.return }}
+
+    # Combine layers ie static and grouped
+  - name: Combine map layers
+    id: combine_track_layers
+    task: combine_deckgl_map_layers
+    partial:
+      static_layers: 
+
+        - ${{ workflow.custom_amboseli_layer.return }}
+        - ${{ workflow.custom_hotspot_layer.return }}
+        - ${{ workflow.custom_protected_layer.return }}
+        # - ${{ workflow.create_hotspot_text_layer.return }}
+    mapvalues:
+      argnames: grouped_layers
+      argvalues: ${{ workflow.generate_track_layers.return }}
+
+  - name: Zip layers and viewstate
+    id: zip_track_layers_view
+    task: zip_groupbykey
+    partial:
+      sequences:
+        - ${{ workflow.combine_track_layers.return }}
+        - ${{ workflow.zoom_track_gdf_extent.return }}
+
+  - name: Draw track map
+    id: draw_track_map
+    task: draw_map
+    partial:
+      tile_layers: ${{ workflow.base_map_defs.return }}
+      static: false
+      title: null
+      max_zoom: 15
+      legend_style:
+        placement: "bottom-right"
+    mapvalues:
+      argnames:
+        - geo_layers
+        - view_state
+      argvalues: ${{ workflow.zip_track_layers_view.return }}
+
+  - name: Persist tracks as text
+    id: track_html_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: tracks
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.draw_track_map.return }}
+
+  - name: Create tracks widgets 
+    id: create_tracks_widgets 
+    task: create_map_widget_single_view 
+    partial: 
+      title:  Vehicle Tracks
+    map: 
+      argnames: 
+        - view 
+        - data 
+      argvalues: ${{ workflow.track_html_url.return }}
+
+  - name: Merge tracks widgets 
+    id: merge_tracks_widgets 
+    task: merge_widget_views 
+    partial: 
+      widgets: ${{ workflow.create_tracks_widgets.return }}
+
+  # 3. Draw line chart 
+  - name: Draw vehicle line chart 
+    id: draw_speed_line_chart 
+    task: draw_line_chart 
+    partial: 
+      x_column: segment_start
+      y_column: speed_kmhr
+      category_column: null 
+      line_kwargs:
+        shape: "linear"
+      layout_kwargs:
+        title: null
+        title_x: 0.01
+        title_y:  0.95
+        showlegend: false
+        fontsize: 20
+        fontcolor: "#2c3e50"
+        plot_bgcolor: "#f5f5f5"
+        xaxis:
+          title: "Date"
+          showgrid: true
+          gridcolor: "#e0e0e0"
+          gridwidth: 1
+          tickformat: "%Y-%m-%d"
+          tickangle: -45
+          rangemode: auto
+        yaxis:
+          title: "Speed (km/h)"
+          tickformat: ".1f"
+        legend_title: null
+        hovermode: "x unified"
+    mapvalues: 
+      argnames: dataframe
+      argvalues: ${{ workflow.split_subject_traj_groups.return }}
+
+  - name: Persist line chart as text
+    id: persist_vehicle_chart
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: speed_line_chart 
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.draw_speed_line_chart.return }}
+  
+  - name: Create Plot Widget for Line Chart
+    id: line_chart_widget
+    task: create_plot_widget_single_view
+    skipif:
+      conditions:
+        - never
+    partial:
+      title: Vehicle Speed Over Time
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.persist_vehicle_chart.return }}
+
+  - name: Merge Plot Widget Views
+    id: grouped_plot_widget_merge
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.line_chart_widget.return }}
+
+  # Metric summary widgets 
+  - name: Generate summary table metrics for subjects
+    id: summary_table
+    task: summarize_df
+    partial:
+      groupby_cols:
+        - subject_name
+      summary_params: 
+        - display_name: mean_speed
+          aggregator: mean
+          column: speed_kmhr
+          decimal_places: 2
+
+        - display_name: min_speed
+          aggregator: min
+          column: speed_kmhr
+          decimal_places: 2
+
+        - display_name: max_speed
+          aggregator: max
+          column: speed_kmhr
+          decimal_places: 2
+        
+        - display_name: total_distance
+          aggregator: sum 
+          column: dist_meters
+          original_unit: m
+          new_unit: km
+          decimal_places: 2
+
+      reset_index: true 
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.split_subject_traj_groups.return }}
+
+  - name: Add total row on summary table
+    id: add_total_events_row
+    task: add_totals_row
+    partial:
+      label_col:
+        - subject_name
+      label: Total
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summary_table.return }}
+
+  - name: Persist summary table
+    id: persist_summary_table
+    task: persist_df 
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filetype: csv
+      filename: null
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.add_total_events_row.return }}
+
+  - name: Calculate mean speed 
+    id: calc_mean_speed
+    task: dataframe_column_sum
+    partial:
+      column_name: mean_speed
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summary_table.return }}
+
+  - name: Round off mean speed to 2 decimal_places
+    id: round_mean_speed
+    task: round_off_values
+    partial:
+      dp: 2
+    mapvalues:
+      argnames: value
+      argvalues: ${{ workflow.calc_mean_speed.return }}
+
+  - name: Calculate min speed 
+    id: calc_min_speed
+    task: dataframe_column_sum
+    partial:
+      column_name: min_speed
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summary_table.return }}
+
+  - name: Round off min speed to 2 decimal_places
+    id: round_min_speed
+    task: round_off_values
+    partial:
+      dp: 2
+    mapvalues:
+      argnames: value
+      argvalues: ${{ workflow.calc_min_speed.return }}
+      
+  - name: Calculate max speed 
+    id: calc_max_speed
+    task: dataframe_column_sum
+    partial:
+      column_name: max_speed
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summary_table.return }}
+
+  - name: Round off max speed to 2 decimal_places
+    id: round_max_speed
+    task: round_off_values
+    partial:
+      dp: 2
+    mapvalues:
+      argnames: value
+      argvalues: ${{ workflow.calc_max_speed.return }}
+
+  - name: Calculate total distance
+    id: total_distance_covered
+    task: dataframe_column_sum
+    partial:
+      column_name: total_distance
+    mapvalues:
+      argnames: df
+      argvalues: ${{ workflow.summary_table.return }}
+
+  - name: Round off total distance to 2 decimal_places
+    id: round_total_distance
+    task: round_off_values
+    partial:
+      dp: 2
+    mapvalues:
+      argnames: value
+      argvalues: ${{ workflow.total_distance_covered.return }}
+
+  - name: Create single value widgets for total mean speed per group
+    id: total_mean_speed_widgets
+    task: create_single_value_widget_single_view
+    skipif:
+      conditions:
+        - never
+    partial:
+      title: Mean Speed 
+      decimal_places: 2
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.round_mean_speed.return }}
+
+  - name: Merge per group mean speed SV widgets
+    id: total_mean_speed_sv_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.total_mean_speed_widgets.return }}
+
+  - name: Create single value Widgets for total min speed per group
+    id: total_min_speed_widgets
+    task: create_single_value_widget_single_view
+    skipif:
+      conditions:
+        - never
+    partial:
+      title: Min Speed 
+      decimal_places: 2
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.round_min_speed.return }}
+
+  - name: Merge per group min speed SV widgets
+    id: total_min_speed_sv_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.total_min_speed_widgets.return }}
+
+  - name: Create single value widgets for total max speed per group
+    id: total_max_speed_widgets
+    task: create_single_value_widget_single_view
+    skipif:
+      conditions:
+        - never
+    partial:
+      title: Max Speed 
+      decimal_places: 2
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.round_max_speed.return }}
+
+  - name: Merge per group max speed SV widgets
+    id: total_max_speed_sv_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.total_max_speed_widgets.return }}
+
+  - name: Create single value widgets for total distance per group
+    id: total_distance_widgets
+    task: create_single_value_widget_single_view
+    skipif:
+      conditions:
+        - never
+    partial:
+      title: Distance covered
+      decimal_places: 2
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.round_total_distance.return }}
+
+  - name: Merge per group total distance SV widgets
+    id: total_distance_sv_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.total_distance_widgets.return }}
+
+  #html to png 
+  - name: Convert speedmap html to png
+    id: convert_speed_png  
+    task: html_to_png
+    partial: 
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      config: 
+        full_page: false 
+        device_scale_factor: 2.0 
+        wait_for_timeout: 20000
+        max_concurrent_pages: 1 
+    mapvalues: 
+      argnames: html_path 
+      argvalues: ${{ workflow.persist_speedmap_html.return }}
+
+  - name: Convert tracks map to html 
+    id: convert_tracks_png 
+    task: html_to_png
+    partial: 
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      config: 
+        full_page: false 
+        device_scale_factor: 2.0 
+        wait_for_timeout: 20000
+        max_concurrent_pages: 1 
+    mapvalues: 
+      argnames: html_path 
+      argvalues: ${{ workflow.track_html_url.return }}
+
+  - name: Convert line chart to png 
+    id: convert_line_png 
+    task: html_to_png
+    partial: 
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      config: 
+        full_page: false 
+        device_scale_factor: 2.0 
+        wait_for_timeout: 10
+        max_concurrent_pages: 1 
+    mapvalues: 
+      argnames: html_path 
+      argvalues: ${{ workflow.persist_vehicle_chart.return }}
+
+  # download templates
+  # Download cover template
+  - name: Download cover page template
+    id: download_cover_page
+    task: fetch_and_persist_file
+    partial:
+      url: https://www.dropbox.com/scl/fi/huzg95h8p04a1wtgi9nbv/vehicles_cover_page.docx?rlkey=g3a7vi3ncesffww6mfafc9npn&st=jtn3m5jk&dl=0
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: false
+      unzip: false
+      retries: 2
+
+  # Download section templates
+  - name: Download section templates
+    id: download_sect_templates
+    task: fetch_and_persist_file
+    partial:
+      url: https://www.dropbox.com/scl/fi/hk5gh4kd6uf2cl68dcaac/custom_vehicle_template.docx?rlkey=a2ior7pcmgcb3e8a1d7qchodb&st=wh94dfph&dl=0
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: false
+      unzip: false
+      retries: 2
+
+  - name: Unique subjects on trajs 
+    id: unique_subjects
+    task: dataframe_column_nunique
+    partial:
+      df: ${{ workflow.traj_add_temporal_index.return }}
+      column_name: groupby_col
+
+  - name: Create cover template context 
+    id: create_cover_tpl_context
+    task: create_cl_ctx_cover
+    partial:
+      count: ${{ workflow.unique_subjects.return }}
+      report_period: ${{ workflow.time_range.return }}
+      prepared_by: "Ecoscope"
+
+  - name: Persist cover page context
+    id: persist_cover_context 
+    task: create_context_page_lg
+    partial:
+      template_path: ${{ workflow.download_cover_page.return }}
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      context: ${{ workflow.create_cover_tpl_context.return }}
+      filename: lg_cover_page.docx
+
+  - name: Group grouper context values together 
+    id: group_context_values 
+    task: zip_groupbykey
+    partial: 
+      sequences:
+        - ${{ workflow.split_subject_traj_groups.return }} # df
+        - ${{ workflow.persist_summary_table.return }} # summary_table
+        - ${{ workflow.convert_speed_png.return }} # speedmap
+        - ${{ workflow.convert_tracks_png.return }} # tracks
+        - ${{ workflow.convert_line_png.return }} # line_chart
+
+  - name: Create individual grouper context 
+    id: indv_cl_ctx
+    task: create_vehicles_grouper_ctx
+    partial: 
+      grouper_name: ${{ workflow.groupers.return }} # grouper name
+    mapvalues:
+      argnames:
+        - df
+        - summary_table
+        - speedmap
+        - tracks_map
+        - line_chart 
+      argvalues: ${{ workflow.group_context_values.return }}
+
+  - name: Create grouper word doc
+    id: create_grouper_doc
+    task: create_grouper_page
+    partial:  
+      template_path: ${{ workflow.download_sect_templates.return }}
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename: null
+      validate_images: true
+      box_h_cm: 6.5
+      box_w_cm: 11.11
+    mapvalues:
+      argnames: context 
+      argvalues: ${{ workflow.indv_cl_ctx.return }}
+
+  - name: Merge word docs
+    id: merge_docx
+    task: merge_cl_files 
+    partial: 
+      cover_page_path: ${{ workflow.persist_cover_context.return }}
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      context_page_items: ${{ workflow.create_grouper_doc.return }}
+      filename: null
+
+  - name: Vehicles dashboard 
+    id: vehicles_dashboard 
+    task: gather_dashboard
+    partial: 
+      details: ${{ workflow.workflow_details.return }}
+      widgets: 
+        - ${{ workflow.total_mean_speed_sv_widget.return }}
+        - ${{ workflow.total_min_speed_sv_widget.return }}
+        - ${{ workflow.total_max_speed_sv_widget.return }}
+        - ${{ workflow.total_distance_sv_widget.return }}
+        - ${{ workflow.merge_speedmap_widgets.return }}
+        - ${{ workflow.merge_tracks_widgets.return }}
+        - ${{ workflow.grouped_plot_widget_merge.return }}
+      time_range: ${{ workflow.time_range.return }}
+      groupers: ${{ workflow.groupers.return }}
