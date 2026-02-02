@@ -3,7 +3,7 @@ name = "lion-guardians"
 channels = [
     # Uncomment the following lines to use local channels for development.
     # "file:///tmp/ecoscope-workflows/release/artifacts/",
-    #"file:///tmp/ecoscope-workflows-custom/release/artifacts/",
+    "file:///tmp/ecoscope-workflows-custom/release/artifacts/",
     'https://repo.prefix.dev/ecoscope-workflows/',
     'https://repo.prefix.dev/ecoscope-workflows-custom/',
     'conda-forge',
@@ -20,13 +20,13 @@ hatch-vcs="*"
 
 [feature.compile.dependencies]
 # Include this if you add new tasks and the package has been built
-ecoscope-workflows-ext-lion-guardians = "0.0.4.*"
+ecoscope-workflows-ext-lion-guardians = "*"
 
-ecoscope-workflows-ext-ste = "0.0.6.*"
+ecoscope-workflows-ext-ste = "0.0.7.*"
 ecoscope-workflows-ext-mnc = "0.0.0.*"
 ecoscope-workflows-ext-icf ="0.0.0.*"
-ecoscope-workflows-core = "0.20.4.*"
-ecoscope-workflows-ext-custom = "0.0.20.*"
+ecoscope-workflows-core = "0.21.4.*"
+ecoscope-workflows-ext-custom = "0.0.22.*"
 # Here we don't specify the channel on purpose, as we want to use the local channel if it exists,
 # otherwise we fall back to the remote channel.
 # If you want to ensure a specific channel to incorporate your local changes, you can uncomment the line below.
@@ -65,4 +65,13 @@ depends-on = ["build-release"]
 
 [feature.compile.tasks.recompile-guardians_report]
 cmd = './dev/recompile.sh guardians_report --update'
+depends-on = ["build-release"]
+
+
+[feature.compile.tasks.compile-vehicles_report]
+cmd = './dev/recompile.sh vehicles_report --install'
+depends-on = ["build-release"]
+
+[feature.compile.tasks.recompile-vehicles_report]
+cmd = './dev/recompile.sh vehicles_report --update'
 depends-on = ["build-release"]
