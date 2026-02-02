@@ -1,0 +1,29 @@
+all-grouper:
+  name: All Grouper
+  description: A demonstration of a workflow with no grouping.
+  params:
+    workflow_details:
+      description: ''
+      name: custom_lg
+    er_client_name:
+      data_source:
+        name: lg
+    base_map_defs:
+      base_maps:
+        - url: >-
+            https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}
+          opacity: 1
+          max_zoom: 20
+    subject_traj:
+      trajectory_segment_filter:
+        min_length_meters: 0.35
+        max_length_meters: 5000
+        min_time_secs: 1
+        max_time_secs: 18000
+        min_speed_kmhr: 10
+        max_speed_kmhr: 110
+    time_range:
+      since: '2009-09-01T06:40:00.000Z'
+      until: '2012-02-01T06:40:00.000Z'
+    subject_obs:
+      subject_group_name: elephants
