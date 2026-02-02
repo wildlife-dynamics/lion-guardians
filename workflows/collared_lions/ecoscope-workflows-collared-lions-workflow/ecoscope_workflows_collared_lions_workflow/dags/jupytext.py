@@ -45,10 +45,6 @@ from ecoscope_workflows_core.tasks.transformation import (
     add_temporal_index as add_temporal_index,
 )
 from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
-from ecoscope_workflows_core.tasks.transformation import (
-    map_values_with_unit as map_values_with_unit,
-)
-from ecoscope_workflows_core.tasks.transformation import sort_values as sort_values
 from ecoscope_workflows_ext_custom.tasks.io import html_to_png as html_to_png
 from ecoscope_workflows_ext_custom.tasks.io import load_df as load_df
 from ecoscope_workflows_ext_custom.tasks.results import (
@@ -756,7 +752,7 @@ custom_amboseli_layer = (
             "get_line_color": [169, 169, 169],
             "get_fill_color": [169, 169, 169],
             "get_line_width": 4.0,
-            "opacity": 0.75,
+            "opacity": 0.85,
             "extruded": False,
             "stroked": True,
             "filled": False,
@@ -799,9 +795,9 @@ custom_hotspot_layer = (
         style={
             "get_line_color": [220, 20, 60],
             "get_fill_color": [220, 20, 60],
-            "get_radius": 6,
+            "get_radius": 2.55,
             "get_line_width": 1.95,
-            "opacity": 0.95,
+            "opacity": 0.85,
             "extruded": False,
             "stroked": True,
             "filled": True,
@@ -845,7 +841,7 @@ custom_protected_layer = (
             "get_line_color": [77, 102, 0],
             "get_fill_color": [77, 102, 0],
             "get_line_width": 1.95,
-            "opacity": 0.15,
+            "opacity": 0.2,
             "extruded": False,
             "stroked": True,
             "filled": True,
@@ -892,7 +888,7 @@ create_hotspot_text_layer = (
             "size_units": "meters",
             "size_min_pixels": 65,
             "size_max_pixels": 100,
-            "size_scale": 2.05,
+            "size_scale": 2.0,
             "font_family": "Calibri",
             "font_weight": "700",
             "get_text_anchor": "middle",
@@ -1713,155 +1709,19 @@ collared_html_png = (
 
 
 # %% [markdown]
-# ## Sort trajectories by speed bins
+# ## Generate track layers
 
 # %%
 # parameters
 
-sort_trajs_by_speed_params = dict()
+generate_track_layers_params = dict()
 
 # %%
 # call the task
 
 
-sort_trajs_by_speed = (
-    sort_values.set_task_instance_id("sort_trajs_by_speed")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        column_name="speed_bins",
-        na_position="first",
-        ascending=True,
-        **sort_trajs_by_speed_params,
-    )
-    .mapvalues(argnames=["df"], argvalues=split_subject_traj_groups)
-)
-
-
-# %% [markdown]
-# ## Apply colormap to speed bins
-
-# %%
-# parameters
-
-apply_speed_colormap_params = dict()
-
-# %%
-# call the task
-
-
-apply_speed_colormap = (
-    apply_color_map.set_task_instance_id("apply_speed_colormap")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        input_column_name="speed_bins",
-        output_column_name="speed_bins_colormap",
-        colormap=["#1a9850", "#91cf60", "#d9ef8b", "#fee08b", "#fc8d59", "#d73027"],
-        **apply_speed_colormap_params,
-    )
-    .mapvalues(argnames=["df"], argvalues=sort_trajs_by_speed)
-)
-
-
-# %% [markdown]
-# ## Format speed bins for legend
-
-# %%
-# parameters
-
-format_speed_bin_labels_params = dict()
-
-# %%
-# call the task
-
-
-format_speed_bin_labels = (
-    map_values_with_unit.set_task_instance_id("format_speed_bin_labels")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        input_column_name="speed_bins",
-        output_column_name="speed_bins_formatted",
-        original_unit="km/h",
-        new_unit="km/h",
-        decimal_places=1,
-        **format_speed_bin_labels_params,
-    )
-    .mapvalues(argnames=["df"], argvalues=apply_speed_colormap)
-)
-
-
-# %% [markdown]
-# ## Format speed values for display
-
-# %%
-# parameters
-
-format_speed_values_params = dict()
-
-# %%
-# call the task
-
-
-format_speed_values = (
-    map_values_with_unit.set_task_instance_id("format_speed_values")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        input_column_name="speed_kmhr",
-        output_column_name="speed_kmhr",
-        original_unit="km/h",
-        new_unit="km/h",
-        decimal_places=1,
-        **format_speed_values_params,
-    )
-    .mapvalues(argnames=["df"], argvalues=format_speed_bin_labels)
-)
-
-
-# %% [markdown]
-# ## Generate speedmap layers
-
-# %%
-# parameters
-
-generate_speedmap_layers_params = dict()
-
-# %%
-# call the task
-
-
-generate_speedmap_layers = (
-    create_path_layer.set_task_instance_id("generate_speedmap_layers")
+generate_track_layers = (
+    create_path_layer.set_task_instance_id("generate_track_layers")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -1873,7 +1733,7 @@ generate_speedmap_layers = (
     )
     .partial(
         layer_style={
-            "get_color": "speed_bins_colormap",
+            "get_color": [0, 0, 255],
             "get_width": 2.85,
             "width_scale": 1,
             "width_min_pixels": 2,
@@ -1886,15 +1746,12 @@ generate_speedmap_layers = (
             "stroked": True,
         },
         legend={
-            "title": "Speed (km/h)",
-            "label_column": "speed_bins_formatted",
-            "color_column": "speed_bins_colormap",
-            "sort": "ascending",
-            "label_suffix": None,
+            "title": "Subject tracks",
+            "values": [{"label": "Tracks", "color": "#0000ff"}],
         },
-        **generate_speedmap_layers_params,
+        **generate_track_layers_params,
     )
-    .mapvalues(argnames=["geodataframe"], argvalues=format_speed_values)
+    .mapvalues(argnames=["geodataframe"], argvalues=split_subject_traj_groups)
 )
 
 
@@ -1904,14 +1761,14 @@ generate_speedmap_layers = (
 # %%
 # parameters
 
-zoom_speed_gdf_extent_params = dict()
+zoom_track_gdf_extent_params = dict()
 
 # %%
 # call the task
 
 
-zoom_speed_gdf_extent = (
-    view_state_deck_gdf.set_task_instance_id("zoom_speed_gdf_extent")
+zoom_track_gdf_extent = (
+    view_state_deck_gdf.set_task_instance_id("zoom_track_gdf_extent")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -1921,8 +1778,8 @@ zoom_speed_gdf_extent = (
         ],
         unpack_depth=1,
     )
-    .partial(pitch=0, bearing=0, **zoom_speed_gdf_extent_params)
-    .mapvalues(argnames=["gdf"], argvalues=format_speed_values)
+    .partial(pitch=0, bearing=0, **zoom_track_gdf_extent_params)
+    .mapvalues(argnames=["gdf"], argvalues=split_subject_traj_groups)
 )
 
 
@@ -1932,14 +1789,14 @@ zoom_speed_gdf_extent = (
 # %%
 # parameters
 
-combine_speed_layers_params = dict()
+combine_track_layers_params = dict()
 
 # %%
 # call the task
 
 
-combine_speed_layers = (
-    combine_deckgl_map_layers.set_task_instance_id("combine_speed_layers")
+combine_track_layers = (
+    combine_deckgl_map_layers.set_task_instance_id("combine_track_layers")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -1956,9 +1813,9 @@ combine_speed_layers = (
             custom_protected_layer,
             create_hotspot_text_layer,
         ],
-        **combine_speed_layers_params,
+        **combine_track_layers_params,
     )
-    .mapvalues(argnames=["grouped_layers"], argvalues=generate_speedmap_layers)
+    .mapvalues(argnames=["grouped_layers"], argvalues=generate_track_layers)
 )
 
 
@@ -1968,14 +1825,14 @@ combine_speed_layers = (
 # %%
 # parameters
 
-zip_speed_layers_view_params = dict()
+zip_track_layers_view_params = dict()
 
 # %%
 # call the task
 
 
-zip_speed_layers_view = (
-    zip_groupbykey.set_task_instance_id("zip_speed_layers_view")
+zip_track_layers_view = (
+    zip_groupbykey.set_task_instance_id("zip_track_layers_view")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -1986,20 +1843,20 @@ zip_speed_layers_view = (
         unpack_depth=1,
     )
     .partial(
-        sequences=[combine_speed_layers, zoom_speed_gdf_extent],
-        **zip_speed_layers_view_params,
+        sequences=[combine_track_layers, zoom_track_gdf_extent],
+        **zip_track_layers_view_params,
     )
     .call()
 )
 
 
 # %% [markdown]
-# ## Draw speedmap
+# ## Draw track map
 
 # %%
 # parameters
 
-draw_speedmap_params = dict(
+draw_track_map_params = dict(
     widget_id=...,
 )
 
@@ -2007,8 +1864,8 @@ draw_speedmap_params = dict(
 # call the task
 
 
-draw_speedmap = (
-    draw_map.set_task_instance_id("draw_speedmap")
+draw_track_map = (
+    draw_map.set_task_instance_id("draw_track_map")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2024,19 +1881,19 @@ draw_speedmap = (
         title=None,
         max_zoom=15,
         legend_style={"placement": "bottom-right"},
-        **draw_speedmap_params,
+        **draw_track_map_params,
     )
-    .mapvalues(argnames=["geo_layers", "view_state"], argvalues=zip_speed_layers_view)
+    .mapvalues(argnames=["geo_layers", "view_state"], argvalues=zip_track_layers_view)
 )
 
 
 # %% [markdown]
-# ## Persist speedmap as text
+# ## Persist tracks as text
 
 # %%
 # parameters
 
-speedmap_html_url_params = dict(
+track_html_url_params = dict(
     filename=...,
 )
 
@@ -2044,8 +1901,8 @@ speedmap_html_url_params = dict(
 # call the task
 
 
-speedmap_html_url = (
-    persist_text.set_task_instance_id("speedmap_html_url")
+track_html_url = (
+    persist_text.set_task_instance_id("track_html_url")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2057,27 +1914,27 @@ speedmap_html_url = (
     )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        filename_suffix="speedmap",
-        **speedmap_html_url_params,
+        filename_suffix="tracks",
+        **track_html_url_params,
     )
-    .mapvalues(argnames=["text"], argvalues=draw_speedmap)
+    .mapvalues(argnames=["text"], argvalues=draw_track_map)
 )
 
 
 # %% [markdown]
-# ## Convert speedmap html to png
+# ## Convert track html to png
 
 # %%
 # parameters
 
-speed_html_png_params = dict()
+track_html_png_params = dict()
 
 # %%
 # call the task
 
 
-speed_html_png = (
-    html_to_png.set_task_instance_id("speed_html_png")
+track_html_png = (
+    html_to_png.set_task_instance_id("track_html_png")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2095,26 +1952,26 @@ speed_html_png = (
             "wait_for_timeout": 20000,
             "max_concurrent_pages": 1,
         },
-        **speed_html_png_params,
+        **track_html_png_params,
     )
-    .mapvalues(argnames=["html_path"], argvalues=speedmap_html_url)
+    .mapvalues(argnames=["html_path"], argvalues=track_html_url)
 )
 
 
 # %% [markdown]
-# ## Create speedmap widget
+# ## Create trackmap widget
 
 # %%
 # parameters
 
-speedmap_widget_params = dict()
+trackmap_widget_params = dict()
 
 # %%
 # call the task
 
 
-speedmap_widget = (
-    create_map_widget_single_view.set_task_instance_id("speedmap_widget")
+trackmap_widget = (
+    create_map_widget_single_view.set_task_instance_id("trackmap_widget")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2123,13 +1980,13 @@ speedmap_widget = (
         ],
         unpack_depth=1,
     )
-    .partial(title="Speedmap", **speedmap_widget_params)
-    .map(argnames=["view", "data"], argvalues=speedmap_html_url)
+    .partial(title="Subject tracks", **trackmap_widget_params)
+    .map(argnames=["view", "data"], argvalues=track_html_url)
 )
 
 
 # %% [markdown]
-# ## Merge speedmap widget view
+# ## Merge trackmap widget view
 
 # %%
 # parameters
@@ -2151,7 +2008,7 @@ sm_grouped_map_widget = (
         ],
         unpack_depth=1,
     )
-    .partial(widgets=speedmap_widget, **sm_grouped_map_widget_params)
+    .partial(widgets=trackmap_widget, **sm_grouped_map_widget_params)
     .call()
 )
 
@@ -2505,7 +2362,7 @@ group_context_values = (
             split_subject_traj_groups,
             round_total_distance,
             collared_html_png,
-            speed_html_png,
+            track_html_png,
         ],
         **group_context_values_params,
     )

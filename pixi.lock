@@ -30,7 +30,11 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/arrow-1.4.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/astroplan-0.10.1-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/astropy-base-7.2.0-py312h4f23490_0.conda
+<<<<<<< HEAD
       - conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.2.2.0.48.1-pyhd8ed1ab_0.conda
+=======
+      - conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.1.26.0.43.56-pyhd8ed1ab_0.conda
+>>>>>>> main
       - conda: https://conda.anaconda.org/conda-forge/noarch/asttokens-3.0.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/async-lru-2.1.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/at-spi2-atk-2.38.0-h0630a04_3.tar.bz2
@@ -483,7 +487,11 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/werkzeug-3.1.5-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.46.3-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/widgetsnbextension-3.6.10-pyhd8ed1ab_0.conda
+<<<<<<< HEAD
       - conda: https://conda.anaconda.org/conda-forge/linux-64/wrapt-2.1.0-py312h4c3975b_0.conda
+=======
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/wrapt-2.0.1-py312h4c3975b_1.conda
+>>>>>>> main
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xerces-c-3.3.0-h988505b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xkeyboard-config-2.46-hb03c661_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/xorg-libice-1.1.2-hb9d3cd8_0.conda
@@ -512,7 +520,11 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.1-hb9d3cd8_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-ng-2.3.2-hceb46e0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
+<<<<<<< HEAD
       - conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.5.dev1+gfc7d1f868.d20260202-pyh4616a5c_0.conda
+=======
+      - conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.5.dev4+ge47933ae6.d20260201-pyh4616a5c_0.conda
+>>>>>>> main
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/_openmp_mutex-4.5-7_kmp_llvm.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_2.conda
@@ -536,7 +548,11 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/arrow-1.4.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/astroplan-0.10.1-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/astropy-base-7.2.0-py312ha11c99a_0.conda
+<<<<<<< HEAD
       - conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.2.2.0.48.1-pyhd8ed1ab_0.conda
+=======
+      - conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.1.26.0.43.56-pyhd8ed1ab_0.conda
+>>>>>>> main
       - conda: https://conda.anaconda.org/conda-forge/noarch/asttokens-3.0.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/async-lru-2.1.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/atk-1.0-2.38.0-hd03087b_2.conda
@@ -969,7 +985,11 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/werkzeug-3.1.5-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/wheel-0.46.3-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/widgetsnbextension-3.6.10-pyhd8ed1ab_0.conda
+<<<<<<< HEAD
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/wrapt-2.1.0-py312h2bbb03f_0.conda
+=======
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/wrapt-2.0.1-py312h4409184_1.conda
+>>>>>>> main
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/xerces-c-3.3.0-hd62221f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/xorg-libxau-1.0.12-hc919400_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/xorg-libxdmcp-1.1.5-hc919400_1.conda
@@ -982,7 +1002,11 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.3.1-h8359307_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.3.2-hed4e4f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
+<<<<<<< HEAD
       - conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.5.dev1+gfc7d1f868.d20260202-pyh4616a5c_0.conda
+=======
+      - conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.5.dev4+ge47933ae6.d20260201-pyh4616a5c_0.conda
+>>>>>>> main
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/_libavif_api-1.3.0-h57928b3_3.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/_openmp_mutex-4.5-2_gnu.conda
@@ -1004,7 +1028,11 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/arrow-1.4.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/astroplan-0.10.1-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/astropy-base-7.2.0-py312h196c9fc_0.conda
+<<<<<<< HEAD
       - conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.2.2.0.48.1-pyhd8ed1ab_0.conda
+=======
+      - conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.1.26.0.43.56-pyhd8ed1ab_0.conda
+>>>>>>> main
       - conda: https://conda.anaconda.org/conda-forge/noarch/asttokens-3.0.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/async-lru-2.1.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/attrs-25.4.0-pyhcf101f3_1.conda
@@ -1437,7 +1465,11 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.3.1-h2466b09_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.2-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
+<<<<<<< HEAD
       - conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.5.dev1+gfc7d1f868.d20260202-pyh4616a5c_0.conda
+=======
+      - conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.5.dev4+ge47933ae6.d20260201-pyh4616a5c_0.conda
+>>>>>>> main
   default:
     channels:
     - url: file:///tmp/ecoscope-workflows-custom/release/artifacts/
@@ -1621,7 +1653,11 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/pyyaml-6.0.3-py312h5748b74_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/rattler-build-0.55.1-h6fdd925_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/readline-8.3-h46df422_0.conda
+<<<<<<< HEAD
       - conda: https://conda.anaconda.org/conda-forge/noarch/rich-14.3.2-pyhcf101f3_0.conda
+=======
+      - conda: https://conda.anaconda.org/conda-forge/noarch/rich-14.3.1-pyhcf101f3_0.conda
+>>>>>>> main
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-80.10.2-pyh332efcf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-scm-9.2.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/shellingham-1.5.4-pyhd8ed1ab_2.conda
@@ -1704,7 +1740,11 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/pywin32-ctypes-0.2.3-py314h86ab7b2_3.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/pyyaml-6.0.3-pyh7db6752_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/rattler-build-0.55.1-h18a1a76_0.conda
+<<<<<<< HEAD
       - conda: https://conda.anaconda.org/conda-forge/noarch/rich-14.3.2-pyhcf101f3_0.conda
+=======
+      - conda: https://conda.anaconda.org/conda-forge/noarch/rich-14.3.1-pyhcf101f3_0.conda
+>>>>>>> main
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-80.10.2-pyh332efcf_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/setuptools-scm-9.2.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/shellingham-1.5.4-pyhd8ed1ab_2.conda
@@ -2271,6 +2311,7 @@ packages:
   license_family: BSD
   size: 9473057
   timestamp: 1764120814952
+<<<<<<< HEAD
 - conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.2.2.0.48.1-pyhd8ed1ab_0.conda
   sha256: cdde758db353285b61c034fe97bece88c97795eb89449ec89468308657b44bd6
   md5: 6e66637523378c00c28359f798e7c7c0
@@ -2279,6 +2320,17 @@ packages:
   license: BSD-3-Clause
   size: 1224589
   timestamp: 1770011256652
+=======
+- conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.1.26.0.43.56-pyhd8ed1ab_0.conda
+  sha256: ab217487dcb6556280aa401ebbe5d89e6a88c6fefb4f2534415b7025a2760864
+  md5: 9c5b9925d964b812b9a9c57dccf2d477
+  depends:
+  - python >=3.10
+  license: BSD-3-Clause
+  license_family: BSD
+  size: 1243449
+  timestamp: 1769469960575
+>>>>>>> main
 - conda: https://conda.anaconda.org/conda-forge/noarch/asttokens-3.0.1-pyhd8ed1ab_0.conda
   sha256: ee4da0f3fe9d59439798ee399ef3e482791e48784873d546e706d0935f9ff010
   md5: 9673a61a297b00016442e022d689faa6
@@ -4306,10 +4358,17 @@ packages:
   license: BSD-3-Clause
   size: 20424654
   timestamp: 1769400365911
+<<<<<<< HEAD
 - conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.5.dev1+gfc7d1f868.d20260202-pyh4616a5c_0.conda
   subdir: noarch
   sha256: ade107bf093a073a9ef046042d9baae8d7398e4c90441332cb9756a25ff3dac4
   md5: cf27522787520c36fbcc861f89e9fec2
+=======
+- conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.5.dev4+ge47933ae6.d20260201-pyh4616a5c_0.conda
+  subdir: noarch
+  sha256: 9ce248dd987d65b0094a1dfce698eb732e7d2c99dc018e1259af313e6783bdce
+  md5: a964e960935ba046b0217903562edaec
+>>>>>>> main
   depends:
   - python
   - ecoscope
@@ -4323,8 +4382,13 @@ packages:
   - numpy
   channel: file:///tmp/ecoscope-workflows-custom/release/artifacts
   license: BSD-3-Clause
+<<<<<<< HEAD
   size: 15012
   timestamp: 1770027978553
+=======
+  size: 14483
+  timestamp: 1769962361898
+>>>>>>> main
 - conda: https://repo.prefix.dev/ecoscope-workflows-custom/noarch/ecoscope-workflows-ext-mnc-0.0.0-pyh4616a5c_0.conda
   sha256: dae0343e085cac50493fb1c8caea52525451ffbfc83b6cc799985007f87d0aa1
   depends:
@@ -13224,8 +13288,14 @@ packages:
   - typing_extensions >=4.0.0,<5.0.0
   - python
   license: MIT
+<<<<<<< HEAD
   size: 208269
   timestamp: 1769971520792
+=======
+  license_family: MIT
+  size: 208244
+  timestamp: 1769302653091
+>>>>>>> main
 - conda: https://conda.anaconda.org/conda-forge/linux-64/rpds-py-0.30.0-py312h868fb18_0.conda
   sha256: 62f46e85caaba30b459da7dfcf3e5488ca24fd11675c33ce4367163ab191a42c
   md5: 3ffc5a3572db8751c2f15bacf6a0e937
@@ -14587,8 +14657,14 @@ packages:
   - vc >=14.3,<15
   - vc14_runtime >=14.44.35208
   license: BSD-2-Clause
+<<<<<<< HEAD
   size: 85110
   timestamp: 1769985965372
+=======
+  license_family: BSD
+  size: 84777
+  timestamp: 1762595250957
+>>>>>>> main
 - conda: https://conda.anaconda.org/conda-forge/linux-64/xerces-c-3.3.0-h988505b_0.conda
   sha256: dbed30e56bea060c8b077773138f388144686c24793172ee3d39b69aa0628165
   md5: eeecd6ccca69409a39ac99721a72f387

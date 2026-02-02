@@ -36,10 +36,6 @@ from ecoscope_workflows_core.tasks.transformation import (
     add_temporal_index as add_temporal_index,
 )
 from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
-from ecoscope_workflows_core.tasks.transformation import (
-    map_values_with_unit as map_values_with_unit,
-)
-from ecoscope_workflows_core.tasks.transformation import sort_values as sort_values
 from ecoscope_workflows_ext_custom.tasks.io import html_to_png as html_to_png
 from ecoscope_workflows_ext_custom.tasks.io import load_df as load_df
 from ecoscope_workflows_ext_custom.tasks.results import (
@@ -163,25 +159,21 @@ def main(params: Params):
         "add_total_events_row": ["summary_table"],
         "persist_summary_table": ["add_total_events_row"],
         "collared_html_png": ["td_ecomap_html_url"],
-        "sort_trajs_by_speed": ["split_subject_traj_groups"],
-        "apply_speed_colormap": ["sort_trajs_by_speed"],
-        "format_speed_bin_labels": ["apply_speed_colormap"],
-        "format_speed_values": ["format_speed_bin_labels"],
-        "generate_speedmap_layers": ["format_speed_values"],
-        "zoom_speed_gdf_extent": ["format_speed_values"],
-        "combine_speed_layers": [
+        "generate_track_layers": ["split_subject_traj_groups"],
+        "zoom_track_gdf_extent": ["split_subject_traj_groups"],
+        "combine_track_layers": [
             "custom_amboseli_layer",
             "custom_hotspot_layer",
             "custom_protected_layer",
             "create_hotspot_text_layer",
-            "generate_speedmap_layers",
+            "generate_track_layers",
         ],
-        "zip_speed_layers_view": ["combine_speed_layers", "zoom_speed_gdf_extent"],
-        "draw_speedmap": ["base_map_defs", "zip_speed_layers_view"],
-        "speedmap_html_url": ["draw_speedmap"],
-        "speed_html_png": ["speedmap_html_url"],
-        "speedmap_widget": ["speedmap_html_url"],
-        "sm_grouped_map_widget": ["speedmap_widget"],
+        "zip_track_layers_view": ["combine_track_layers", "zoom_track_gdf_extent"],
+        "draw_track_map": ["base_map_defs", "zip_track_layers_view"],
+        "track_html_url": ["draw_track_map"],
+        "track_html_png": ["track_html_url"],
+        "trackmap_widget": ["track_html_url"],
+        "sm_grouped_map_widget": ["trackmap_widget"],
         "calc_mean_speed": ["summary_table"],
         "round_mean_speed": ["calc_mean_speed"],
         "calc_min_speed": ["summary_table"],
@@ -197,7 +189,7 @@ def main(params: Params):
             "split_subject_traj_groups",
             "round_total_distance",
             "collared_html_png",
-            "speed_html_png",
+            "track_html_png",
         ],
         "indv_cl_ctx": ["groupers", "group_context_values"],
         "create_grouper_doc": ["persist_indv_subject_page", "indv_cl_ctx"],
@@ -635,7 +627,7 @@ def main(params: Params):
                         169,
                     ],
                     "get_line_width": 4.0,
-                    "opacity": 0.75,
+                    "opacity": 0.85,
                     "extruded": False,
                     "stroked": True,
                     "filled": False,
@@ -679,9 +671,9 @@ def main(params: Params):
                         20,
                         60,
                     ],
-                    "get_radius": 6,
+                    "get_radius": 2.55,
                     "get_line_width": 1.95,
-                    "opacity": 0.95,
+                    "opacity": 0.85,
                     "extruded": False,
                     "stroked": True,
                     "filled": True,
@@ -726,7 +718,7 @@ def main(params: Params):
                         0,
                     ],
                     "get_line_width": 1.95,
-                    "opacity": 0.15,
+                    "opacity": 0.2,
                     "extruded": False,
                     "stroked": True,
                     "filled": True,
@@ -771,7 +763,7 @@ def main(params: Params):
                     "size_units": "meters",
                     "size_min_pixels": 65,
                     "size_max_pixels": 100,
-                    "size_scale": 2.05,
+                    "size_scale": 2.0,
                     "font_family": "Calibri",
                     "font_weight": "700",
                     "get_text_anchor": "middle",
@@ -1408,120 +1400,9 @@ def main(params: Params):
                 "argvalues": DependsOn("td_ecomap_html_url"),
             },
         ),
-        "sort_trajs_by_speed": Node(
-            async_task=sort_values.validate()
-            .set_task_instance_id("sort_trajs_by_speed")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "column_name": "speed_bins",
-                "na_position": "first",
-                "ascending": True,
-            }
-            | (params_dict.get("sort_trajs_by_speed") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["df"],
-                "argvalues": DependsOn("split_subject_traj_groups"),
-            },
-        ),
-        "apply_speed_colormap": Node(
-            async_task=apply_color_map.validate()
-            .set_task_instance_id("apply_speed_colormap")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "input_column_name": "speed_bins",
-                "output_column_name": "speed_bins_colormap",
-                "colormap": [
-                    "#1a9850",
-                    "#91cf60",
-                    "#d9ef8b",
-                    "#fee08b",
-                    "#fc8d59",
-                    "#d73027",
-                ],
-            }
-            | (params_dict.get("apply_speed_colormap") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["df"],
-                "argvalues": DependsOn("sort_trajs_by_speed"),
-            },
-        ),
-        "format_speed_bin_labels": Node(
-            async_task=map_values_with_unit.validate()
-            .set_task_instance_id("format_speed_bin_labels")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "input_column_name": "speed_bins",
-                "output_column_name": "speed_bins_formatted",
-                "original_unit": "km/h",
-                "new_unit": "km/h",
-                "decimal_places": 1,
-            }
-            | (params_dict.get("format_speed_bin_labels") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["df"],
-                "argvalues": DependsOn("apply_speed_colormap"),
-            },
-        ),
-        "format_speed_values": Node(
-            async_task=map_values_with_unit.validate()
-            .set_task_instance_id("format_speed_values")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "input_column_name": "speed_kmhr",
-                "output_column_name": "speed_kmhr",
-                "original_unit": "km/h",
-                "new_unit": "km/h",
-                "decimal_places": 1,
-            }
-            | (params_dict.get("format_speed_values") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["df"],
-                "argvalues": DependsOn("format_speed_bin_labels"),
-            },
-        ),
-        "generate_speedmap_layers": Node(
+        "generate_track_layers": Node(
             async_task=create_path_layer.validate()
-            .set_task_instance_id("generate_speedmap_layers")
+            .set_task_instance_id("generate_track_layers")
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -1534,7 +1415,11 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "layer_style": {
-                    "get_color": "speed_bins_colormap",
+                    "get_color": [
+                        0,
+                        0,
+                        255,
+                    ],
                     "get_width": 2.85,
                     "width_scale": 1,
                     "width_min_pixels": 2,
@@ -1547,23 +1432,25 @@ def main(params: Params):
                     "stroked": True,
                 },
                 "legend": {
-                    "title": "Speed (km/h)",
-                    "label_column": "speed_bins_formatted",
-                    "color_column": "speed_bins_colormap",
-                    "sort": "ascending",
-                    "label_suffix": None,
+                    "title": "Subject tracks",
+                    "values": [
+                        {
+                            "label": "Tracks",
+                            "color": "#0000ff",
+                        },
+                    ],
                 },
             }
-            | (params_dict.get("generate_speedmap_layers") or {}),
+            | (params_dict.get("generate_track_layers") or {}),
             method="mapvalues",
             kwargs={
                 "argnames": ["geodataframe"],
-                "argvalues": DependsOn("format_speed_values"),
+                "argvalues": DependsOn("split_subject_traj_groups"),
             },
         ),
-        "zoom_speed_gdf_extent": Node(
+        "zoom_track_gdf_extent": Node(
             async_task=view_state_deck_gdf.validate()
-            .set_task_instance_id("zoom_speed_gdf_extent")
+            .set_task_instance_id("zoom_track_gdf_extent")
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -1578,16 +1465,16 @@ def main(params: Params):
                 "pitch": 0,
                 "bearing": 0,
             }
-            | (params_dict.get("zoom_speed_gdf_extent") or {}),
+            | (params_dict.get("zoom_track_gdf_extent") or {}),
             method="mapvalues",
             kwargs={
                 "argnames": ["gdf"],
-                "argvalues": DependsOn("format_speed_values"),
+                "argvalues": DependsOn("split_subject_traj_groups"),
             },
         ),
-        "combine_speed_layers": Node(
+        "combine_track_layers": Node(
             async_task=combine_deckgl_map_layers.validate()
-            .set_task_instance_id("combine_speed_layers")
+            .set_task_instance_id("combine_track_layers")
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -1606,16 +1493,16 @@ def main(params: Params):
                     DependsOn("create_hotspot_text_layer"),
                 ],
             }
-            | (params_dict.get("combine_speed_layers") or {}),
+            | (params_dict.get("combine_track_layers") or {}),
             method="mapvalues",
             kwargs={
                 "argnames": ["grouped_layers"],
-                "argvalues": DependsOn("generate_speedmap_layers"),
+                "argvalues": DependsOn("generate_track_layers"),
             },
         ),
-        "zip_speed_layers_view": Node(
+        "zip_track_layers_view": Node(
             async_task=zip_groupbykey.validate()
-            .set_task_instance_id("zip_speed_layers_view")
+            .set_task_instance_id("zip_track_layers_view")
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -1628,16 +1515,16 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "sequences": [
-                    DependsOn("combine_speed_layers"),
-                    DependsOn("zoom_speed_gdf_extent"),
+                    DependsOn("combine_track_layers"),
+                    DependsOn("zoom_track_gdf_extent"),
                 ],
             }
-            | (params_dict.get("zip_speed_layers_view") or {}),
+            | (params_dict.get("zip_track_layers_view") or {}),
             method="call",
         ),
-        "draw_speedmap": Node(
+        "draw_track_map": Node(
             async_task=draw_map.validate()
-            .set_task_instance_id("draw_speedmap")
+            .set_task_instance_id("draw_track_map")
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -1657,16 +1544,16 @@ def main(params: Params):
                     "placement": "bottom-right",
                 },
             }
-            | (params_dict.get("draw_speedmap") or {}),
+            | (params_dict.get("draw_track_map") or {}),
             method="mapvalues",
             kwargs={
                 "argnames": ["geo_layers", "view_state"],
-                "argvalues": DependsOn("zip_speed_layers_view"),
+                "argvalues": DependsOn("zip_track_layers_view"),
             },
         ),
-        "speedmap_html_url": Node(
+        "track_html_url": Node(
             async_task=persist_text.validate()
-            .set_task_instance_id("speedmap_html_url")
+            .set_task_instance_id("track_html_url")
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -1679,18 +1566,18 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "filename_suffix": "speedmap",
+                "filename_suffix": "tracks",
             }
-            | (params_dict.get("speedmap_html_url") or {}),
+            | (params_dict.get("track_html_url") or {}),
             method="mapvalues",
             kwargs={
                 "argnames": ["text"],
-                "argvalues": DependsOn("draw_speedmap"),
+                "argvalues": DependsOn("draw_track_map"),
             },
         ),
-        "speed_html_png": Node(
+        "track_html_png": Node(
             async_task=html_to_png.validate()
-            .set_task_instance_id("speed_html_png")
+            .set_task_instance_id("track_html_png")
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -1710,16 +1597,16 @@ def main(params: Params):
                     "max_concurrent_pages": 1,
                 },
             }
-            | (params_dict.get("speed_html_png") or {}),
+            | (params_dict.get("track_html_png") or {}),
             method="mapvalues",
             kwargs={
                 "argnames": ["html_path"],
-                "argvalues": DependsOn("speedmap_html_url"),
+                "argvalues": DependsOn("track_html_url"),
             },
         ),
-        "speedmap_widget": Node(
+        "trackmap_widget": Node(
             async_task=create_map_widget_single_view.validate()
-            .set_task_instance_id("speedmap_widget")
+            .set_task_instance_id("trackmap_widget")
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -1730,13 +1617,13 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "title": "Speedmap",
+                "title": "Subject tracks",
             }
-            | (params_dict.get("speedmap_widget") or {}),
+            | (params_dict.get("trackmap_widget") or {}),
             method="map",
             kwargs={
                 "argnames": ["view", "data"],
-                "argvalues": DependsOn("speedmap_html_url"),
+                "argvalues": DependsOn("track_html_url"),
             },
         ),
         "sm_grouped_map_widget": Node(
@@ -1753,7 +1640,7 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
-                "widgets": DependsOn("speedmap_widget"),
+                "widgets": DependsOn("trackmap_widget"),
             }
             | (params_dict.get("sm_grouped_map_widget") or {}),
             method="call",
@@ -2023,7 +1910,7 @@ def main(params: Params):
                     DependsOn("split_subject_traj_groups"),
                     DependsOn("round_total_distance"),
                     DependsOn("collared_html_png"),
-                    DependsOn("speed_html_png"),
+                    DependsOn("track_html_png"),
                 ],
             }
             | (params_dict.get("group_context_values") or {}),
