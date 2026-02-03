@@ -20,19 +20,19 @@ platforms = [
 linux = "4.4.0"
 
 [dependencies.ecoscope-workflows-core]
-version = "0.20.4.*"
+version = "0.21.4.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows/"
 
 [dependencies.ecoscope-workflows-ext-ecoscope]
-version = "0.20.4.*"
+version = "0.21.4.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows/"
 
 [dependencies.ecoscope-workflows-ext-custom]
-version = "0.0.20.*"
+version = "0.0.22.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 
 [dependencies.ecoscope-workflows-ext-ste]
-version = "0.0.6.*"
+version = "0.0.7.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 
 [dependencies.ecoscope-workflows-ext-mnc]
@@ -44,11 +44,11 @@ version = "0.0.0.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 
 [dependencies.ecoscope-workflows-ext-lion-guardians]
-version = "0.0.4.*"
+version = "0.0.5.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows-custom/"
 
 [feature.runner.dependencies.ecoscope-workflows-runner]
-version = "0.20.4.*"
+version = "0.21.4.*"
 channel = "https://repo.prefix.dev/ecoscope-workflows/"
 
 [feature.runner.tasks]
