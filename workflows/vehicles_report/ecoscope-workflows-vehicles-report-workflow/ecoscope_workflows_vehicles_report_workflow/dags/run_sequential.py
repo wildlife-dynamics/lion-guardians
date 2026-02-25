@@ -86,12 +86,22 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
 from ecoscope_workflows_ext_lion_guardians.tasks import merge_cl_files as merge_cl_files
 from ecoscope_workflows_ext_mnc.tasks import add_totals_row as add_totals_row
 from ecoscope_workflows_ext_ste.tasks import (
+    adjust_map_zoom_and_screenshot as adjust_map_zoom_and_screenshot,
+)
+from ecoscope_workflows_ext_ste.tasks import (
     combine_deckgl_map_layers as combine_deckgl_map_layers,
+)
+from ecoscope_workflows_ext_ste.tasks import (
+    create_custom_text_layer as create_custom_text_layer,
 )
 from ecoscope_workflows_ext_ste.tasks import (
     create_deckgl_layer_from_gdf as create_deckgl_layer_from_gdf,
 )
 from ecoscope_workflows_ext_ste.tasks import create_grouper_page as create_grouper_page
+from ecoscope_workflows_ext_ste.tasks import (
+    custom_view_state_from_gdf as custom_view_state_from_gdf,
+)
+from ecoscope_workflows_ext_ste.tasks import envelope_gdf as envelope_gdf
 from ecoscope_workflows_ext_ste.tasks import (
     fetch_and_persist_file as fetch_and_persist_file,
 )
@@ -135,16 +145,7 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(
-            time_format="%d %b %Y %H:%M:%S %Z",
-            timezone={
-                "label": "UTC",
-                "tzCode": "UTC",
-                "name": "UTC",
-                "utc_offset": "+03:00",
-            },
-            **(params_dict.get("time_range") or {}),
-        )
+        .partial(**(params_dict.get("time_range") or {}))
         .call()
     )
 
@@ -160,7 +161,10 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(groupers=["subject_name"], **(params_dict.get("groupers") or {}))
+        .partial(
+            groupers=[{"index_name": "subject_name"}],
+            **(params_dict.get("groupers") or {}),
+        )
         .call()
     )
 
@@ -192,7 +196,21 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(**(params_dict.get("base_map_defs") or {}))
+        .partial(
+            base_maps=[
+                {
+                    "url": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
+                    "opacity": 1,
+                    "max_zoom": 20,
+                },
+                {
+                    "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+                    "opacity": 0.15,
+                    "max_zoom": 20,
+                },
+            ],
+            **(params_dict.get("base_map_defs") or {}),
+        )
         .call()
     )
 
@@ -462,8 +480,8 @@ def main(params: Params):
             style={
                 "get_line_color": [169, 169, 169],
                 "get_fill_color": [169, 169, 169],
-                "get_line_width": 4.0,
-                "opacity": 0.85,
+                "get_line_width": 4.5,
+                "opacity": 0.55,
                 "extruded": False,
                 "stroked": True,
                 "filled": False,
@@ -496,7 +514,7 @@ def main(params: Params):
                 "get_fill_color": [220, 20, 60],
                 "get_radius": 2.55,
                 "get_line_width": 1.95,
-                "opacity": 0.85,
+                "opacity": 0.75,
                 "extruded": False,
                 "stroked": True,
                 "filled": True,
@@ -528,7 +546,7 @@ def main(params: Params):
                 "get_line_color": [77, 102, 0],
                 "get_fill_color": [77, 102, 0],
                 "get_line_width": 1.95,
-                "opacity": 0.2,
+                "opacity": 0.35,
                 "extruded": False,
                 "stroked": True,
                 "filled": True,
@@ -540,6 +558,44 @@ def main(params: Params):
                 ],
             },
             **(params_dict.get("custom_protected_layer") or {}),
+        )
+        .call()
+    )
+
+    create_hotspot_text_layer = (
+        create_custom_text_layer.validate()
+        .set_task_instance_id("create_hotspot_text_layer")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            geodataframe=reproject_hotspot_areas,
+            layer_style={
+                "get_text": "name",
+                "get_color": [20, 20, 20, 255],
+                "get_size": 1000,
+                "size_units": "meters",
+                "size_min_pixels": 40,
+                "size_max_pixels": 75,
+                "size_scale": 1.25,
+                "font_family": "Arial",
+                "font_weight": "normal",
+                "get_text_anchor": "middle",
+                "get_alignment_baseline": "center",
+                "billboard": True,
+                "background_padding": [4, 8],
+                "pickable": True,
+                "auto_highlight": False,
+            },
+            use_centroid=True,
+            legend=None,
+            **(params_dict.get("create_hotspot_text_layer") or {}),
         )
         .call()
     )
@@ -557,6 +613,8 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
+            subject_group_name="Vehicles",
+            filter="clean",
             client=er_client_name,
             time_range=time_range,
             raise_on_empty=False,
@@ -615,7 +673,7 @@ def main(params: Params):
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             filetype="geoparquet",
-            filename="relocations",
+            filename="vehicle_relocations",
             df=subject_reloc,
             **(params_dict.get("persist_relocs") or {}),
         )
@@ -653,7 +711,7 @@ def main(params: Params):
         .partial(
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             filetype="geoparquet",
-            filename="trajectories",
+            filename="vehicle_trajectories",
             df=subject_traj,
             **(params_dict.get("persist_trajs") or {}),
         )
@@ -719,6 +777,7 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
+            raise_if_not_found=True,
             drop_columns=[],
             retain_columns=[],
             rename_columns={
@@ -880,7 +939,7 @@ def main(params: Params):
         .partial(
             layer_style={
                 "get_color": "speed_bins_colormap",
-                "get_width": 2.85,
+                "get_width": 1.55,
                 "width_scale": 1,
                 "width_min_pixels": 2,
                 "width_max_pixels": 8,
@@ -903,8 +962,40 @@ def main(params: Params):
         .mapvalues(argnames=["geodataframe"], argvalues=filter_speed_cols)
     )
 
-    zoom_speed_gdf_extent = (
+    zoom_to_envelope = (
+        envelope_gdf.validate()
+        .set_task_instance_id("zoom_to_envelope")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(**(params_dict.get("zoom_to_envelope") or {}))
+        .mapvalues(argnames=["gdf"], argvalues=filter_speed_cols)
+    )
+
+    gdf_image_extent = (
         view_state_deck_gdf.validate()
+        .set_task_instance_id("gdf_image_extent")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(pitch=0, bearing=0, **(params_dict.get("gdf_image_extent") or {}))
+        .mapvalues(argnames=["gdf"], argvalues=filter_speed_cols)
+    )
+
+    zoom_speed_gdf_extent = (
+        custom_view_state_from_gdf.validate()
         .set_task_instance_id("zoom_speed_gdf_extent")
         .handle_errors()
         .with_tracing()
@@ -915,8 +1006,8 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(pitch=0, bearing=0, **(params_dict.get("zoom_speed_gdf_extent") or {}))
-        .mapvalues(argnames=["gdf"], argvalues=filter_speed_cols)
+        .partial(max_zoom=20, **(params_dict.get("zoom_speed_gdf_extent") or {}))
+        .mapvalues(argnames=["gdf"], argvalues=zoom_to_envelope)
     )
 
     combined_ldx_speed_layers = (
@@ -936,6 +1027,7 @@ def main(params: Params):
                 custom_amboseli_layer,
                 custom_hotspot_layer,
                 custom_protected_layer,
+                create_hotspot_text_layer,
             ],
             **(params_dict.get("combined_ldx_speed_layers") or {}),
         )
@@ -1058,7 +1150,7 @@ def main(params: Params):
         .partial(
             layer_style={
                 "get_color": [0, 0, 255],
-                "get_width": 2.85,
+                "get_width": 1.55,
                 "width_scale": 1,
                 "width_min_pixels": 2,
                 "width_max_pixels": 8,
@@ -1078,22 +1170,6 @@ def main(params: Params):
         .mapvalues(argnames=["geodataframe"], argvalues=split_subject_traj_groups)
     )
 
-    zoom_track_gdf_extent = (
-        view_state_deck_gdf.validate()
-        .set_task_instance_id("zoom_track_gdf_extent")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(pitch=0, bearing=0, **(params_dict.get("zoom_track_gdf_extent") or {}))
-        .mapvalues(argnames=["gdf"], argvalues=split_subject_traj_groups)
-    )
-
     combine_track_layers = (
         combine_deckgl_map_layers.validate()
         .set_task_instance_id("combine_track_layers")
@@ -1111,6 +1187,7 @@ def main(params: Params):
                 custom_amboseli_layer,
                 custom_hotspot_layer,
                 custom_protected_layer,
+                create_hotspot_text_layer,
             ],
             **(params_dict.get("combine_track_layers") or {}),
         )
@@ -1130,7 +1207,7 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            sequences=[combine_track_layers, zoom_track_gdf_extent],
+            sequences=[combine_track_layers, zoom_speed_gdf_extent],
             **(params_dict.get("zip_track_layers_view") or {}),
         )
         .call()
@@ -1231,6 +1308,7 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
+            smoothing=None,
             x_column="segment_start",
             y_column="speed_kmhr",
             category_column=None,
@@ -1690,8 +1768,27 @@ def main(params: Params):
         .call()
     )
 
+    zip_speed_value = (
+        zip_groupbykey.validate()
+        .set_task_instance_id("zip_speed_value")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            sequences=[gdf_image_extent, persist_speedmap_html],
+            **(params_dict.get("zip_speed_value") or {}),
+        )
+        .call()
+    )
+
     convert_speed_png = (
-        html_to_png.validate()
+        adjust_map_zoom_and_screenshot.validate()
         .set_task_instance_id("convert_speed_png")
         .handle_errors()
         .with_tracing()
@@ -1704,19 +1801,38 @@ def main(params: Params):
         )
         .partial(
             output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            config={
+            screenshot_config={
                 "full_page": False,
                 "device_scale_factor": 2.0,
-                "wait_for_timeout": 20000,
+                "wait_for_timeout": 40000,
                 "max_concurrent_pages": 1,
             },
             **(params_dict.get("convert_speed_png") or {}),
         )
-        .mapvalues(argnames=["html_path"], argvalues=persist_speedmap_html)
+        .mapvalues(argnames=["view_state", "input_file"], argvalues=zip_speed_value)
+    )
+
+    zip_tracks_value = (
+        zip_groupbykey.validate()
+        .set_task_instance_id("zip_tracks_value")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            sequences=[gdf_image_extent, track_html_url],
+            **(params_dict.get("zip_tracks_value") or {}),
+        )
+        .call()
     )
 
     convert_tracks_png = (
-        html_to_png.validate()
+        adjust_map_zoom_and_screenshot.validate()
         .set_task_instance_id("convert_tracks_png")
         .handle_errors()
         .with_tracing()
@@ -1729,15 +1845,15 @@ def main(params: Params):
         )
         .partial(
             output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            config={
+            screenshot_config={
                 "full_page": False,
                 "device_scale_factor": 2.0,
-                "wait_for_timeout": 20000,
+                "wait_for_timeout": 40000,
                 "max_concurrent_pages": 1,
             },
             **(params_dict.get("convert_tracks_png") or {}),
         )
-        .mapvalues(argnames=["html_path"], argvalues=track_html_url)
+        .mapvalues(argnames=["view_state", "input_file"], argvalues=zip_tracks_value)
     )
 
     convert_line_png = (
@@ -1935,8 +2051,8 @@ def main(params: Params):
             output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             filename=None,
             validate_images=True,
-            box_h_cm=6.5,
-            box_w_cm=11.11,
+            box_h_cm=8.28,
+            box_w_cm=14.15,
             **(params_dict.get("create_grouper_doc") or {}),
         )
         .mapvalues(argnames=["context"], argvalues=indv_cl_ctx)

@@ -1,23 +1,23 @@
 id: collared_lions
 requirements:
   - name: ecoscope-workflows-core
-    version: "0.20.4.*"
+    version: "0.22.9.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-ecoscope
-    version: "0.20.4.*"
+    version: "0.22.9.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
-    version: "0.0.20.*"
+    version: "0.0.28.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-ste
-    version: "0.0.7.*"
+    version: "0.0.17.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-mnc
-    version: "0.0.0.*"
+    version: "0.0.7.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-lion-guardians
@@ -26,11 +26,13 @@ requirements:
 
 rjsf-overrides:
   $defs:
-    ValueGrouper.oneOf:
+    ValueGrouper.properties.index_name.oneOf:
       - const: subject_name
         title: Subject Name
+
       - const: subject_sex 
         title: Subject Sex
+
       - const: subject_subtype
         title: Subject Subtype
 
@@ -50,13 +52,6 @@ workflow:
   - name: Define time range
     id: time_range
     task: set_time_range
-    partial:
-      time_format: "%d %b %Y %H:%M:%S %Z"
-      timezone: 
-        label: UTC 
-        tzCode: UTC 
-        name: UTC 
-        utc_offset: "+03:00"
 
   #Set groupers
   - name: Set Groupers
@@ -72,6 +67,16 @@ workflow:
   - name: Base Maps
     id: base_map_defs
     task: set_base_maps_pydeck
+    partial: 
+      base_maps:
+        - url: >-
+            https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}
+          opacity: 1
+          max_zoom: 20
+        - url: >-
+            https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}
+          opacity: 0.15
+          max_zoom: 20
 
   # Download amboseli group ranches and the collared lions templates
   - name: Download amboseli group ranches
@@ -195,8 +200,8 @@ workflow:
       style: 
         get_line_color: [169, 169, 169]
         get_fill_color: [169, 169, 169]
-        get_line_width: 4.00
-        opacity: 0.85
+        get_line_width: 4.50
+        opacity: 0.55
         extruded: false
         stroked: true
         filled: false
@@ -216,7 +221,7 @@ workflow:
         get_fill_color: [220, 20, 60]
         get_radius: 2.55 
         get_line_width: 1.95
-        opacity: 0.85
+        opacity: 0.75
         extruded: false
         stroked: true
         filled: true
@@ -235,7 +240,7 @@ workflow:
         get_line_color: [77, 102, 0]
         get_fill_color: [77, 102, 0]
         get_line_width: 1.95
-        opacity: 0.20
+        opacity: 0.35
         extruded: false
         stroked: true
         filled: true
@@ -252,16 +257,16 @@ workflow:
       geodataframe: ${{ workflow.reproject_hotspot_areas.return }}
       layer_style: 
         get_text: name 
-        get_color: [0,0,0,255]
+        get_color: [20,20,20,255]
         
-        get_size: 1500
+        get_size: 1000 #1500
         size_units: meters 
-        size_min_pixels: 65 #65 
-        size_max_pixels: 100
-        size_scale: 2.00 
+        size_min_pixels: 40 #65 
+        size_max_pixels: 75
+        size_scale: 1.25 #2.00
 
-        font_family: Calibri 
-        font_weight: "700" 
+        font_family: Arial
+        font_weight: normal 
         get_text_anchor: middle 
         get_alignment_baseline: center
         billboard: true 
@@ -360,6 +365,7 @@ workflow:
     id: rename_traj_cols
     task: map_columns
     partial:
+      raise_if_not_found: true
       drop_columns: []
       retain_columns: []
       rename_columns:
@@ -425,12 +431,15 @@ workflow:
         partial:
           layer_style:
             get_fill_color: percentile_colormap
-            opacity: 0.45
-            get_line_width: 0.75
+            opacity: 0.55
+            get_line_width: 1.55
             stroked: true
           legend:
+            title: Home Range Percentiles
             label_column: percentile
             color_column: percentile_colormap
+            sort: ascending
+            label_suffix: null
         mapvalues:
           argnames: geodataframe
           argvalues: ${{ workflow.td_colormap.return }}
@@ -441,7 +450,6 @@ workflow:
         task: combine_deckgl_map_layers
         partial:
           static_layers: 
-
             - ${{ workflow.custom_amboseli_layer.return }}
             - ${{ workflow.custom_hotspot_layer.return }}
             - ${{ workflow.custom_protected_layer.return }}
@@ -451,16 +459,33 @@ workflow:
           argvalues: ${{ workflow.td_map_layer.return }}
 
       # Dynamically zoom map to layer of interest
-      - name: zoom by view state
-        id: zoom_view_state
-        task: view_state_deck_gdf
-        partial:
-          pitch: 0
-          bearing: 0
+      - name: zoom to envelope
+        id: zoom_to_envelope
+        task: envelope_gdf
         mapvalues:
           argnames: gdf
           argvalues: ${{ workflow.td_colormap.return }}
 
+      - name: Zoom to gdf extent for image 
+        id: gdf_image_extent 
+        task: view_state_deck_gdf
+        partial:
+          pitch: 0 
+          bearing: 0 
+        mapvalues:
+          argnames: gdf 
+          argvalues: ${{ workflow.td_colormap.return }}
+
+      # should be used globally 
+      - name: Zoom to gdf extent 
+        id: zoom_speed_gdf_extent
+        task: custom_view_state_from_gdf
+        partial: 
+          max_zoom: 20
+        mapvalues:
+          argnames: gdf
+          argvalues: ${{ workflow.zoom_to_envelope.return }}
+      
         # Zip up tasks to pass them on the same mapvalues
       - name: Zip layers and viewstate
         id: zip_layers_view
@@ -468,7 +493,7 @@ workflow:
         partial:
           sequences:
             - ${{ workflow.combine_custom_map_layers.return }}
-            - ${{ workflow.zoom_view_state.return }}
+            - ${{ workflow.zoom_speed_gdf_extent.return }}
 
       - name: Draw ecomap from time density
         id: td_ecomap
@@ -574,20 +599,30 @@ workflow:
       argnames: df
       argvalues: ${{ workflow.add_total_events_row.return }}
 
+  - name: Combine homerange path with zoom value 
+    id: zip_value
+    task: zip_groupbykey 
+    partial: 
+      sequences: 
+        - ${{ workflow.gdf_image_extent.return }}
+        - ${{ workflow.td_ecomap_html_url.return }}
+
   # convert html to png 
   - name: Convert collared subject html to png
     id: collared_html_png 
-    task: html_to_png
+    task: adjust_map_zoom_and_screenshot
     partial:
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      config:
+      screenshot_config:
         full_page: false
         device_scale_factor: 2.0
-        wait_for_timeout: 20000
+        wait_for_timeout: 40000
         max_concurrent_pages: 1
     mapvalues:
-      argnames: html_path
-      argvalues: ${{ workflow.td_ecomap_html_url.return }}
+      argnames: 
+        - view_state
+        - input_file
+      argvalues: ${{ workflow.zip_value.return }}
 
   # Subject tracks
   - name: Generate track layers 
@@ -596,7 +631,7 @@ workflow:
     partial: 
       layer_style:
         get_color: [0, 0, 255]
-        get_width: 2.85
+        get_width: 1.55
         width_scale: 1 
         width_min_pixels: 2 
         width_max_pixels: 8 
@@ -615,17 +650,6 @@ workflow:
       argnames: geodataframe
       argvalues: ${{ workflow.split_subject_traj_groups.return }} 
   
-  # # should be used globally 
-  - name: Zoom to gdf extent 
-    id: zoom_track_gdf_extent
-    task: view_state_deck_gdf
-    partial: 
-      pitch: 0
-      bearing: 0
-    mapvalues:
-      argnames: gdf
-      argvalues: ${{ workflow.split_subject_traj_groups.return }}
-
     # Combine layers ie static and grouped
   - name: Combine map layers
     id: combine_track_layers
@@ -647,7 +671,7 @@ workflow:
     partial:
       sequences:
         - ${{ workflow.combine_track_layers.return }}
-        - ${{ workflow.zoom_track_gdf_extent.return }}
+        - ${{ workflow.zoom_speed_gdf_extent.return }}
 
   - name: Draw track map
     id: draw_track_map
@@ -675,20 +699,30 @@ workflow:
       argnames: text
       argvalues: ${{ workflow.draw_track_map.return }}
 
+  - name: Combine tracks html path with zoom value 
+    id: zip_track_value
+    task: zip_groupbykey 
+    partial: 
+      sequences: 
+        - ${{ workflow.gdf_image_extent.return }}
+        - ${{ workflow.track_html_url.return }}
+
   # convert html to png 
   - name: Convert track html to png
     id: track_html_png 
-    task: html_to_png
+    task: adjust_map_zoom_and_screenshot
     partial:
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      config:
+      screenshot_config:
         full_page: false
         device_scale_factor: 2.0
-        wait_for_timeout: 20000
+        wait_for_timeout: 40000
         max_concurrent_pages: 1
     mapvalues:
-      argnames: html_path
-      argvalues: ${{ workflow.track_html_url.return }}
+      argnames: 
+        - view_state
+        - input_file
+      argvalues: ${{ workflow.zip_track_value.return }}
 
   - name: Create trackmap widget
     id: trackmap_widget
@@ -854,7 +888,6 @@ workflow:
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       context_page_items: ${{ workflow.create_grouper_doc.return }}
       filename: null
-
 
   - name: Create single value widgets for total mean speed per group
     id: total_mean_speed_widgets

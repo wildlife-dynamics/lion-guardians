@@ -229,9 +229,9 @@ class PatrolAndEventTypes(BaseModel):
 
 
 class Var(str, Enum):
-    patrol_type = "patrol_type"
-    patrol_subject = "patrol_subject"
-    patrol_serial_number = "patrol_serial_number"
+    Patrol_Type = "patrol_type"
+    Patrol_Subject = "patrol_subject"
+    Patrol_Serial_Number = "patrol_serial_number"
 
 
 class SetPatrolTrajColorColumn(BaseModel):
@@ -244,6 +244,48 @@ class SetPatrolTrajColorColumn(BaseModel):
 class TrajectoryCategory(BaseModel):
     set_patrol_traj_color_column: SetPatrolTrajColorColumn | None = Field(
         None, title=""
+    )
+
+
+class TrajRenameGrouperColumns(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    raise_if_not_found: bool | None = Field(
+        True,
+        description="Whether or not to raise if var is not in value_map.",
+        title="Raise If Not Found",
+    )
+
+
+class PeRenameDisplayColumns(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    raise_if_not_found: bool | None = Field(
+        True,
+        description="Whether or not to raise if var is not in value_map.",
+        title="Raise If Not Found",
+    )
+
+
+class PatrolTrajRenameColumns(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    raise_if_not_found: bool | None = Field(
+        True,
+        description="Whether or not to raise if var is not in value_map.",
+        title="Raise If Not Found",
+    )
+
+
+class PatrolEventsAndTrajectoriesMap(BaseModel):
+    pe_rename_display_columns: PeRenameDisplayColumns | None = Field(
+        None, title="Rename patrol events columns for map tooltip display"
+    )
+    patrol_traj_rename_columns: PatrolTrajRenameColumns | None = Field(
+        None, title="Rename patrol traj columns for map tooltip display"
     )
 
 
@@ -266,21 +308,40 @@ class PatrolEventsBarChart(BaseModel):
     patrol_events_bar_chart: PatrolEventsBarChart1 | None = Field(None, title="")
 
 
-class TemporalGrouper(str, Enum):
-    field_Y = "%Y"
-    field_B = "%B"
-    field_Y__m = "%Y-%m"
-    field_j = "%j"
-    field_d = "%d"
-    field_A = "%A"
-    field_H = "%H"
-    field_Y__m__d = "%Y-%m-%d"
+class PatrolTdRenameColumns(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    raise_if_not_found: bool | None = Field(
+        True,
+        description="Whether or not to raise if var is not in value_map.",
+        title="Raise If Not Found",
+    )
 
 
-class ValueGrouper(str, Enum):
-    patrol_type = "patrol_type"
-    patrol_serial_number = "patrol_serial_number"
-    patrol_subject = "patrol_subject"
+class SpatialGrouper(BaseModel):
+    spatial_index_name: str = Field(..., title="Spatial Regions")
+
+
+class TemporalIndex(str, Enum):
+    Year__example__2024_ = "%Y"
+    Month__example__September_ = "%B"
+    Year_and_Month__example__2023_01_ = "%Y-%m"
+    Day_of_the_year_as_a_number__example__365_ = "%j"
+    Day_of_the_month_as_a_number__example__31_ = "%d"
+    Day_of_the_week__example__Sunday_ = "%A"
+    Hour__24_hour_clock__as_number__example__22_ = "%H"
+    Date__example__2025_01_31_ = "%Y-%m-%d"
+
+
+class TemporalGrouper(BaseModel):
+    temporal_index: TemporalIndex = Field(..., title="Time")
+
+
+class ValueGrouper(Enum):
+    Patrol_Type = "patrol_type"
+    Patrol_Serial_Number = "patrol_serial_number"
+    Patrol_Subject = "patrol_subject"
 
 
 class EarthRangerConnection(BaseModel):
@@ -349,7 +410,7 @@ class Groupers(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    groupers: list[ValueGrouper | TemporalGrouper] | None = Field(
+    groupers: list[ValueGrouper | TemporalGrouper | SpatialGrouper] | None = Field(
         None,
         description="            Specify how the data should be grouped to create the views for your dashboard.\n            This field is optional; if left blank, all the data will appear in a single view.\n            ",
         title=" ",
@@ -387,6 +448,9 @@ class PatrolTraj(BaseModel):
 
 class TrajectorySegmentFilterModel(BaseModel):
     patrol_traj: PatrolTraj | None = Field(None, title="")
+    traj_rename_grouper_columns: TrajRenameGrouperColumns | None = Field(
+        None, title="Rename value grouper columns for Trajectories"
+    )
 
 
 class FilterPatrolEvents(BaseModel):
@@ -428,13 +492,16 @@ class LtdMeshgrid(BaseModel):
     )
     crs: str | None = Field(
         "EPSG:3857",
-        description="The coordinate reference system in which to perform the density calculation, must be a valid CRS authority code, for example ESRI:53042",
+        description="The coordinate reference system in which to perform the calculation, must be a valid CRS authority code, for example ESRI:53042",
         title="Coordinate Reference System",
     )
 
 
 class TimeDensityMap(BaseModel):
     ltd_meshgrid: LtdMeshgrid | None = Field(None, title="")
+    patrol_td_rename_columns: PatrolTdRenameColumns | None = Field(
+        None, title="Rename patrol traj columns for map tooltip display"
+    )
 
 
 class FormData(BaseModel):
@@ -467,6 +534,11 @@ class FormData(BaseModel):
         None,
         alias="Patrol Event Location Filter",
         description="Filter events based on their location.",
+    )
+    Patrol_Events_and_Trajectories_Map: PatrolEventsAndTrajectoriesMap | None = Field(
+        None,
+        alias="Patrol Events and Trajectories Map",
+        description="Create a combined patrol trajectories and events map.",
     )
     Patrol_Events_Bar_Chart: PatrolEventsBarChart | None = Field(
         None,

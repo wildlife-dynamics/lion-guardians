@@ -56,6 +56,9 @@
               },
               {
                 "$ref": "#/$defs/TemporalGrouper"
+              },
+              {
+                "$ref": "#/$defs/SpatialGrouper"
               }
             ],
             "title": "Group by"
@@ -409,6 +412,20 @@
           "required": [],
           "type": "object",
           "title": ""
+        },
+        "traj_rename_grouper_columns": {
+          "additionalProperties": false,
+          "properties": {
+            "raise_if_not_found": {
+              "default": true,
+              "title": "Raise If Not Found",
+              "type": "boolean",
+              "description": "Whether or not to raise if var is not in value_map."
+            }
+          },
+          "required": [],
+          "type": "object",
+          "title": "Rename value grouper columns for Trajectories"
         }
       }
     },
@@ -457,6 +474,41 @@
           "required": [],
           "type": "object",
           "title": ""
+        }
+      }
+    },
+    "Patrol Events and Trajectories Map": {
+      "type": "object",
+      "description": "Create a combined patrol trajectories and events map.",
+      "ecoscope:task_group": true,
+      "properties": {
+        "pe_rename_display_columns": {
+          "additionalProperties": false,
+          "properties": {
+            "raise_if_not_found": {
+              "default": true,
+              "title": "Raise If Not Found",
+              "type": "boolean",
+              "description": "Whether or not to raise if var is not in value_map."
+            }
+          },
+          "required": [],
+          "type": "object",
+          "title": "Rename patrol events columns for map tooltip display"
+        },
+        "patrol_traj_rename_columns": {
+          "additionalProperties": false,
+          "properties": {
+            "raise_if_not_found": {
+              "default": true,
+              "title": "Raise If Not Found",
+              "type": "boolean",
+              "description": "Whether or not to raise if var is not in value_map."
+            }
+          },
+          "required": [],
+          "type": "object",
+          "title": "Rename patrol traj columns for map tooltip display"
         }
       }
     },
@@ -515,57 +567,105 @@
               "default": "EPSG:3857",
               "title": "Coordinate Reference System",
               "type": "string",
-              "description": "The coordinate reference system in which to perform the density calculation, must be a valid CRS authority code, for example ESRI:53042",
+              "description": "The coordinate reference system in which to perform the calculation, must be a valid CRS authority code, for example ESRI:53042",
               "ecoscope:advanced": true
             }
           },
           "required": [],
           "type": "object",
           "title": ""
+        },
+        "patrol_td_rename_columns": {
+          "additionalProperties": false,
+          "properties": {
+            "raise_if_not_found": {
+              "default": true,
+              "title": "Raise If Not Found",
+              "type": "boolean",
+              "description": "Whether or not to raise if var is not in value_map."
+            }
+          },
+          "required": [],
+          "type": "object",
+          "title": "Rename patrol traj columns for map tooltip display"
         }
       }
     }
   },
   "$defs": {
-    "TemporalGrouper": {
-      "oneOf": [
-        {
-          "const": "%Y",
-          "title": "Year (example: 2024)"
-        },
-        {
-          "const": "%B",
-          "title": "Month (example: September)"
-        },
-        {
-          "const": "%Y-%m",
-          "title": "Year and Month (example: 2023-01)"
-        },
-        {
-          "const": "%j",
-          "title": "Day of the year as a number (example: 365)"
-        },
-        {
-          "const": "%d",
-          "title": "Day of the month as a number (example: 31)"
-        },
-        {
-          "const": "%A",
-          "title": "Day of the week (example: Sunday)"
-        },
-        {
-          "const": "%H",
-          "title": "Hour (24-hour clock) as number (example: 22)"
-        },
-        {
-          "const": "%Y-%m-%d",
-          "title": "Date (example: 2025-01-31)"
+    "SpatialGrouper": {
+      "properties": {
+        "spatial_index_name": {
+          "title": "Spatial Regions",
+          "type": "string"
         }
+      },
+      "required": [
+        "spatial_index_name"
+      ],
+      "title": "Spatial",
+      "type": "object"
+    },
+    "TemporalGrouper": {
+      "properties": {
+        "temporal_index": {
+          "oneOf": [
+            {
+              "const": "%Y",
+              "title": "Year (example: 2024)"
+            },
+            {
+              "const": "%B",
+              "title": "Month (example: September)"
+            },
+            {
+              "const": "%Y-%m",
+              "title": "Year and Month (example: 2023-01)"
+            },
+            {
+              "const": "%j",
+              "title": "Day of the year as a number (example: 365)"
+            },
+            {
+              "const": "%d",
+              "title": "Day of the month as a number (example: 31)"
+            },
+            {
+              "const": "%A",
+              "title": "Day of the week (example: Sunday)"
+            },
+            {
+              "const": "%H",
+              "title": "Hour (24-hour clock) as number (example: 22)"
+            },
+            {
+              "const": "%Y-%m-%d",
+              "title": "Date (example: 2025-01-31)"
+            }
+          ],
+          "title": "Time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "temporal_index"
       ],
       "title": "Time",
-      "type": "string"
+      "type": "object"
     },
     "ValueGrouper": {
+      "properties": {
+        "index_name": {
+          "oneOf": [],
+          "title": "Category",
+          "type": "string"
+        }
+      },
+      "required": [
+        "index_name"
+      ],
+      "title": "Category",
+      "type": "object",
       "oneOf": [
         {
           "const": "patrol_type",
@@ -579,9 +679,7 @@
           "const": "patrol_subject",
           "title": "Patrol Subject"
         }
-      ],
-      "title": "Category",
-      "type": "string"
+      ]
     },
     "EarthRangerConnection": {
       "properties": {
@@ -760,6 +858,12 @@
         ]
       }
     },
+    "Trajectory Segment Filter": {
+      "ui:order": [
+        "patrol_traj",
+        "traj_rename_grouper_columns"
+      ]
+    },
     "Patrol Event Location Filter": {
       "filter_patrol_events": {
         "ui:order": [
@@ -769,7 +873,17 @@
         ]
       }
     },
+    "Patrol Events and Trajectories Map": {
+      "ui:order": [
+        "pe_rename_display_columns",
+        "patrol_traj_rename_columns"
+      ]
+    },
     "Time Density Map": {
+      "ui:order": [
+        "ltd_meshgrid",
+        "patrol_td_rename_columns"
+      ],
       "ltd_meshgrid": {
         "ui:order": [
           "auto_scale_or_custom_cell_size",
@@ -787,6 +901,7 @@
       "Trajectory Category",
       "Trajectory Segment Filter",
       "Patrol Event Location Filter",
+      "Patrol Events and Trajectories Map",
       "Patrol Events Bar Chart",
       "Time Density Map"
     ]

@@ -22,11 +22,11 @@ hatch-vcs="*"
 # Include this if you add new tasks and the package has been built
 ecoscope-workflows-ext-lion-guardians = "0.0.5.*"
 
-ecoscope-workflows-ext-ste = "0.0.7.*"
-ecoscope-workflows-ext-mnc = "0.0.0.*"
+ecoscope-workflows-ext-ste = "0.0.17.*"
+ecoscope-workflows-ext-mnc = "0.0.7.*"
 ecoscope-workflows-ext-icf ="0.0.0.*"
-ecoscope-workflows-core = "0.21.4.*"
-ecoscope-workflows-ext-custom = "0.0.22.*"
+ecoscope-workflows-core = "0.22.9.*"
+ecoscope-workflows-ext-custom = "0.0.28.*"
 # Here we don't specify the channel on purpose, as we want to use the local channel if it exists,
 # otherwise we fall back to the remote channel.
 # If you want to ensure a specific channel to incorporate your local changes, you can uncomment the line below.
