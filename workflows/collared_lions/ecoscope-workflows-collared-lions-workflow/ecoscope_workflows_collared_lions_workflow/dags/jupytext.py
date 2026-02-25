@@ -1840,7 +1840,7 @@ generate_track_layers = (
     .partial(
         layer_style={
             "get_color": [0, 0, 255],
-            "get_width": 2.85,
+            "get_width": 1.55,
             "width_scale": 1,
             "width_min_pixels": 2,
             "width_max_pixels": 8,
