@@ -651,12 +651,7 @@ workflow:
     id: draw_speed_line_chart 
     task: draw_line_chart 
     partial: 
-      smoothing: 
-        method: spline 
-        y_min: null
-        y_max: null 
-        resolution: 10 
-        degree: 3
+      smoothing: null
       x_column: segment_start
       y_column: speed_kmhr
       category_column: null 
@@ -1073,8 +1068,8 @@ workflow:
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: null
       validate_images: true
-      box_h_cm: 6.5
-      box_w_cm: 11.11
+      box_h_cm: 8.28
+      box_w_cm: 14.15 
     mapvalues:
       argnames: context 
       argvalues: ${{ workflow.indv_cl_ctx.return }}

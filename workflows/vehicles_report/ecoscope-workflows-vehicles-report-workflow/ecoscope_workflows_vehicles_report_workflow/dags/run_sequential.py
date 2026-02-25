@@ -1308,13 +1308,7 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            smoothing={
-                "method": "spline",
-                "y_min": None,
-                "y_max": None,
-                "resolution": 10,
-                "degree": 3,
-            },
+            smoothing=None,
             x_column="segment_start",
             y_column="speed_kmhr",
             category_column=None,
@@ -2057,8 +2051,8 @@ def main(params: Params):
             output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             filename=None,
             validate_images=True,
-            box_h_cm=6.5,
-            box_w_cm=11.11,
+            box_h_cm=8.28,
+            box_w_cm=14.15,
             **(params_dict.get("create_grouper_doc") or {}),
         )
         .mapvalues(argnames=["context"], argvalues=indv_cl_ctx)
