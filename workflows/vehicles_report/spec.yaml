@@ -1,23 +1,23 @@
 id: vehicles_report
 requirements:
   - name: ecoscope-workflows-core
-    version: "0.21.4.*"
+    version: "0.22.9.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-ecoscope
-    version: "0.21.4.*"
+    version: "0.22.9.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
-    version: "0.0.22.*"
+    version: "0.0.28.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-ste
-    version: "0.0.7.*"
+    version: "0.0.17.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-mnc
-    version: "0.0.0.*"
+    version: "0.0.7.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-icf
@@ -25,8 +25,8 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-lion-guardians
-    version: "*"
-    channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
+    version: "0.0.5.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
 rjsf-overrides:
   $defs:
@@ -54,13 +54,6 @@ workflow:
   - name: Define time range
     id: time_range
     task: set_time_range
-    partial:
-      time_format: "%d %b %Y %H:%M:%S %Z"
-      timezone: 
-        label: UTC 
-        tzCode: UTC 
-        name: UTC 
-        utc_offset: "+03:00"
 
   #Set groupers
   - name: Set Groupers

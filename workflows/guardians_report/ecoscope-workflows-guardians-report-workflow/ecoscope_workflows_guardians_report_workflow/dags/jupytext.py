@@ -1420,7 +1420,9 @@ traj_add_temporal_index = (
 # %%
 # parameters
 
-traj_rename_grouper_columns_params = dict()
+traj_rename_grouper_columns_params = dict(
+    raise_if_not_found=...,
+)
 
 # %%
 # call the task
@@ -1869,7 +1871,9 @@ split_pe_groups = (
 # %%
 # parameters
 
-pe_rename_display_columns_params = dict()
+pe_rename_display_columns_params = dict(
+    raise_if_not_found=...,
+)
 
 # %%
 # call the task
@@ -1980,7 +1984,9 @@ speed_val_with_unit = (
 # %%
 # parameters
 
-patrol_traj_rename_columns_params = dict()
+patrol_traj_rename_columns_params = dict(
+    raise_if_not_found=...,
+)
 
 # %%
 # call the task
@@ -3397,7 +3403,9 @@ td_colormap = (
 # %%
 # parameters
 
-patrol_td_rename_columns_params = dict()
+patrol_td_rename_columns_params = dict(
+    raise_if_not_found=...,
+)
 
 # %%
 # call the task

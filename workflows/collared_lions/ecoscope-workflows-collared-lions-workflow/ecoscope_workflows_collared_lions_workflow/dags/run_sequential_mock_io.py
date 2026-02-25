@@ -67,7 +67,6 @@ from ecoscope_workflows_core.tasks.transformation import (
     add_temporal_index as add_temporal_index,
 )
 from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
-from ecoscope_workflows_ext_custom.tasks.io import html_to_png as html_to_png
 from ecoscope_workflows_ext_custom.tasks.results import (
     create_geojson_layer as create_geojson_layer,
 )
@@ -104,9 +103,16 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
 from ecoscope_workflows_ext_lion_guardians.tasks import merge_cl_files as merge_cl_files
 from ecoscope_workflows_ext_mnc.tasks import add_totals_row as add_totals_row
 from ecoscope_workflows_ext_ste.tasks import (
+    adjust_map_zoom_and_screenshot as adjust_map_zoom_and_screenshot,
+)
+from ecoscope_workflows_ext_ste.tasks import (
     combine_deckgl_map_layers as combine_deckgl_map_layers,
 )
 from ecoscope_workflows_ext_ste.tasks import create_grouper_page as create_grouper_page
+from ecoscope_workflows_ext_ste.tasks import (
+    custom_view_state_from_gdf as custom_view_state_from_gdf,
+)
+from ecoscope_workflows_ext_ste.tasks import envelope_gdf as envelope_gdf
 from ecoscope_workflows_ext_ste.tasks import round_off_values as round_off_values
 from ecoscope_workflows_ext_ste.tasks import view_state_deck_gdf as view_state_deck_gdf
 from ecoscope_workflows_ext_ste.tasks import zip_groupbykey as zip_groupbykey
@@ -147,16 +153,7 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(
-            time_format="%d %b %Y %H:%M:%S %Z",
-            timezone={
-                "label": "UTC",
-                "tzCode": "UTC",
-                "name": "UTC",
-                "utc_offset": "+03:00",
-            },
-            **(params_dict.get("time_range") or {}),
-        )
+        .partial(**(params_dict.get("time_range") or {}))
         .call()
     )
 
@@ -204,7 +201,21 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(**(params_dict.get("base_map_defs") or {}))
+        .partial(
+            base_maps=[
+                {
+                    "url": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
+                    "opacity": 1,
+                    "max_zoom": 20,
+                },
+                {
+                    "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+                    "opacity": 0.15,
+                    "max_zoom": 20,
+                },
+            ],
+            **(params_dict.get("base_map_defs") or {}),
+        )
         .call()
     )
 
@@ -520,8 +531,8 @@ def main(params: Params):
             style={
                 "get_line_color": [169, 169, 169],
                 "get_fill_color": [169, 169, 169],
-                "get_line_width": 4.0,
-                "opacity": 0.85,
+                "get_line_width": 4.5,
+                "opacity": 0.55,
                 "extruded": False,
                 "stroked": True,
                 "filled": False,
@@ -554,7 +565,7 @@ def main(params: Params):
                 "get_fill_color": [220, 20, 60],
                 "get_radius": 2.55,
                 "get_line_width": 1.95,
-                "opacity": 0.85,
+                "opacity": 0.75,
                 "extruded": False,
                 "stroked": True,
                 "filled": True,
@@ -586,7 +597,7 @@ def main(params: Params):
                 "get_line_color": [77, 102, 0],
                 "get_fill_color": [77, 102, 0],
                 "get_line_width": 1.95,
-                "opacity": 0.2,
+                "opacity": 0.35,
                 "extruded": False,
                 "stroked": True,
                 "filled": True,
@@ -618,14 +629,14 @@ def main(params: Params):
             geodataframe=reproject_hotspot_areas,
             layer_style={
                 "get_text": "name",
-                "get_color": [0, 0, 0, 255],
-                "get_size": 1500,
+                "get_color": [20, 20, 20, 255],
+                "get_size": 1000,
                 "size_units": "meters",
-                "size_min_pixels": 65,
-                "size_max_pixels": 100,
-                "size_scale": 2.0,
-                "font_family": "Calibri",
-                "font_weight": "700",
+                "size_min_pixels": 40,
+                "size_max_pixels": 75,
+                "size_scale": 1.25,
+                "font_family": "Arial",
+                "font_weight": "normal",
                 "get_text_anchor": "middle",
                 "get_alignment_baseline": "center",
                 "billboard": True,
@@ -815,6 +826,7 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
+            raise_if_not_found=True,
             drop_columns=[],
             retain_columns=[],
             rename_columns={
@@ -906,13 +918,16 @@ def main(params: Params):
         .partial(
             layer_style={
                 "get_fill_color": "percentile_colormap",
-                "opacity": 0.45,
-                "get_line_width": 0.75,
+                "opacity": 0.55,
+                "get_line_width": 1.55,
                 "stroked": True,
             },
             legend={
+                "title": "Home Range Percentiles",
                 "label_column": "percentile",
                 "color_column": "percentile_colormap",
+                "sort": "ascending",
+                "label_suffix": None,
             },
             **(params_dict.get("td_map_layer") or {}),
         )
@@ -943,9 +958,9 @@ def main(params: Params):
         .mapvalues(argnames=["grouped_layers"], argvalues=td_map_layer)
     )
 
-    zoom_view_state = (
-        view_state_deck_gdf.validate()
-        .set_task_instance_id("zoom_view_state")
+    zoom_to_envelope = (
+        envelope_gdf.validate()
+        .set_task_instance_id("zoom_to_envelope")
         .handle_errors()
         .with_tracing()
         .skipif(
@@ -955,8 +970,40 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(pitch=0, bearing=0, **(params_dict.get("zoom_view_state") or {}))
+        .partial(**(params_dict.get("zoom_to_envelope") or {}))
         .mapvalues(argnames=["gdf"], argvalues=td_colormap)
+    )
+
+    gdf_image_extent = (
+        view_state_deck_gdf.validate()
+        .set_task_instance_id("gdf_image_extent")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(pitch=0, bearing=0, **(params_dict.get("gdf_image_extent") or {}))
+        .mapvalues(argnames=["gdf"], argvalues=td_colormap)
+    )
+
+    zoom_speed_gdf_extent = (
+        custom_view_state_from_gdf.validate()
+        .set_task_instance_id("zoom_speed_gdf_extent")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(max_zoom=20, **(params_dict.get("zoom_speed_gdf_extent") or {}))
+        .mapvalues(argnames=["gdf"], argvalues=zoom_to_envelope)
     )
 
     zip_layers_view = (
@@ -972,7 +1019,7 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            sequences=[combine_custom_map_layers, zoom_view_state],
+            sequences=[combine_custom_map_layers, zoom_speed_gdf_extent],
             **(params_dict.get("zip_layers_view") or {}),
         )
         .call()
@@ -1143,8 +1190,27 @@ def main(params: Params):
         .mapvalues(argnames=["df"], argvalues=add_total_events_row)
     )
 
+    zip_value = (
+        zip_groupbykey.validate()
+        .set_task_instance_id("zip_value")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            sequences=[gdf_image_extent, td_ecomap_html_url],
+            **(params_dict.get("zip_value") or {}),
+        )
+        .call()
+    )
+
     collared_html_png = (
-        html_to_png.validate()
+        adjust_map_zoom_and_screenshot.validate()
         .set_task_instance_id("collared_html_png")
         .handle_errors()
         .with_tracing()
@@ -1157,15 +1223,15 @@ def main(params: Params):
         )
         .partial(
             output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            config={
+            screenshot_config={
                 "full_page": False,
                 "device_scale_factor": 2.0,
-                "wait_for_timeout": 20000,
+                "wait_for_timeout": 40000,
                 "max_concurrent_pages": 1,
             },
             **(params_dict.get("collared_html_png") or {}),
         )
-        .mapvalues(argnames=["html_path"], argvalues=td_ecomap_html_url)
+        .mapvalues(argnames=["view_state", "input_file"], argvalues=zip_value)
     )
 
     generate_track_layers = (
@@ -1201,22 +1267,6 @@ def main(params: Params):
             **(params_dict.get("generate_track_layers") or {}),
         )
         .mapvalues(argnames=["geodataframe"], argvalues=split_subject_traj_groups)
-    )
-
-    zoom_track_gdf_extent = (
-        view_state_deck_gdf.validate()
-        .set_task_instance_id("zoom_track_gdf_extent")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(pitch=0, bearing=0, **(params_dict.get("zoom_track_gdf_extent") or {}))
-        .mapvalues(argnames=["gdf"], argvalues=split_subject_traj_groups)
     )
 
     combine_track_layers = (
@@ -1256,7 +1306,7 @@ def main(params: Params):
             unpack_depth=1,
         )
         .partial(
-            sequences=[combine_track_layers, zoom_track_gdf_extent],
+            sequences=[combine_track_layers, zoom_speed_gdf_extent],
             **(params_dict.get("zip_track_layers_view") or {}),
         )
         .call()
@@ -1307,8 +1357,27 @@ def main(params: Params):
         .mapvalues(argnames=["text"], argvalues=draw_track_map)
     )
 
+    zip_track_value = (
+        zip_groupbykey.validate()
+        .set_task_instance_id("zip_track_value")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            sequences=[gdf_image_extent, track_html_url],
+            **(params_dict.get("zip_track_value") or {}),
+        )
+        .call()
+    )
+
     track_html_png = (
-        html_to_png.validate()
+        adjust_map_zoom_and_screenshot.validate()
         .set_task_instance_id("track_html_png")
         .handle_errors()
         .with_tracing()
@@ -1321,15 +1390,15 @@ def main(params: Params):
         )
         .partial(
             output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            config={
+            screenshot_config={
                 "full_page": False,
                 "device_scale_factor": 2.0,
-                "wait_for_timeout": 20000,
+                "wait_for_timeout": 40000,
                 "max_concurrent_pages": 1,
             },
             **(params_dict.get("track_html_png") or {}),
         )
-        .mapvalues(argnames=["html_path"], argvalues=track_html_url)
+        .mapvalues(argnames=["view_state", "input_file"], argvalues=zip_track_value)
     )
 
     trackmap_widget = (

@@ -36,7 +36,6 @@ from ecoscope_workflows_core.tasks.transformation import (
     add_temporal_index as add_temporal_index,
 )
 from ecoscope_workflows_core.tasks.transformation import map_columns as map_columns
-from ecoscope_workflows_ext_custom.tasks.io import html_to_png as html_to_png
 from ecoscope_workflows_ext_custom.tasks.io import load_df as load_df
 from ecoscope_workflows_ext_custom.tasks.results import (
     create_geojson_layer as create_geojson_layer,
@@ -83,6 +82,9 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
 from ecoscope_workflows_ext_lion_guardians.tasks import merge_cl_files as merge_cl_files
 from ecoscope_workflows_ext_mnc.tasks import add_totals_row as add_totals_row
 from ecoscope_workflows_ext_ste.tasks import (
+    adjust_map_zoom_and_screenshot as adjust_map_zoom_and_screenshot,
+)
+from ecoscope_workflows_ext_ste.tasks import (
     combine_deckgl_map_layers as combine_deckgl_map_layers,
 )
 from ecoscope_workflows_ext_ste.tasks import (
@@ -92,6 +94,10 @@ from ecoscope_workflows_ext_ste.tasks import (
     create_deckgl_layer_from_gdf as create_deckgl_layer_from_gdf,
 )
 from ecoscope_workflows_ext_ste.tasks import create_grouper_page as create_grouper_page
+from ecoscope_workflows_ext_ste.tasks import (
+    custom_view_state_from_gdf as custom_view_state_from_gdf,
+)
+from ecoscope_workflows_ext_ste.tasks import envelope_gdf as envelope_gdf
 from ecoscope_workflows_ext_ste.tasks import (
     fetch_and_persist_file as fetch_and_persist_file,
 )
@@ -149,8 +155,10 @@ def main(params: Params):
             "create_hotspot_text_layer",
             "td_map_layer",
         ],
-        "zoom_view_state": ["td_colormap"],
-        "zip_layers_view": ["combine_custom_map_layers", "zoom_view_state"],
+        "zoom_to_envelope": ["td_colormap"],
+        "gdf_image_extent": ["td_colormap"],
+        "zoom_speed_gdf_extent": ["zoom_to_envelope"],
+        "zip_layers_view": ["combine_custom_map_layers", "zoom_speed_gdf_extent"],
         "td_ecomap": ["base_map_defs", "zip_layers_view"],
         "td_ecomap_html_url": ["td_ecomap"],
         "td_map_widget": ["td_ecomap_html_url"],
@@ -158,9 +166,9 @@ def main(params: Params):
         "summary_table": ["split_subject_traj_groups"],
         "add_total_events_row": ["summary_table"],
         "persist_summary_table": ["add_total_events_row"],
-        "collared_html_png": ["td_ecomap_html_url"],
+        "zip_value": ["gdf_image_extent", "td_ecomap_html_url"],
+        "collared_html_png": ["zip_value"],
         "generate_track_layers": ["split_subject_traj_groups"],
-        "zoom_track_gdf_extent": ["split_subject_traj_groups"],
         "combine_track_layers": [
             "custom_amboseli_layer",
             "custom_hotspot_layer",
@@ -168,10 +176,11 @@ def main(params: Params):
             "create_hotspot_text_layer",
             "generate_track_layers",
         ],
-        "zip_track_layers_view": ["combine_track_layers", "zoom_track_gdf_extent"],
+        "zip_track_layers_view": ["combine_track_layers", "zoom_speed_gdf_extent"],
         "draw_track_map": ["base_map_defs", "zip_track_layers_view"],
         "track_html_url": ["draw_track_map"],
-        "track_html_png": ["track_html_url"],
+        "zip_track_value": ["gdf_image_extent", "track_html_url"],
+        "track_html_png": ["zip_track_value"],
         "trackmap_widget": ["track_html_url"],
         "sm_grouped_map_widget": ["trackmap_widget"],
         "calc_mean_speed": ["summary_table"],
@@ -245,16 +254,7 @@ def main(params: Params):
                 unpack_depth=1,
             )
             .set_executor("lithops"),
-            partial={
-                "time_format": "%d %b %Y %H:%M:%S %Z",
-                "timezone": {
-                    "label": "UTC",
-                    "tzCode": "UTC",
-                    "name": "UTC",
-                    "utc_offset": "+03:00",
-                },
-            }
-            | (params_dict.get("time_range") or {}),
+            partial=(params_dict.get("time_range") or {}),
             method="call",
         ),
         "groupers": Node(
@@ -302,7 +302,21 @@ def main(params: Params):
                 unpack_depth=1,
             )
             .set_executor("lithops"),
-            partial=(params_dict.get("base_map_defs") or {}),
+            partial={
+                "base_maps": [
+                    {
+                        "url": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
+                        "opacity": 1,
+                        "max_zoom": 20,
+                    },
+                    {
+                        "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+                        "opacity": 0.15,
+                        "max_zoom": 20,
+                    },
+                ],
+            }
+            | (params_dict.get("base_map_defs") or {}),
             method="call",
         ),
         "persist_ambo_gpkg": Node(
@@ -626,8 +640,8 @@ def main(params: Params):
                         169,
                         169,
                     ],
-                    "get_line_width": 4.0,
-                    "opacity": 0.85,
+                    "get_line_width": 4.5,
+                    "opacity": 0.55,
                     "extruded": False,
                     "stroked": True,
                     "filled": False,
@@ -673,7 +687,7 @@ def main(params: Params):
                     ],
                     "get_radius": 2.55,
                     "get_line_width": 1.95,
-                    "opacity": 0.85,
+                    "opacity": 0.75,
                     "extruded": False,
                     "stroked": True,
                     "filled": True,
@@ -718,7 +732,7 @@ def main(params: Params):
                         0,
                     ],
                     "get_line_width": 1.95,
-                    "opacity": 0.2,
+                    "opacity": 0.35,
                     "extruded": False,
                     "stroked": True,
                     "filled": True,
@@ -754,18 +768,18 @@ def main(params: Params):
                 "layer_style": {
                     "get_text": "name",
                     "get_color": [
-                        0,
-                        0,
-                        0,
+                        20,
+                        20,
+                        20,
                         255,
                     ],
-                    "get_size": 1500,
+                    "get_size": 1000,
                     "size_units": "meters",
-                    "size_min_pixels": 65,
-                    "size_max_pixels": 100,
-                    "size_scale": 2.0,
-                    "font_family": "Calibri",
-                    "font_weight": "700",
+                    "size_min_pixels": 40,
+                    "size_max_pixels": 75,
+                    "size_scale": 1.25,
+                    "font_family": "Arial",
+                    "font_weight": "normal",
                     "get_text_anchor": "middle",
                     "get_alignment_baseline": "center",
                     "billboard": True,
@@ -976,6 +990,7 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
+                "raise_if_not_found": True,
                 "rename_columns": {
                     "extra__name": "subject_name",
                     "extra__sex": "subject_sex",
@@ -1081,13 +1096,16 @@ def main(params: Params):
             partial={
                 "layer_style": {
                     "get_fill_color": "percentile_colormap",
-                    "opacity": 0.45,
-                    "get_line_width": 0.75,
+                    "opacity": 0.55,
+                    "get_line_width": 1.55,
                     "stroked": True,
                 },
                 "legend": {
+                    "title": "Home Range Percentiles",
                     "label_column": "percentile",
                     "color_column": "percentile_colormap",
+                    "sort": "ascending",
+                    "label_suffix": None,
                 },
             }
             | (params_dict.get("td_map_layer") or {}),
@@ -1125,9 +1143,29 @@ def main(params: Params):
                 "argvalues": DependsOn("td_map_layer"),
             },
         ),
-        "zoom_view_state": Node(
+        "zoom_to_envelope": Node(
+            async_task=envelope_gdf.validate()
+            .set_task_instance_id("zoom_to_envelope")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial=(params_dict.get("zoom_to_envelope") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["gdf"],
+                "argvalues": DependsOn("td_colormap"),
+            },
+        ),
+        "gdf_image_extent": Node(
             async_task=view_state_deck_gdf.validate()
-            .set_task_instance_id("zoom_view_state")
+            .set_task_instance_id("gdf_image_extent")
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -1142,11 +1180,34 @@ def main(params: Params):
                 "pitch": 0,
                 "bearing": 0,
             }
-            | (params_dict.get("zoom_view_state") or {}),
+            | (params_dict.get("gdf_image_extent") or {}),
             method="mapvalues",
             kwargs={
                 "argnames": ["gdf"],
                 "argvalues": DependsOn("td_colormap"),
+            },
+        ),
+        "zoom_speed_gdf_extent": Node(
+            async_task=custom_view_state_from_gdf.validate()
+            .set_task_instance_id("zoom_speed_gdf_extent")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "max_zoom": 20,
+            }
+            | (params_dict.get("zoom_speed_gdf_extent") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["gdf"],
+                "argvalues": DependsOn("zoom_to_envelope"),
             },
         ),
         "zip_layers_view": Node(
@@ -1165,7 +1226,7 @@ def main(params: Params):
             partial={
                 "sequences": [
                     DependsOn("combine_custom_map_layers"),
-                    DependsOn("zoom_view_state"),
+                    DependsOn("zoom_speed_gdf_extent"),
                 ],
             }
             | (params_dict.get("zip_layers_view") or {}),
@@ -1371,8 +1432,30 @@ def main(params: Params):
                 "argvalues": DependsOn("add_total_events_row"),
             },
         ),
+        "zip_value": Node(
+            async_task=zip_groupbykey.validate()
+            .set_task_instance_id("zip_value")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "sequences": [
+                    DependsOn("gdf_image_extent"),
+                    DependsOn("td_ecomap_html_url"),
+                ],
+            }
+            | (params_dict.get("zip_value") or {}),
+            method="call",
+        ),
         "collared_html_png": Node(
-            async_task=html_to_png.validate()
+            async_task=adjust_map_zoom_and_screenshot.validate()
             .set_task_instance_id("collared_html_png")
             .handle_errors()
             .with_tracing()
@@ -1386,18 +1469,18 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "config": {
+                "screenshot_config": {
                     "full_page": False,
                     "device_scale_factor": 2.0,
-                    "wait_for_timeout": 20000,
+                    "wait_for_timeout": 40000,
                     "max_concurrent_pages": 1,
                 },
             }
             | (params_dict.get("collared_html_png") or {}),
             method="mapvalues",
             kwargs={
-                "argnames": ["html_path"],
-                "argvalues": DependsOn("td_ecomap_html_url"),
+                "argnames": ["view_state", "input_file"],
+                "argvalues": DependsOn("zip_value"),
             },
         ),
         "generate_track_layers": Node(
@@ -1448,30 +1531,6 @@ def main(params: Params):
                 "argvalues": DependsOn("split_subject_traj_groups"),
             },
         ),
-        "zoom_track_gdf_extent": Node(
-            async_task=view_state_deck_gdf.validate()
-            .set_task_instance_id("zoom_track_gdf_extent")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "pitch": 0,
-                "bearing": 0,
-            }
-            | (params_dict.get("zoom_track_gdf_extent") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["gdf"],
-                "argvalues": DependsOn("split_subject_traj_groups"),
-            },
-        ),
         "combine_track_layers": Node(
             async_task=combine_deckgl_map_layers.validate()
             .set_task_instance_id("combine_track_layers")
@@ -1516,7 +1575,7 @@ def main(params: Params):
             partial={
                 "sequences": [
                     DependsOn("combine_track_layers"),
-                    DependsOn("zoom_track_gdf_extent"),
+                    DependsOn("zoom_speed_gdf_extent"),
                 ],
             }
             | (params_dict.get("zip_track_layers_view") or {}),
@@ -1575,8 +1634,30 @@ def main(params: Params):
                 "argvalues": DependsOn("draw_track_map"),
             },
         ),
+        "zip_track_value": Node(
+            async_task=zip_groupbykey.validate()
+            .set_task_instance_id("zip_track_value")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "sequences": [
+                    DependsOn("gdf_image_extent"),
+                    DependsOn("track_html_url"),
+                ],
+            }
+            | (params_dict.get("zip_track_value") or {}),
+            method="call",
+        ),
         "track_html_png": Node(
-            async_task=html_to_png.validate()
+            async_task=adjust_map_zoom_and_screenshot.validate()
             .set_task_instance_id("track_html_png")
             .handle_errors()
             .with_tracing()
@@ -1590,18 +1671,18 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "config": {
+                "screenshot_config": {
                     "full_page": False,
                     "device_scale_factor": 2.0,
-                    "wait_for_timeout": 20000,
+                    "wait_for_timeout": 40000,
                     "max_concurrent_pages": 1,
                 },
             }
             | (params_dict.get("track_html_png") or {}),
             method="mapvalues",
             kwargs={
-                "argnames": ["html_path"],
-                "argvalues": DependsOn("track_html_url"),
+                "argnames": ["view_state", "input_file"],
+                "argvalues": DependsOn("zip_track_value"),
             },
         ),
         "trackmap_widget": Node(

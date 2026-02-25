@@ -6,7 +6,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, confloat, constr
+from pydantic import BaseModel, ConfigDict, Field, confloat
 
 
 class WorkflowDetails(BaseModel):
@@ -17,180 +17,12 @@ class WorkflowDetails(BaseModel):
     description: str | None = Field("", title="Workflow Description")
 
 
-class TimeRange(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    since: datetime = Field(..., description="The start time", title="Since")
-    until: datetime = Field(..., description="The end time", title="Until")
-
-
-class Url(str, Enum):
-    https___tile_openstreetmap_org__z___x___y__png = (
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
-    )
-
-
-class BaseMaps(BaseModel):
-    url: Literal["https://tile.openstreetmap.org/{z}/{x}/{y}.png"] = Field(
-        "https://tile.openstreetmap.org/{z}/{x}/{y}.png", title="Preset Layer URL"
-    )
-    opacity: confloat(ge=0.0, le=1.0) | None = Field(
-        1,
-        description="Set layer transparency from 1 (fully visible) to 0 (hidden).",
-        title="Layer Opacity",
-    )
-
-
-class Url1(str, Enum):
-    https___server_arcgisonline_com_ArcGIS_rest_services_World_Street_Map_MapServer_tile__z___y___x_ = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
-
-
-class BaseMaps1(BaseModel):
-    url: Literal[
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}"
-    ] = Field(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-        title="Preset Layer URL",
-    )
-    opacity: confloat(ge=0.0, le=1.0) | None = Field(
-        1,
-        description="Set layer transparency from 1 (fully visible) to 0 (hidden).",
-        title="Layer Opacity",
-    )
-
-
-class Url2(str, Enum):
-    https___server_arcgisonline_com_ArcGIS_rest_services_World_Imagery_MapServer_tile__z___y___x_ = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-
-
-class BaseMaps2(BaseModel):
-    url: Literal[
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
-    ] = Field(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-        title="Preset Layer URL",
-    )
-    opacity: confloat(ge=0.0, le=1.0) | None = Field(
-        1,
-        description="Set layer transparency from 1 (fully visible) to 0 (hidden).",
-        title="Layer Opacity",
-    )
-
-
-class Url3(str, Enum):
-    https___server_arcgisonline_com_ArcGIS_rest_services_World_Topo_Map_MapServer_tile__z___y___x_ = "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
-
-
-class BaseMaps3(BaseModel):
-    url: Literal[
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}"
-    ] = Field(
-        "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
-        title="Preset Layer URL",
-    )
-    opacity: confloat(ge=0.0, le=1.0) | None = Field(
-        1,
-        description="Set layer transparency from 1 (fully visible) to 0 (hidden).",
-        title="Layer Opacity",
-    )
-
-
-class Url4(str, Enum):
-    https___tiles_arcgis_com_tiles_POUcpLYXNckpLjnY_arcgis_rest_services_landDx_basemap_tiles_mapservice_MapServer_tile__z___y___x_ = "https://tiles.arcgis.com/tiles/POUcpLYXNckpLjnY/arcgis/rest/services/landDx_basemap_tiles_mapservice/MapServer/tile/{z}/{y}/{x}"
-
-
-class BaseMaps4(BaseModel):
-    url: Literal[
-        "https://tiles.arcgis.com/tiles/POUcpLYXNckpLjnY/arcgis/rest/services/landDx_basemap_tiles_mapservice/MapServer/tile/{z}/{y}/{x}"
-    ] = Field(
-        "https://tiles.arcgis.com/tiles/POUcpLYXNckpLjnY/arcgis/rest/services/landDx_basemap_tiles_mapservice/MapServer/tile/{z}/{y}/{x}",
-        title="Preset Layer URL",
-    )
-    opacity: confloat(ge=0.0, le=1.0) | None = Field(
-        1,
-        description="Set layer transparency from 1 (fully visible) to 0 (hidden).",
-        title="Layer Opacity",
-    )
-
-
-class Url5(str, Enum):
-    https___server_arcgisonline_com_arcgis_rest_services_Elevation_World_Hillshade_MapServer_tile__z___y___x_ = "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
-
-
-class BaseMaps5(BaseModel):
-    url: Literal[
-        "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}"
-    ] = Field(
-        "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
-        title="Preset Layer URL",
-    )
-    opacity: confloat(ge=0.0, le=1.0) | None = Field(
-        1,
-        description="Set layer transparency from 1 (fully visible) to 0 (hidden).",
-        title="Layer Opacity",
-    )
-
-
-class BaseMaps6(BaseModel):
-    url: (
-        constr(
-            pattern=r"https?:\/\/(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}([-a-zA-Z0-9()@:%_\+.~#?&//=\{\}]*)"
-        )
-        | None
-    ) = Field(
-        "https://example.tiles.com/{z}/{x}/{y}.png",
-        description="The URL of a publicly accessible tiled raster service.",
-        title="Custom Layer URL",
-    )
-    opacity: confloat(ge=0.0, le=1.0) | None = Field(
-        1,
-        description="Set layer transparency from 1 (fully visible) to 0 (hidden).",
-        title="Custom Layer Opacity",
-    )
-    max_zoom: int | None = Field(
-        20,
-        description="Set the maximum zoom level to fetch tiles for.",
-        title="Custom Layer Max Zoom",
-    )
-    min_zoom: int | None = Field(
-        0,
-        description="Set the minimum zoom level to fetch tiles for.",
-        title="Custom Layer Min Zoom",
-    )
-
-
-class BaseMapDefs(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    base_maps: (
-        list[
-            BaseMaps
-            | BaseMaps1
-            | BaseMaps2
-            | BaseMaps3
-            | BaseMaps4
-            | BaseMaps5
-            | BaseMaps6
-        ]
-        | None
-    ) = Field(
-        [
-            {
-                "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
-                "opacity": 1,
-                "max_zoom": 20,
-            },
-            {
-                "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-                "opacity": 0.5,
-                "max_zoom": 20,
-            },
-        ],
-        description="Select tile layers to use as base layers in map outputs. The first layer in the list will be the bottommost layer displayed.",
-        title=" ",
-    )
+class Filter(str, Enum):
+    none = "none"
+    clean = "clean"
+    manually_filtered = "manually_filtered"
+    automatically_filtered = "automatically_filtered"
+    manually_and_automatically_filtered = "manually_and_automatically_filtered"
 
 
 class SubjectObs(BaseModel):
@@ -202,23 +34,58 @@ class SubjectObs(BaseModel):
         description="⚠️ The use of a group with mixed subtypes could lead to unexpected results",
         title="Subject Group Name",
     )
+    filter: Filter | None = Field(
+        "clean",
+        description="Filter observations based on exclusion flags.",
+        title="Filter",
+    )
 
 
-class TemporalGrouper(str, Enum):
-    field_Y = "%Y"
-    field_B = "%B"
-    field_Y__m = "%Y-%m"
-    field_j = "%j"
-    field_d = "%d"
-    field_A = "%A"
-    field_H = "%H"
-    field_Y__m__d = "%Y-%m-%d"
+class ZoomToEnvelope(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    expansion_factor: float | None = Field(
+        1.05,
+        description="Factor to expand the bounding box (e.g., 1.2 = 20% larger)",
+        title="Expansion Factor",
+    )
 
 
-class ValueGrouper(str, Enum):
-    subject_name = "subject_name"
-    subject_sex = "subject_sex"
-    subject_subtype = "subject_subtype"
+class TimezoneInfo(BaseModel):
+    label: str = Field(..., title="Label")
+    tzCode: str = Field(..., title="Tzcode")
+    name: str = Field(..., title="Name")
+    utc: str = Field(..., title="Utc")
+
+
+class SpatialGrouper(BaseModel):
+    spatial_index_name: str = Field(..., title="Spatial Regions")
+
+
+class TemporalIndex(str, Enum):
+    Year__example__2024_ = "%Y"
+    Month__example__September_ = "%B"
+    Year_and_Month__example__2023_01_ = "%Y-%m"
+    Day_of_the_year_as_a_number__example__365_ = "%j"
+    Day_of_the_month_as_a_number__example__31_ = "%d"
+    Day_of_the_week__example__Sunday_ = "%A"
+    Hour__24_hour_clock__as_number__example__22_ = "%H"
+    Date__example__2025_01_31_ = "%Y-%m-%d"
+
+
+class TemporalGrouper(BaseModel):
+    temporal_index: TemporalIndex = Field(..., title="Time")
+
+
+class IndexName(str, Enum):
+    Subject_Name = "subject_name"
+    Subject_Sex = "subject_sex"
+    Subject_Subtype = "subject_subtype"
+
+
+class ValueGrouper(BaseModel):
+    index_name: IndexName = Field(..., title="Category")
 
 
 class EarthRangerConnection(BaseModel):
@@ -271,11 +138,23 @@ class CustomGridCellSize(BaseModel):
     )
 
 
+class TimeRange(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    since: datetime = Field(..., description="The start time", title="Since")
+    until: datetime = Field(..., description="The end time", title="Until")
+    timezone: TimezoneInfo | None = Field(None, title="Timezone")
+    time_format: str | None = Field(
+        "%d %b %Y %H:%M:%S", description="The time format", title="Time Format"
+    )
+
+
 class Groupers(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    groupers: list[ValueGrouper | TemporalGrouper] | None = Field(
+    groupers: list[ValueGrouper | TemporalGrouper | SpatialGrouper] | None = Field(
         None,
         description="            Specify how the data should be grouped to create the views for your dashboard.\n            This field is optional; if left blank, all the data will appear in a single view.\n            ",
         title=" ",
@@ -337,6 +216,7 @@ class Td(BaseModel):
 
 class TimeDensityMap(BaseModel):
     td: Td | None = Field(None, title="")
+    zoom_to_envelope: ZoomToEnvelope | None = Field(None, title="zoom to envelope")
 
 
 class FormData(BaseModel):
@@ -355,7 +235,6 @@ class FormData(BaseModel):
     )
     groupers: Groupers | None = Field(None, title="Set Groupers")
     er_client_name: ErClientName | None = Field(None, title="Data Source")
-    base_map_defs: BaseMapDefs | None = Field(None, title="Base Maps")
     subject_obs: SubjectObs | None = Field(
         None, title="Get Subject Group observations from EarthRanger"
     )
