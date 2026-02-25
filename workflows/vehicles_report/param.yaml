@@ -1,15 +1,18 @@
 workflow_details:
-  description: ''
-  name: custom_lg
+  description: 'Vehicles report for LG '
+  name: custom_vehicles_report
+time_range:
+  timezone:
+    label: UTC
+    tzCode: UTC
+    name: UTC
+    utc: '+03:00'
+  time_format: '%d %b %Y %H:%M:%S'
+  since: '2025-08-31T21:00:00.000Z'
+  until: '2026-02-23T21:00:00.000Z'
 er_client_name:
   data_source:
     name: lg
-base_map_defs:
-  base_maps:
-    - url: >-
-        https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}
-      opacity: 1
-      max_zoom: 20
 subject_traj:
   trajectory_segment_filter:
     min_length_meters: 0.35
@@ -18,8 +21,5 @@ subject_traj:
     max_time_secs: 18000
     min_speed_kmhr: 10
     max_speed_kmhr: 110
-time_range:
-  since: '2025-09-01T06:40:00.000Z'
-  until: '2026-02-01T06:40:00.000Z'
-subject_obs:
-  subject_group_name: Vehicles
+zoom_to_envelope:
+  expansion_factor: 1.05

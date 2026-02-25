@@ -30,19 +30,16 @@ requirements:
 
 rjsf-overrides:
   $defs:
-    ValueGrouper.oneOf:
+    ValueGrouper.properties.index_name.oneOf:
       - const: subject_name
         title: Subject Name
-      - const: subject_sex 
-        title: Subject Sex
-      - const: subject_subtype
-        title: Subject Subtype
 
 task-instance-defaults:
   skipif:
     conditions:
       - any_is_empty_df
       - any_dependency_skipped
+      
 
 workflow:
   #Set workflow details
@@ -56,12 +53,12 @@ workflow:
     task: set_time_range
 
   #Set groupers
-  - name: Set Groupers
-    id: groupers
+  - name: Configure grouping strategy 
+    id: groupers 
     task: set_groupers
     partial: 
-      groupers: 
-        - subject_name
+      groupers:
+        - index_name: subject_name
 
   #connect to ER 
   - name: Data Source
@@ -72,6 +69,16 @@ workflow:
   - name: Base Maps
     id: base_map_defs
     task: set_base_maps_pydeck
+    partial: 
+      base_maps:
+        - url: >-
+            https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}
+          opacity: 1
+          max_zoom: 20
+        - url: >-
+            https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}
+          opacity: 0.15
+          max_zoom: 20
 
   # Download amboseli group ranches and the collared lions templates
   - name: Download amboseli group ranches
@@ -175,8 +182,8 @@ workflow:
       style: 
         get_line_color: [169, 169, 169]
         get_fill_color: [169, 169, 169]
-        get_line_width: 4.00
-        opacity: 0.85
+        get_line_width: 4.50
+        opacity: 0.55
         extruded: false
         stroked: true
         filled: false
@@ -196,7 +203,7 @@ workflow:
         get_fill_color: [220, 20, 60]
         get_radius: 2.55 
         get_line_width: 1.95
-        opacity: 0.85
+        opacity: 0.75
         extruded: false
         stroked: true
         filled: true
@@ -215,7 +222,7 @@ workflow:
         get_line_color: [77, 102, 0]
         get_fill_color: [77, 102, 0]
         get_line_width: 1.95
-        opacity: 0.20
+        opacity: 0.35
         extruded: false
         stroked: true
         filled: true
@@ -225,38 +232,40 @@ workflow:
           - label: National parks and reserves 
             color: "#4d6600"
 
-  # - name: Create text layer for conflict hotspots 
-  #   id: create_hotspot_text_layer 
-  #   task: create_custom_text_layer
-  #   partial: 
-  #     geodataframe: ${{ workflow.reproject_hotspot_areas.return }}
-  #     layer_style: 
-  #       get_text: name 
-  #       get_color: [0,0,0,255]
+  - name: Create text layer for conflict hotspots 
+    id: create_hotspot_text_layer 
+    task: create_custom_text_layer
+    partial: 
+      geodataframe: ${{ workflow.reproject_hotspot_areas.return }}
+      layer_style: 
+        get_text: name 
+        get_color: [20,20,20,255]
         
-  #       get_size: 1500
-  #       size_units: meters 
-  #       size_min_pixels: 65 #65 
-  #       size_max_pixels: 100
-  #       size_scale: 2.00 
+        get_size: 1000 #1500
+        size_units: meters 
+        size_min_pixels: 40 #65 
+        size_max_pixels: 75
+        size_scale: 1.25 #2.00
 
-  #       font_family: Calibri 
-  #       font_weight: "700" 
-  #       get_text_anchor: middle 
-  #       get_alignment_baseline: center
-  #       billboard: true 
+        font_family: Arial
+        font_weight: normal 
+        get_text_anchor: middle 
+        get_alignment_baseline: center
+        billboard: true 
 
-  #       background_padding: [4,8]
-  #       pickable: true 
-  #       auto_highlight: false 
-  #     use_centroid: true 
-  #     legend: null 
+        background_padding: [4,8]
+        pickable: true 
+        auto_highlight: false 
+      use_centroid: true 
+      legend: null 
 
   #Get subject group observations
   - name: Get Subject Group observations from EarthRanger
     id: subject_obs
     task: get_subjectgroup_observations
     partial:
+      subject_group_name: Vehicles
+      filter: clean
       client: ${{ workflow.er_client_name.return }}
       time_range: ${{ workflow.time_range.return }}
       raise_on_empty: false
@@ -291,7 +300,7 @@ workflow:
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filetype: geoparquet 
-      filename: relocations
+      filename: vehicle_relocations
       df: ${{ workflow.subject_reloc.return }}
 
   # Convert Relocs to Trajectories
@@ -307,7 +316,7 @@ workflow:
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filetype: geoparquet 
-      filename: trajectories
+      filename: vehicle_trajectories
       df: ${{ workflow.subject_traj.return }}
 
   # Add temporal index
@@ -339,6 +348,7 @@ workflow:
     id: rename_traj_cols
     task: map_columns
     partial:
+      raise_if_not_found: true
       drop_columns: []
       retain_columns: []
       rename_columns:
@@ -431,7 +441,7 @@ workflow:
     partial: 
       layer_style:
         get_color: speed_bins_colormap
-        get_width: 2.85
+        get_width: 1.55
         width_scale: 1 
         width_min_pixels: 2 
         width_max_pixels: 8 
@@ -452,15 +462,32 @@ workflow:
       argvalues: ${{ workflow.filter_speed_cols.return }}
   
   # # should be used globally 
-  - name: Zoom to gdf extent 
-    id: zoom_speed_gdf_extent
-    task: view_state_deck_gdf
-    partial: 
-      pitch: 0
-      bearing: 0
+  - name: zoom to envelope
+    id: zoom_to_envelope
+    task: envelope_gdf
     mapvalues:
       argnames: gdf
       argvalues: ${{ workflow.filter_speed_cols.return }}
+
+  - name: Zoom to gdf extent for image 
+    id: gdf_image_extent 
+    task: view_state_deck_gdf
+    partial:
+      pitch: 0 
+      bearing: 0 
+    mapvalues:
+      argnames: gdf 
+      argvalues: ${{ workflow.filter_speed_cols.return }}
+
+  # should be used globally 
+  - name: Zoom to gdf extent 
+    id: zoom_speed_gdf_extent
+    task: custom_view_state_from_gdf
+    partial: 
+      max_zoom: 20
+    mapvalues:
+      argnames: gdf
+      argvalues: ${{ workflow.zoom_to_envelope.return }}
     
   - name: Combine ldx layers and speedmap layers 
     id: combined_ldx_speed_layers 
@@ -470,7 +497,7 @@ workflow:
         - ${{ workflow.custom_amboseli_layer.return }}
         - ${{ workflow.custom_hotspot_layer.return }}
         - ${{ workflow.custom_protected_layer.return }}
-        # - ${{ workflow.create_hotspot_text_layer.return }}
+        - ${{ workflow.create_hotspot_text_layer.return }}
     mapvalues:
       argnames: grouped_layers
       argvalues: ${{ workflow.generate_speedmap_layers.return }}
@@ -533,7 +560,7 @@ workflow:
     partial: 
       layer_style:
         get_color: [0, 0, 255]
-        get_width: 2.85
+        get_width: 1.55
         width_scale: 1 
         width_min_pixels: 2 
         width_max_pixels: 8 
@@ -551,17 +578,7 @@ workflow:
     mapvalues:
       argnames: geodataframe
       argvalues: ${{ workflow.split_subject_traj_groups.return }} 
-  
-  # # should be used globally 
-  - name: Zoom to gdf extent 
-    id: zoom_track_gdf_extent
-    task: view_state_deck_gdf
-    partial: 
-      pitch: 0
-      bearing: 0
-    mapvalues:
-      argnames: gdf
-      argvalues: ${{ workflow.split_subject_traj_groups.return }}
+
 
     # Combine layers ie static and grouped
   - name: Combine map layers
@@ -573,7 +590,7 @@ workflow:
         - ${{ workflow.custom_amboseli_layer.return }}
         - ${{ workflow.custom_hotspot_layer.return }}
         - ${{ workflow.custom_protected_layer.return }}
-        # - ${{ workflow.create_hotspot_text_layer.return }}
+        - ${{ workflow.create_hotspot_text_layer.return }}
     mapvalues:
       argnames: grouped_layers
       argvalues: ${{ workflow.generate_track_layers.return }}
@@ -584,7 +601,7 @@ workflow:
     partial:
       sequences:
         - ${{ workflow.combine_track_layers.return }}
-        - ${{ workflow.zoom_track_gdf_extent.return }}
+        - ${{ workflow.zoom_speed_gdf_extent.return }}
 
   - name: Draw track map
     id: draw_track_map
@@ -634,6 +651,12 @@ workflow:
     id: draw_speed_line_chart 
     task: draw_line_chart 
     partial: 
+      smoothing: 
+        method: spline 
+        y_min: null
+        y_max: null 
+        resolution: 10 
+        degree: 3
       x_column: segment_start
       y_column: speed_kmhr
       category_column: null 
@@ -908,33 +931,53 @@ workflow:
       widgets: ${{ workflow.total_distance_widgets.return }}
 
   #html to png 
-  - name: Convert speedmap html to png
-    id: convert_speed_png  
-    task: html_to_png
+  - name: Combine speedmap path with zoom value 
+    id: zip_speed_value
+    task: zip_groupbykey 
     partial: 
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      config: 
-        full_page: false 
-        device_scale_factor: 2.0 
-        wait_for_timeout: 20000
-        max_concurrent_pages: 1 
-    mapvalues: 
-      argnames: html_path 
-      argvalues: ${{ workflow.persist_speedmap_html.return }}
+      sequences: 
+        - ${{ workflow.gdf_image_extent.return }}
+        - ${{ workflow.persist_speedmap_html.return }}
 
-  - name: Convert tracks map to html 
-    id: convert_tracks_png 
-    task: html_to_png
-    partial: 
+  - name: Convert speedmap html to png
+    id: convert_speed_png 
+    task: adjust_map_zoom_and_screenshot
+    partial:
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      config: 
-        full_page: false 
-        device_scale_factor: 2.0 
-        wait_for_timeout: 20000
-        max_concurrent_pages: 1 
-    mapvalues: 
-      argnames: html_path 
-      argvalues: ${{ workflow.track_html_url.return }}
+      screenshot_config:
+        full_page: false
+        device_scale_factor: 2.0
+        wait_for_timeout: 40000
+        max_concurrent_pages: 1
+    mapvalues:
+      argnames: 
+        - view_state
+        - input_file
+      argvalues: ${{ workflow.zip_speed_value.return }}
+
+  - name: Combine tracks path with zoom value 
+    id: zip_tracks_value
+    task: zip_groupbykey 
+    partial: 
+      sequences: 
+        - ${{ workflow.gdf_image_extent.return }}
+        - ${{ workflow.track_html_url.return }}
+
+  - name: Convert tracks html to png
+    id: convert_tracks_png 
+    task: adjust_map_zoom_and_screenshot
+    partial:
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      screenshot_config:
+        full_page: false
+        device_scale_factor: 2.0
+        wait_for_timeout: 40000
+        max_concurrent_pages: 1
+    mapvalues:
+      argnames: 
+        - view_state
+        - input_file
+      argvalues: ${{ workflow.zip_tracks_value.return }}
 
   - name: Convert line chart to png 
     id: convert_line_png 
