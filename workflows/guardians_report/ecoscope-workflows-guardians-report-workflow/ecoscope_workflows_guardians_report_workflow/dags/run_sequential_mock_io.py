@@ -128,6 +128,7 @@ from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     draw_pie_chart as draw_pie_chart,
 )
+from ecoscope_workflows_ext_ecoscope.tasks.results import draw_table as draw_table
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     draw_time_series_bar_chart as draw_time_series_bar_chart,
 )
@@ -156,6 +157,9 @@ from ecoscope_workflows_ext_mnc.tasks import (
     exclude_geom_outliers as exclude_geom_outliers,
 )
 from ecoscope_workflows_ext_mnc.tasks import pivot_df as pivot_df_1
+from ecoscope_workflows_ext_ste.tasks import (
+    adjust_map_zoom_and_screenshot as adjust_map_zoom_and_screenshot,
+)
 from ecoscope_workflows_ext_ste.tasks import (
     combine_deckgl_map_layers as combine_deckgl_map_layers,
 )
@@ -1505,6 +1509,50 @@ def main(params: Params):
         .mapvalues(argnames=["text"], argvalues=draw_events)
     )
 
+    zip_events_value = (
+        zip_groupbykey.validate()
+        .set_task_instance_id("zip_events_value")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            sequences=[gdf_events_image_extent, persist_events_html],
+            **(params_dict.get("zip_events_value") or {}),
+        )
+        .call()
+    )
+
+    generate_events_png = (
+        adjust_map_zoom_and_screenshot.validate()
+        .set_task_instance_id("generate_events_png")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            screenshot_config={
+                "full_page": False,
+                "device_scale_factor": 2.0,
+                "wait_for_timeout": 40000,
+                "max_concurrent_pages": 1,
+            },
+            **(params_dict.get("generate_events_png") or {}),
+        )
+        .mapvalues(argnames=["view_state", "input_file"], argvalues=zip_events_value)
+    )
+
     speed_val_with_unit = (
         map_values_with_unit.validate()
         .set_task_instance_id("speed_val_with_unit")
@@ -1743,6 +1791,50 @@ def main(params: Params):
             **(params_dict.get("traj_ecomap_html_urls") or {}),
         )
         .mapvalues(argnames=["text"], argvalues=trajs_ecomap)
+    )
+
+    zip_trajs_value = (
+        zip_groupbykey.validate()
+        .set_task_instance_id("zip_trajs_value")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            sequences=[gdf_trajs_image_extent, traj_ecomap_html_urls],
+            **(params_dict.get("zip_trajs_value") or {}),
+        )
+        .call()
+    )
+
+    generate_trajs_png = (
+        adjust_map_zoom_and_screenshot.validate()
+        .set_task_instance_id("generate_trajs_png")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            screenshot_config={
+                "full_page": False,
+                "device_scale_factor": 2.0,
+                "wait_for_timeout": 40000,
+                "max_concurrent_pages": 1,
+            },
+            **(params_dict.get("generate_trajs_png") or {}),
+        )
+        .mapvalues(argnames=["view_state", "input_file"], argvalues=zip_trajs_value)
     )
 
     events_map_widgets_single_views = (
@@ -2658,6 +2750,50 @@ def main(params: Params):
         .mapvalues(argnames=["text"], argvalues=td_ecomap)
     )
 
+    zip_ltd_value = (
+        zip_groupbykey.validate()
+        .set_task_instance_id("zip_ltd_value")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            sequences=[gdf_ltd_image_extent, td_ecomap_html_url],
+            **(params_dict.get("zip_ltd_value") or {}),
+        )
+        .call()
+    )
+
+    generate_ltd_png = (
+        adjust_map_zoom_and_screenshot.validate()
+        .set_task_instance_id("generate_ltd_png")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            screenshot_config={
+                "full_page": False,
+                "device_scale_factor": 2.0,
+                "wait_for_timeout": 40000,
+                "max_concurrent_pages": 1,
+            },
+            **(params_dict.get("generate_ltd_png") or {}),
+        )
+        .mapvalues(argnames=["view_state", "input_file"], argvalues=zip_ltd_value)
+    )
+
     td_map_widget = (
         create_map_widget_single_view.validate()
         .set_task_instance_id("td_map_widget")
@@ -2759,9 +2895,9 @@ def main(params: Params):
         .mapvalues(argnames=["df"], argvalues=pe_rename_display_columns)
     )
 
-    persist_a = (
+    persist_guardian_patrol = (
         persist_df.validate()
-        .set_task_instance_id("persist_a")
+        .set_task_instance_id("persist_guardian_patrol")
         .handle_errors()
         .with_tracing()
         .skipif(
@@ -2775,14 +2911,14 @@ def main(params: Params):
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             filetype="csv",
             filename=None,
-            **(params_dict.get("persist_a") or {}),
+            **(params_dict.get("persist_guardian_patrol") or {}),
         )
         .mapvalues(argnames=["df"], argvalues=summarize_ranger_patrol)
     )
 
-    persist_b = (
+    persist_guardian_events = (
         persist_df.validate()
-        .set_task_instance_id("persist_b")
+        .set_task_instance_id("persist_guardian_events")
         .handle_errors()
         .with_tracing()
         .skipif(
@@ -2796,7 +2932,7 @@ def main(params: Params):
             root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
             filetype="csv",
             filename=None,
-            **(params_dict.get("persist_b") or {}),
+            **(params_dict.get("persist_guardian_events") or {}),
         )
         .mapvalues(argnames=["df"], argvalues=summarize_guardian_events)
     )
@@ -3113,6 +3249,89 @@ def main(params: Params):
         .mapvalues(argnames=["html_path"], argvalues=patrol_events_bar_chart_html_url)
     )
 
+    pivot_guardian_efforts = (
+        draw_table.validate()
+        .set_task_instance_id("pivot_guardian_efforts")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            widget_id="Guardian efforts",
+            columns=None,
+            table_config={
+                "enable_sorting": True,
+                "enable_filtering": True,
+                "enable_download": True,
+                "hide_header": False,
+            },
+            **(params_dict.get("pivot_guardian_efforts") or {}),
+        )
+        .mapvalues(argnames=["dataframe"], argvalues=persist_pivot_patrol_efforts)
+    )
+
+    pivot_guardian_efforts_url = (
+        persist_text.validate()
+        .set_task_instance_id("pivot_guardian_efforts_url")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename_suffix="guardian_efforts_table",
+            **(params_dict.get("pivot_guardian_efforts_url") or {}),
+        )
+        .mapvalues(argnames=["text"], argvalues=pivot_guardian_efforts)
+    )
+
+    no_events_recorded_sv = (
+        create_plot_widget_single_view.validate()
+        .set_task_instance_id("no_events_recorded_sv")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            title="Guardian Efforts", **(params_dict.get("no_events_recorded_sv") or {})
+        )
+        .map(argnames=["view", "data"], argvalues=pivot_guardian_efforts_url)
+    )
+
+    no_of_events_table_widget = (
+        merge_widget_views.validate()
+        .set_task_instance_id("no_of_events_table_widget")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            widgets=no_events_recorded_sv,
+            **(params_dict.get("no_of_events_table_widget") or {}),
+        )
+        .call()
+    )
+
     patrol_dashboard = (
         gather_dashboard.validate()
         .set_task_instance_id("patrol_dashboard")
@@ -3127,7 +3346,19 @@ def main(params: Params):
         )
         .partial(
             details=workflow_details,
-            widgets=[],
+            widgets=[
+                events_grouped_map_widget,
+                trajs_grouped_map_widget,
+                total_patrols_grouped_sv_widget,
+                patrol_time_grouped_widget,
+                patrol_dist_grouped_widget,
+                avg_speed_grouped_widget,
+                max_speed_grouped_widget,
+                grouped_bar_plot_widget_merge,
+                patrol_events_pie_widget_grouped,
+                td_grouped_map_widget,
+                no_of_events_table_widget,
+            ],
             groupers=groupers,
             time_range=time_range,
             **(params_dict.get("patrol_dashboard") or {}),

@@ -675,6 +675,32 @@ workflow:
       argnames: text 
       argvalues: ${{ workflow.draw_events.return }}
 
+  - name: Combine events path with zoom value 
+    id: zip_events_value
+    task: zip_groupbykey 
+    partial: 
+      sequences: 
+        - ${{ workflow.gdf_events_image_extent.return }}
+        - ${{ workflow.persist_events_html.return }}
+
+  - name: Convert events html to png 
+    id: generate_events_png 
+    task: adjust_map_zoom_and_screenshot
+    partial:
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      screenshot_config: 
+        full_page: false
+        device_scale_factor: 2.0
+        wait_for_timeout: 40000
+        max_concurrent_pages: 1
+    
+    mapvalues:
+      argnames: 
+        - view_state
+        - input_file
+      argvalues: ${{ workflow.zip_events_value.return }}
+
+
   # trajectory maps 
   - name: Format speed values for display
     id: speed_val_with_unit
@@ -829,6 +855,31 @@ workflow:
     mapvalues:
       argnames: text
       argvalues: ${{ workflow.trajs_ecomap.return }}
+
+  - name: Combine trajectories path with zoom value 
+    id: zip_trajs_value
+    task: zip_groupbykey 
+    partial: 
+      sequences: 
+        - ${{ workflow.gdf_trajs_image_extent.return }}
+        - ${{ workflow.traj_ecomap_html_urls.return }}
+
+  - name: Convert trajs html to png 
+    id: generate_trajs_png 
+    task: adjust_map_zoom_and_screenshot
+    partial:
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      screenshot_config: 
+        full_page: false
+        device_scale_factor: 2.0
+        wait_for_timeout: 40000
+        max_concurrent_pages: 1
+    
+    mapvalues:
+      argnames: 
+        - view_state
+        - input_file
+      argvalues: ${{ workflow.zip_trajs_value.return }}
 
   - name: Create Map Widgets for patrol events 
     id: events_map_widgets_single_views
@@ -1343,6 +1394,31 @@ workflow:
       argnames: text
       argvalues: ${{ workflow.td_ecomap.return }}
 
+  - name: Combine homerange ltd map path with zoom value 
+    id: zip_ltd_value
+    task: zip_groupbykey 
+    partial: 
+      sequences: 
+        - ${{ workflow.gdf_ltd_image_extent.return }}
+        - ${{ workflow.td_ecomap_html_url.return }}
+
+  - name: Convert homerange ltd html to png 
+    id: generate_ltd_png 
+    task: adjust_map_zoom_and_screenshot
+    partial:
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      screenshot_config: 
+        full_page: false
+        device_scale_factor: 2.0
+        wait_for_timeout: 40000
+        max_concurrent_pages: 1
+    
+    mapvalues:
+      argnames: 
+        - view_state
+        - input_file
+      argvalues: ${{ workflow.zip_ltd_value.return }}
+
   - name: Create time density map widget
     id: td_map_widget
     task: create_map_widget_single_view
@@ -1406,8 +1482,8 @@ workflow:
       argnames: df
       argvalues: ${{ workflow.pe_rename_display_columns.return }}
 
-  - name: Persist a csv 
-    id: persist_a
+  - name: Persist guardian patrol efforts csv 
+    id: persist_guardian_patrol
     task: persist_df
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
@@ -1417,8 +1493,8 @@ workflow:
       argnames: df
       argvalues: ${{ workflow.summarize_ranger_patrol.return }}
 
-  - name: Persist b csv 
-    id: persist_b
+  - name: Persist guardian events csv 
+    id: persist_guardian_events
     task: persist_df
     partial:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
@@ -1427,31 +1503,6 @@ workflow:
     mapvalues:
       argnames: df
       argvalues: ${{ workflow.summarize_guardian_events.return }}
-
-  # - name: Merge guardian effort dfs
-  #   id: merge_guardian_efforts
-  #   task: merge_dataframes
-  #   skipif:
-  #     conditions:
-  #       - any_is_empty_df
-  #       - any_dependency_skipped
-  #   partial: 
-  #     left_df: ${{ workflow.summarize_ranger_patrol.return }}
-  #     right_df: ${{ workflow.summarize_guardian_events.return }}
-  #     on: patrol_subject
-  #     how: left 
-  #     preserve_left_index: false
-
-  # - name: Persist ranger patrol efforts
-  #   id: persist_ranger_patrol_efforts
-  #   task: persist_df
-  #   partial:
-  #     root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-  #     filetype: csv
-  #     filename: null
-  #   mapvalues:
-  #     argnames: df
-  #     argvalues: ${{ workflow.merge_guardian_efforts.return }}
 
   # Patrol type effort /metrics
   - name: Summarize patrol by type
@@ -1616,7 +1667,6 @@ workflow:
       argnames: df
       argvalues: ${{ workflow.summarize_events.return }}
 
-
   - name: Convert patrol events pie chart html to png 
     id: patrol_pie_chart_png
     task: html_to_png
@@ -1645,12 +1695,68 @@ workflow:
       argnames: html_path
       argvalues: ${{ workflow.patrol_events_bar_chart_html_url.return }}
 
+  - name: Render pivot patrol efforts
+    id: pivot_guardian_efforts
+    task: draw_table 
+    partial:
+      widget_id: "Guardian efforts"
+      columns: null
+      table_config: 
+        enable_sorting: true
+        enable_filtering: true 
+        enable_download: true
+        hide_header: false
+    mapvalues: 
+      argnames: dataframe 
+      argvalues: ${{ workflow.persist_pivot_patrol_efforts.return }}
+  
+  - name: Persist guardian patrol efforts
+    id: pivot_guardian_efforts_url
+    task: persist_text
+    partial:
+      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename_suffix: "guardian_efforts_table"
+    mapvalues:
+      argnames: text
+      argvalues: ${{ workflow.pivot_guardian_efforts.return }}
+
+  - name: Create table widget for no of events recorded (SV)
+    id: no_events_recorded_sv
+    task: create_plot_widget_single_view
+    partial:
+      title: "Guardian Efforts"
+    map:
+      argnames:
+        - view
+        - data
+      argvalues: ${{ workflow.pivot_guardian_efforts_url.return }}
+
+  - name: Merge no of events table widgets
+    id: no_of_events_table_widget
+    task: merge_widget_views
+    partial:
+      widgets: ${{ workflow.no_events_recorded_sv.return }}
+
   - name: Create Dashboard with Patrol Map Widgets
     id: patrol_dashboard
     task: gather_dashboard
     partial:
       details: ${{ workflow.workflow_details.return}}
-      widgets: []
+      widgets:
+        - ${{ workflow.events_grouped_map_widget.return }}
+        - ${{ workflow.trajs_grouped_map_widget.return }}
+        - ${{ workflow.total_patrols_grouped_sv_widget.return }}
+        - ${{ workflow.patrol_time_grouped_widget.return }}
+
+        - ${{ workflow.patrol_dist_grouped_widget.return }}
+        - ${{ workflow.avg_speed_grouped_widget.return }}
+        - ${{ workflow.max_speed_grouped_widget.return }}
+        - ${{ workflow.grouped_bar_plot_widget_merge.return }}
+
+        - ${{ workflow.patrol_events_pie_widget_grouped.return }}
+        - ${{ workflow.td_grouped_map_widget.return }}
+
+        - ${{ workflow.no_of_events_table_widget.return }}
 
       groupers: ${{ workflow.groupers.return }}
       time_range: ${{ workflow.time_range.return}}

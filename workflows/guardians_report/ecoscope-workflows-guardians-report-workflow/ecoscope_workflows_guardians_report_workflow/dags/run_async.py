@@ -107,6 +107,7 @@ from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     draw_pie_chart as draw_pie_chart,
 )
+from ecoscope_workflows_ext_ecoscope.tasks.results import draw_table as draw_table
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     draw_time_series_bar_chart as draw_time_series_bar_chart,
 )
@@ -135,6 +136,9 @@ from ecoscope_workflows_ext_mnc.tasks import (
     exclude_geom_outliers as exclude_geom_outliers,
 )
 from ecoscope_workflows_ext_mnc.tasks import pivot_df as pivot_df_1
+from ecoscope_workflows_ext_ste.tasks import (
+    adjust_map_zoom_and_screenshot as adjust_map_zoom_and_screenshot,
+)
 from ecoscope_workflows_ext_ste.tasks import (
     combine_deckgl_map_layers as combine_deckgl_map_layers,
 )
@@ -240,6 +244,8 @@ def main(params: Params):
             "zip_events_with_viewstate",
         ],
         "persist_events_html": ["draw_events"],
+        "zip_events_value": ["gdf_events_image_extent", "persist_events_html"],
+        "generate_events_png": ["zip_events_value"],
         "speed_val_with_unit": ["split_patrol_traj_groups"],
         "patrol_traj_rename_columns": ["speed_val_with_unit"],
         "patrol_traj_map_layers": [
@@ -266,6 +272,8 @@ def main(params: Params):
             "zip_trajs_with_viewstate",
         ],
         "traj_ecomap_html_urls": ["trajs_ecomap"],
+        "zip_trajs_value": ["gdf_trajs_image_extent", "traj_ecomap_html_urls"],
+        "generate_trajs_png": ["zip_trajs_value"],
         "events_map_widgets_single_views": [
             "set_event_map_title",
             "persist_events_html",
@@ -330,12 +338,14 @@ def main(params: Params):
         "zip_ltd_with_viewstate": ["merged_time_density_layers", "zoom_ltd_gdf_extent"],
         "td_ecomap": ["base_map_defs", "set_ltd_map_title", "zip_ltd_with_viewstate"],
         "td_ecomap_html_url": ["td_ecomap"],
+        "zip_ltd_value": ["gdf_ltd_image_extent", "td_ecomap_html_url"],
+        "generate_ltd_png": ["zip_ltd_value"],
         "td_map_widget": ["td_ecomap_html_url"],
         "td_grouped_map_widget": ["td_map_widget"],
         "summarize_ranger_patrol": ["split_patrol_traj_groups"],
         "summarize_guardian_events": ["pe_rename_display_columns"],
-        "persist_a": ["summarize_ranger_patrol"],
-        "persist_b": ["summarize_guardian_events"],
+        "persist_guardian_patrol": ["summarize_ranger_patrol"],
+        "persist_guardian_events": ["summarize_guardian_events"],
         "summarized_patrol_types": ["split_patrol_traj_groups"],
         "summarized_event_types": ["split_pe_groups"],
         "persist_event_tefforts": ["summarized_event_types"],
@@ -348,7 +358,26 @@ def main(params: Params):
         "persist_gua_patrol_efforts": ["summarize_events"],
         "patrol_pie_chart_png": ["pe_pie_chart_html_urls"],
         "patrol_bar_chart_png": ["patrol_events_bar_chart_html_url"],
-        "patrol_dashboard": ["workflow_details", "groupers", "time_range"],
+        "pivot_guardian_efforts": ["persist_pivot_patrol_efforts"],
+        "pivot_guardian_efforts_url": ["pivot_guardian_efforts"],
+        "no_events_recorded_sv": ["pivot_guardian_efforts_url"],
+        "no_of_events_table_widget": ["no_events_recorded_sv"],
+        "patrol_dashboard": [
+            "workflow_details",
+            "events_grouped_map_widget",
+            "trajs_grouped_map_widget",
+            "total_patrols_grouped_sv_widget",
+            "patrol_time_grouped_widget",
+            "patrol_dist_grouped_widget",
+            "avg_speed_grouped_widget",
+            "max_speed_grouped_widget",
+            "grouped_bar_plot_widget_merge",
+            "patrol_events_pie_widget_grouped",
+            "td_grouped_map_widget",
+            "no_of_events_table_widget",
+            "groupers",
+            "time_range",
+        ],
     }
 
     nodes = {
@@ -1811,6 +1840,57 @@ def main(params: Params):
                 "argvalues": DependsOn("draw_events"),
             },
         ),
+        "zip_events_value": Node(
+            async_task=zip_groupbykey.validate()
+            .set_task_instance_id("zip_events_value")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "sequences": [
+                    DependsOn("gdf_events_image_extent"),
+                    DependsOn("persist_events_html"),
+                ],
+            }
+            | (params_dict.get("zip_events_value") or {}),
+            method="call",
+        ),
+        "generate_events_png": Node(
+            async_task=adjust_map_zoom_and_screenshot.validate()
+            .set_task_instance_id("generate_events_png")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "screenshot_config": {
+                    "full_page": False,
+                    "device_scale_factor": 2.0,
+                    "wait_for_timeout": 40000,
+                    "max_concurrent_pages": 1,
+                },
+            }
+            | (params_dict.get("generate_events_png") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["view_state", "input_file"],
+                "argvalues": DependsOn("zip_events_value"),
+            },
+        ),
         "speed_val_with_unit": Node(
             async_task=map_values_with_unit.validate()
             .set_task_instance_id("speed_val_with_unit")
@@ -2095,6 +2175,57 @@ def main(params: Params):
             kwargs={
                 "argnames": ["text"],
                 "argvalues": DependsOn("trajs_ecomap"),
+            },
+        ),
+        "zip_trajs_value": Node(
+            async_task=zip_groupbykey.validate()
+            .set_task_instance_id("zip_trajs_value")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "sequences": [
+                    DependsOn("gdf_trajs_image_extent"),
+                    DependsOn("traj_ecomap_html_urls"),
+                ],
+            }
+            | (params_dict.get("zip_trajs_value") or {}),
+            method="call",
+        ),
+        "generate_trajs_png": Node(
+            async_task=adjust_map_zoom_and_screenshot.validate()
+            .set_task_instance_id("generate_trajs_png")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "screenshot_config": {
+                    "full_page": False,
+                    "device_scale_factor": 2.0,
+                    "wait_for_timeout": 40000,
+                    "max_concurrent_pages": 1,
+                },
+            }
+            | (params_dict.get("generate_trajs_png") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["view_state", "input_file"],
+                "argvalues": DependsOn("zip_trajs_value"),
             },
         ),
         "events_map_widgets_single_views": Node(
@@ -3190,6 +3321,57 @@ def main(params: Params):
                 "argvalues": DependsOn("td_ecomap"),
             },
         ),
+        "zip_ltd_value": Node(
+            async_task=zip_groupbykey.validate()
+            .set_task_instance_id("zip_ltd_value")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "sequences": [
+                    DependsOn("gdf_ltd_image_extent"),
+                    DependsOn("td_ecomap_html_url"),
+                ],
+            }
+            | (params_dict.get("zip_ltd_value") or {}),
+            method="call",
+        ),
+        "generate_ltd_png": Node(
+            async_task=adjust_map_zoom_and_screenshot.validate()
+            .set_task_instance_id("generate_ltd_png")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "screenshot_config": {
+                    "full_page": False,
+                    "device_scale_factor": 2.0,
+                    "wait_for_timeout": 40000,
+                    "max_concurrent_pages": 1,
+                },
+            }
+            | (params_dict.get("generate_ltd_png") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["view_state", "input_file"],
+                "argvalues": DependsOn("zip_ltd_value"),
+            },
+        ),
         "td_map_widget": Node(
             async_task=create_map_widget_single_view.validate()
             .set_task_instance_id("td_map_widget")
@@ -3311,9 +3493,9 @@ def main(params: Params):
                 "argvalues": DependsOn("pe_rename_display_columns"),
             },
         ),
-        "persist_a": Node(
+        "persist_guardian_patrol": Node(
             async_task=persist_df.validate()
-            .set_task_instance_id("persist_a")
+            .set_task_instance_id("persist_guardian_patrol")
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -3329,16 +3511,16 @@ def main(params: Params):
                 "filetype": "csv",
                 "filename": None,
             }
-            | (params_dict.get("persist_a") or {}),
+            | (params_dict.get("persist_guardian_patrol") or {}),
             method="mapvalues",
             kwargs={
                 "argnames": ["df"],
                 "argvalues": DependsOn("summarize_ranger_patrol"),
             },
         ),
-        "persist_b": Node(
+        "persist_guardian_events": Node(
             async_task=persist_df.validate()
-            .set_task_instance_id("persist_b")
+            .set_task_instance_id("persist_guardian_events")
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -3354,7 +3536,7 @@ def main(params: Params):
                 "filetype": "csv",
                 "filename": None,
             }
-            | (params_dict.get("persist_b") or {}),
+            | (params_dict.get("persist_guardian_events") or {}),
             method="mapvalues",
             kwargs={
                 "argnames": ["df"],
@@ -3734,6 +3916,102 @@ def main(params: Params):
                 "argvalues": DependsOn("patrol_events_bar_chart_html_url"),
             },
         ),
+        "pivot_guardian_efforts": Node(
+            async_task=draw_table.validate()
+            .set_task_instance_id("pivot_guardian_efforts")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "widget_id": "Guardian efforts",
+                "columns": None,
+                "table_config": {
+                    "enable_sorting": True,
+                    "enable_filtering": True,
+                    "enable_download": True,
+                    "hide_header": False,
+                },
+            }
+            | (params_dict.get("pivot_guardian_efforts") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["dataframe"],
+                "argvalues": DependsOn("persist_pivot_patrol_efforts"),
+            },
+        ),
+        "pivot_guardian_efforts_url": Node(
+            async_task=persist_text.validate()
+            .set_task_instance_id("pivot_guardian_efforts_url")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "filename_suffix": "guardian_efforts_table",
+            }
+            | (params_dict.get("pivot_guardian_efforts_url") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["text"],
+                "argvalues": DependsOn("pivot_guardian_efforts"),
+            },
+        ),
+        "no_events_recorded_sv": Node(
+            async_task=create_plot_widget_single_view.validate()
+            .set_task_instance_id("no_events_recorded_sv")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "title": "Guardian Efforts",
+            }
+            | (params_dict.get("no_events_recorded_sv") or {}),
+            method="map",
+            kwargs={
+                "argnames": ["view", "data"],
+                "argvalues": DependsOn("pivot_guardian_efforts_url"),
+            },
+        ),
+        "no_of_events_table_widget": Node(
+            async_task=merge_widget_views.validate()
+            .set_task_instance_id("no_of_events_table_widget")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "widgets": DependsOn("no_events_recorded_sv"),
+            }
+            | (params_dict.get("no_of_events_table_widget") or {}),
+            method="call",
+        ),
         "patrol_dashboard": Node(
             async_task=gather_dashboard.validate()
             .set_task_instance_id("patrol_dashboard")
@@ -3749,6 +4027,19 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "details": DependsOn("workflow_details"),
+                "widgets": [
+                    DependsOn("events_grouped_map_widget"),
+                    DependsOn("trajs_grouped_map_widget"),
+                    DependsOn("total_patrols_grouped_sv_widget"),
+                    DependsOn("patrol_time_grouped_widget"),
+                    DependsOn("patrol_dist_grouped_widget"),
+                    DependsOn("avg_speed_grouped_widget"),
+                    DependsOn("max_speed_grouped_widget"),
+                    DependsOn("grouped_bar_plot_widget_merge"),
+                    DependsOn("patrol_events_pie_widget_grouped"),
+                    DependsOn("td_grouped_map_widget"),
+                    DependsOn("no_of_events_table_widget"),
+                ],
                 "groupers": DependsOn("groupers"),
                 "time_range": DependsOn("time_range"),
             }
