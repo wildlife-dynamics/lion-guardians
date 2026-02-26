@@ -34,6 +34,22 @@
           "title": "Until",
           "type": "string",
           "description": "The end time"
+        },
+        "timezone": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/TimezoneInfo"
+            }
+          ],
+          "default": null,
+          "title": "Timezone"
+        },
+        "time_format": {
+          "default": "%d %b %Y %H:%M:%S",
+          "title": "Time Format",
+          "type": "string",
+          "description": "The time format",
+          "ecoscope:advanced": true
         }
       },
       "required": [
@@ -289,63 +305,56 @@
       "required": [],
       "title": "Configure base map layers"
     },
-    "Patrol and Event Types": {
-      "type": "object",
-      "description": " ",
-      "ecoscope:task_group": true,
+    "er_patrol_and_events_params": {
+      "additionalProperties": false,
       "properties": {
-        "er_patrol_and_events_params": {
-          "additionalProperties": false,
-          "properties": {
-            "patrol_types": {
-              "items": {
-                "type": "string"
-              },
-              "title": "Patrol Types",
-              "type": "array",
-              "description": "Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types."
-            },
-            "event_types": {
-              "items": {
-                "type": "string"
-              },
-              "title": "Event Types",
-              "type": "array",
-              "description": "Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types."
-            },
-            "status": {
-              "default": [
-                "done"
-              ],
-              "items": {
-                "enum": [
-                  "active",
-                  "overdue",
-                  "done",
-                  "cancelled"
-                ],
-                "type": "string"
-              },
-              "title": "Patrol Status",
-              "type": "array",
-              "description": "Choose to analyze patrols with a certain status. If left empty, patrols of all status will be analyzed",
-              "uniqueItems": true,
-              "ecoscope:advanced": true
-            },
-            "include_null_geometry": {
-              "default": true,
-              "title": "Include Events Without a Geometry (point or polygon)",
-              "type": "boolean"
-            }
+        "patrol_types": {
+          "items": {
+            "type": "string"
           },
-          "required": [
-            "patrol_types",
-            "event_types"
+          "title": "Patrol Types",
+          "type": "array",
+          "description": "Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types."
+        },
+        "event_types": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Event Types",
+          "type": "array",
+          "description": "Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types."
+        },
+        "status": {
+          "default": [
+            "done"
           ],
-          "type": "object",
-          "title": ""
+          "items": {
+            "enum": [
+              "active",
+              "overdue",
+              "done",
+              "cancelled"
+            ],
+            "type": "string"
+          },
+          "title": "Patrol Status",
+          "type": "array",
+          "description": "Choose to analyze patrols with a certain status. If left empty, patrols of all status will be analyzed",
+          "uniqueItems": true,
+          "ecoscope:advanced": true
+        },
+        "include_null_geometry": {
+          "default": true,
+          "title": "Include Events Without a Geometry (point or polygon)",
+          "type": "boolean"
         }
-      }
+      },
+      "required": [
+        "patrol_types",
+        "event_types"
+      ],
+      "type": "object",
+      "title": "Set patrol and patrol events params"
     },
     "Trajectory Category": {
       "type": "object",
@@ -382,217 +391,154 @@
         }
       }
     },
-    "Trajectory Segment Filter": {
-      "type": "object",
-      "description": " ",
-      "ecoscope:task_group": true,
+    "patrol_traj": {
+      "additionalProperties": false,
       "properties": {
-        "patrol_traj": {
-          "additionalProperties": false,
-          "properties": {
-            "trajectory_segment_filter": {
-              "allOf": [
-                {
-                  "$ref": "#/$defs/TrajectorySegmentFilter"
-                }
-              ],
-              "default": {
-                "min_length_meters": 0.001,
-                "max_length_meters": 100000,
-                "min_time_secs": 1,
-                "max_time_secs": 172800,
-                "min_speed_kmhr": 0.01,
-                "max_speed_kmhr": 500
-              },
-              "title": " ",
-              "description": "Filter track data by setting limits on track segment length, duration, and speed. Segments outside these bounds are removed, reducing noise and to focus on meaningful movement patterns.",
-              "ecoscope:advanced": true
+        "trajectory_segment_filter": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/TrajectorySegmentFilter"
             }
-          },
-          "required": [],
-          "type": "object",
-          "title": ""
-        },
-        "traj_rename_grouper_columns": {
-          "additionalProperties": false,
-          "properties": {
-            "raise_if_not_found": {
-              "default": true,
-              "title": "Raise If Not Found",
-              "type": "boolean",
-              "description": "Whether or not to raise if var is not in value_map."
-            }
-          },
-          "required": [],
-          "type": "object",
-          "title": "Rename value grouper columns for Trajectories"
-        }
-      }
-    },
-    "Patrol Event Location Filter": {
-      "type": "object",
-      "description": "Filter events based on their location.",
-      "ecoscope:task_group": true,
-      "properties": {
-        "filter_patrol_events": {
-          "additionalProperties": false,
-          "properties": {
-            "bounding_box": {
-              "allOf": [
-                {
-                  "$ref": "#/$defs/BoundingBox"
-                }
-              ],
-              "default": {
-                "min_y": -90.0,
-                "max_y": 90.0,
-                "min_x": -180.0,
-                "max_x": 180.0
-              },
-              "title": "Bounding Box",
-              "description": "Filter events to inside these bounding coordinates.",
-              "ecoscope:advanced": true
-            },
-            "filter_point_coords": {
-              "default": [],
-              "items": {
-                "$ref": "#/$defs/Coordinate"
-              },
-              "title": "Filter Exact Point Coordinates",
-              "type": "array",
-              "description": "By adding a filter, the workflow will not include events recorded at the specified coordinates.",
-              "ecoscope:advanced": true
-            },
-            "reset_index": {
-              "default": true,
-              "title": "Reset Index",
-              "type": "boolean",
-              "description": "Reset index after filtering",
-              "ecoscope:advanced": true
-            }
-          },
-          "required": [],
-          "type": "object",
-          "title": ""
-        }
-      }
-    },
-    "Patrol Events and Trajectories Map": {
-      "type": "object",
-      "description": "Create a combined patrol trajectories and events map.",
-      "ecoscope:task_group": true,
-      "properties": {
-        "pe_rename_display_columns": {
-          "additionalProperties": false,
-          "properties": {
-            "raise_if_not_found": {
-              "default": true,
-              "title": "Raise If Not Found",
-              "type": "boolean",
-              "description": "Whether or not to raise if var is not in value_map."
-            }
-          },
-          "required": [],
-          "type": "object",
-          "title": "Rename patrol events columns for map tooltip display"
-        },
-        "patrol_traj_rename_columns": {
-          "additionalProperties": false,
-          "properties": {
-            "raise_if_not_found": {
-              "default": true,
-              "title": "Raise If Not Found",
-              "type": "boolean",
-              "description": "Whether or not to raise if var is not in value_map."
-            }
-          },
-          "required": [],
-          "type": "object",
-          "title": "Rename patrol traj columns for map tooltip display"
-        }
-      }
-    },
-    "Patrol Events Bar Chart": {
-      "type": "object",
-      "description": "The bar chart shows how many events of different types occurred over time. Choose the time interval for the x-axis to control how event counts are summarized over time.",
-      "ecoscope:task_group": true,
-      "properties": {
-        "patrol_events_bar_chart": {
-          "additionalProperties": false,
-          "properties": {
-            "time_interval": {
-              "enum": [
-                "year",
-                "month",
-                "week",
-                "day",
-                "hour"
-              ],
-              "title": "Time Interval",
-              "type": "string"
-            }
-          },
-          "required": [
-            "time_interval"
           ],
-          "type": "object",
-          "title": ""
+          "default": {
+            "min_length_meters": 0.001,
+            "max_length_meters": 100000,
+            "min_time_secs": 1,
+            "max_time_secs": 172800,
+            "min_speed_kmhr": 0.01,
+            "max_speed_kmhr": 500
+          },
+          "title": " ",
+          "description": "Filter track data by setting limits on track segment length, duration, and speed. Segments outside these bounds are removed, reducing noise and to focus on meaningful movement patterns.",
+          "ecoscope:advanced": true
         }
-      }
-    },
-    "Time Density Map": {
+      },
+      "required": [],
       "type": "object",
-      "description": "These settings show a grid-based heatmap showing where subjects spent the most time.",
-      "ecoscope:task_group": true,
+      "title": "Trajectory segment filter"
+    },
+    "filter_patrol_events": {
+      "additionalProperties": false,
       "properties": {
-        "ltd_meshgrid": {
-          "additionalProperties": false,
-          "properties": {
-            "auto_scale_or_custom_cell_size": {
-              "anyOf": [
-                {
-                  "$ref": "#/$defs/AutoScaleGridCellSize"
-                },
-                {
-                  "$ref": "#/$defs/CustomGridCellSize"
-                }
-              ],
-              "default": {
-                "auto_scale_or_custom": "Auto-scale"
-              },
-              "title": "Grid Cell Size",
-              "ecoscope:advanced": true
-            },
-            "crs": {
-              "default": "EPSG:3857",
-              "title": "Coordinate Reference System",
-              "type": "string",
-              "description": "The coordinate reference system in which to perform the calculation, must be a valid CRS authority code, for example ESRI:53042",
-              "ecoscope:advanced": true
+        "bounding_box": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/BoundingBox"
             }
+          ],
+          "default": {
+            "min_y": -90.0,
+            "max_y": 90.0,
+            "min_x": -180.0,
+            "max_x": 180.0
           },
-          "required": [],
-          "type": "object",
-          "title": ""
+          "title": "Bounding Box",
+          "description": "Filter events to inside these bounding coordinates.",
+          "ecoscope:advanced": true
         },
-        "patrol_td_rename_columns": {
-          "additionalProperties": false,
-          "properties": {
-            "raise_if_not_found": {
-              "default": true,
-              "title": "Raise If Not Found",
-              "type": "boolean",
-              "description": "Whether or not to raise if var is not in value_map."
-            }
+        "filter_point_coords": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/Coordinate"
           },
-          "required": [],
-          "type": "object",
-          "title": "Rename patrol traj columns for map tooltip display"
+          "title": "Filter Exact Point Coordinates",
+          "type": "array",
+          "description": "By adding a filter, the workflow will not include events recorded at the specified coordinates.",
+          "ecoscope:advanced": true
+        },
+        "reset_index": {
+          "default": true,
+          "title": "Reset Index",
+          "type": "boolean",
+          "description": "Reset index after filtering",
+          "ecoscope:advanced": true
         }
-      }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Filter patrol events"
+    },
+    "patrol_events_bar_chart": {
+      "additionalProperties": false,
+      "properties": {
+        "time_interval": {
+          "enum": [
+            "year",
+            "month",
+            "week",
+            "day",
+            "hour"
+          ],
+          "title": "Time Interval",
+          "type": "string"
+        }
+      },
+      "required": [
+        "time_interval"
+      ],
+      "type": "object",
+      "title": "Draw time series bar chart"
+    },
+    "ltd_meshgrid": {
+      "additionalProperties": false,
+      "properties": {
+        "auto_scale_or_custom_cell_size": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AutoScaleGridCellSize"
+            },
+            {
+              "$ref": "#/$defs/CustomGridCellSize"
+            }
+          ],
+          "default": {
+            "auto_scale_or_custom": "Auto-scale"
+          },
+          "title": "Grid Cell Size",
+          "ecoscope:advanced": true
+        },
+        "crs": {
+          "default": "EPSG:3857",
+          "title": "Coordinate Reference System",
+          "type": "string",
+          "description": "The coordinate reference system in which to perform the calculation, must be a valid CRS authority code, for example ESRI:53042",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": "Create meshgrid"
     }
   },
   "$defs": {
+    "TimezoneInfo": {
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "tzCode": {
+          "title": "Tzcode",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "utc": {
+          "title": "Utc",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "tzCode",
+        "name",
+        "utc"
+      ],
+      "title": "TimezoneInfo",
+      "type": "object"
+    },
     "SpatialGrouper": {
       "properties": {
         "spatial_index_name": {
@@ -845,51 +791,31 @@
     "time_range": {
       "ui:order": [
         "since",
-        "until"
+        "until",
+        "timezone",
+        "time_format"
       ]
     },
-    "Patrol and Event Types": {
-      "er_patrol_and_events_params": {
-        "ui:order": [
-          "patrol_types",
-          "event_types",
-          "status",
-          "include_null_geometry"
-        ]
-      }
-    },
-    "Trajectory Segment Filter": {
+    "er_patrol_and_events_params": {
       "ui:order": [
-        "patrol_traj",
-        "traj_rename_grouper_columns"
+        "patrol_types",
+        "event_types",
+        "status",
+        "include_null_geometry"
       ]
     },
-    "Patrol Event Location Filter": {
-      "filter_patrol_events": {
-        "ui:order": [
-          "bounding_box",
-          "filter_point_coords",
-          "reset_index"
-        ]
-      }
-    },
-    "Patrol Events and Trajectories Map": {
+    "filter_patrol_events": {
       "ui:order": [
-        "pe_rename_display_columns",
-        "patrol_traj_rename_columns"
+        "bounding_box",
+        "filter_point_coords",
+        "reset_index"
       ]
     },
-    "Time Density Map": {
+    "ltd_meshgrid": {
       "ui:order": [
-        "ltd_meshgrid",
-        "patrol_td_rename_columns"
-      ],
-      "ltd_meshgrid": {
-        "ui:order": [
-          "auto_scale_or_custom_cell_size",
-          "crs"
-        ]
-      }
+        "auto_scale_or_custom_cell_size",
+        "crs"
+      ]
     },
     "ui:order": [
       "workflow_details",
@@ -897,13 +823,12 @@
       "groupers",
       "er_client_name",
       "base_map_defs",
-      "Patrol and Event Types",
+      "er_patrol_and_events_params",
       "Trajectory Category",
-      "Trajectory Segment Filter",
-      "Patrol Event Location Filter",
-      "Patrol Events and Trajectories Map",
-      "Patrol Events Bar Chart",
-      "Time Density Map"
+      "patrol_traj",
+      "filter_patrol_events",
+      "patrol_events_bar_chart",
+      "ltd_meshgrid"
     ]
   },
   "additionalProperties": false

@@ -34,6 +34,22 @@
           "title": "Until",
           "type": "string",
           "description": "The end time"
+        },
+        "timezone": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/TimezoneInfo"
+            }
+          ],
+          "default": null,
+          "title": "Timezone"
+        },
+        "time_format": {
+          "default": "%d %b %Y %H:%M:%S",
+          "title": "Time Format",
+          "type": "string",
+          "description": "The time format",
+          "ecoscope:advanced": true
         }
       },
       "required": [
@@ -338,7 +354,7 @@
         "event_types"
       ],
       "type": "object",
-      "title": ""
+      "title": "Set patrol and patrol events params"
     },
     "set_patrol_traj_color_column": {
       "additionalProperties": false,
@@ -378,21 +394,7 @@
       },
       "required": [],
       "type": "object",
-      "title": ""
-    },
-    "traj_rename_grouper_columns": {
-      "additionalProperties": false,
-      "properties": {
-        "raise_if_not_found": {
-          "default": true,
-          "title": "Raise If Not Found",
-          "type": "boolean",
-          "description": "Whether or not to raise if var is not in value_map."
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Rename value grouper columns for Trajectories"
+      "title": "Trajectory segment filter"
     },
     "filter_patrol_events": {
       "additionalProperties": false,
@@ -433,35 +435,7 @@
       },
       "required": [],
       "type": "object",
-      "title": ""
-    },
-    "pe_rename_display_columns": {
-      "additionalProperties": false,
-      "properties": {
-        "raise_if_not_found": {
-          "default": true,
-          "title": "Raise If Not Found",
-          "type": "boolean",
-          "description": "Whether or not to raise if var is not in value_map."
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Rename patrol events columns for map tooltip display"
-    },
-    "patrol_traj_rename_columns": {
-      "additionalProperties": false,
-      "properties": {
-        "raise_if_not_found": {
-          "default": true,
-          "title": "Raise If Not Found",
-          "type": "boolean",
-          "description": "Whether or not to raise if var is not in value_map."
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Rename patrol traj columns for map tooltip display"
+      "title": "Filter patrol events"
     },
     "patrol_events_bar_chart": {
       "additionalProperties": false,
@@ -482,7 +456,7 @@
         "time_interval"
       ],
       "type": "object",
-      "title": ""
+      "title": "Draw time series bar chart"
     },
     "ltd_meshgrid": {
       "additionalProperties": false,
@@ -512,24 +486,38 @@
       },
       "required": [],
       "type": "object",
-      "title": ""
-    },
-    "patrol_td_rename_columns": {
-      "additionalProperties": false,
-      "properties": {
-        "raise_if_not_found": {
-          "default": true,
-          "title": "Raise If Not Found",
-          "type": "boolean",
-          "description": "Whether or not to raise if var is not in value_map."
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Rename patrol traj columns for map tooltip display"
+      "title": "Create meshgrid"
     }
   },
   "$defs": {
+    "TimezoneInfo": {
+      "properties": {
+        "label": {
+          "title": "Label",
+          "type": "string"
+        },
+        "tzCode": {
+          "title": "Tzcode",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "utc": {
+          "title": "Utc",
+          "type": "string"
+        }
+      },
+      "required": [
+        "label",
+        "tzCode",
+        "name",
+        "utc"
+      ],
+      "title": "TimezoneInfo",
+      "type": "object"
+    },
     "SpatialGrouper": {
       "properties": {
         "spatial_index_name": {
@@ -768,7 +756,9 @@
     "time_range": {
       "ui:order": [
         "since",
-        "until"
+        "until",
+        "timezone",
+        "time_format"
       ]
     },
     "er_patrol_and_events_params": {
@@ -801,13 +791,9 @@
       "er_patrol_and_events_params",
       "set_patrol_traj_color_column",
       "patrol_traj",
-      "traj_rename_grouper_columns",
       "filter_patrol_events",
-      "pe_rename_display_columns",
-      "patrol_traj_rename_columns",
       "patrol_events_bar_chart",
-      "ltd_meshgrid",
-      "patrol_td_rename_columns"
+      "ltd_meshgrid"
     ]
   },
   "additionalProperties": false
