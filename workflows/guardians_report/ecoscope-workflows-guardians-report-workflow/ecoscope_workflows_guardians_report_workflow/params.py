@@ -17,14 +17,6 @@ class WorkflowDetails(BaseModel):
     description: str | None = Field("", title="Workflow Description")
 
 
-class TimeRange(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    since: datetime = Field(..., description="The start time", title="Since")
-    until: datetime = Field(..., description="The end time", title="Until")
-
-
 class Url(str, Enum):
     https___tile_openstreetmap_org__z___x___y__png = (
         "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -231,39 +223,6 @@ class SetPatrolTrajColorColumn(BaseModel):
     var: str = Field(..., title="")
 
 
-class TrajRenameGrouperColumns(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    raise_if_not_found: bool | None = Field(
-        True,
-        description="Whether or not to raise if var is not in value_map.",
-        title="Raise If Not Found",
-    )
-
-
-class PeRenameDisplayColumns(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    raise_if_not_found: bool | None = Field(
-        True,
-        description="Whether or not to raise if var is not in value_map.",
-        title="Raise If Not Found",
-    )
-
-
-class PatrolTrajRenameColumns(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    raise_if_not_found: bool | None = Field(
-        True,
-        description="Whether or not to raise if var is not in value_map.",
-        title="Raise If Not Found",
-    )
-
-
 class TimeInterval(str, Enum):
     year = "year"
     month = "month"
@@ -279,15 +238,11 @@ class PatrolEventsBarChart(BaseModel):
     time_interval: TimeInterval = Field(..., title="Time Interval")
 
 
-class PatrolTdRenameColumns(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    raise_if_not_found: bool | None = Field(
-        True,
-        description="Whether or not to raise if var is not in value_map.",
-        title="Raise If Not Found",
-    )
+class TimezoneInfo(BaseModel):
+    label: str = Field(..., title="Label")
+    tzCode: str = Field(..., title="Tzcode")
+    name: str = Field(..., title="Name")
+    utc: str = Field(..., title="Utc")
 
 
 class SpatialGrouper(BaseModel):
@@ -372,6 +327,18 @@ class CustomGridCellSize(BaseModel):
         5000,
         description="Define the resolution of the raster grid (in the unit of measurement defined by the coordinate reference system set below). A smaller grid cell size provides more detail, while a larger size generalizes the data.",
         title="Custom Grid Cell Size",
+    )
+
+
+class TimeRange(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    since: datetime = Field(..., description="The start time", title="Since")
+    until: datetime = Field(..., description="The end time", title="Until")
+    timezone: TimezoneInfo | None = Field(None, title="Timezone")
+    time_format: str | None = Field(
+        "%d %b %Y %H:%M:%S", description="The time format", title="Time Format"
     )
 
 
@@ -470,23 +437,17 @@ class Params(BaseModel):
     groupers: Groupers | None = Field(None, title="Set groupers")
     er_client_name: ErClientName | None = Field(None, title="Connect to ER")
     base_map_defs: BaseMapDefs | None = Field(None, title="Configure base map layers")
-    er_patrol_and_events_params: ErPatrolAndEventsParams | None = Field(None, title="")
+    er_patrol_and_events_params: ErPatrolAndEventsParams | None = Field(
+        None, title="Set patrol and patrol events params"
+    )
     set_patrol_traj_color_column: SetPatrolTrajColorColumn | None = Field(
         None, title=""
     )
-    patrol_traj: PatrolTraj | None = Field(None, title="")
-    traj_rename_grouper_columns: TrajRenameGrouperColumns | None = Field(
-        None, title="Rename value grouper columns for Trajectories"
+    patrol_traj: PatrolTraj | None = Field(None, title="Trajectory segment filter")
+    filter_patrol_events: FilterPatrolEvents | None = Field(
+        None, title="Filter patrol events"
     )
-    filter_patrol_events: FilterPatrolEvents | None = Field(None, title="")
-    pe_rename_display_columns: PeRenameDisplayColumns | None = Field(
-        None, title="Rename patrol events columns for map tooltip display"
+    patrol_events_bar_chart: PatrolEventsBarChart | None = Field(
+        None, title="Draw time series bar chart"
     )
-    patrol_traj_rename_columns: PatrolTrajRenameColumns | None = Field(
-        None, title="Rename patrol traj columns for map tooltip display"
-    )
-    patrol_events_bar_chart: PatrolEventsBarChart | None = Field(None, title="")
-    ltd_meshgrid: LtdMeshgrid | None = Field(None, title="")
-    patrol_td_rename_columns: PatrolTdRenameColumns | None = Field(
-        None, title="Rename patrol traj columns for map tooltip display"
-    )
+    ltd_meshgrid: LtdMeshgrid | None = Field(None, title="Create meshgrid")

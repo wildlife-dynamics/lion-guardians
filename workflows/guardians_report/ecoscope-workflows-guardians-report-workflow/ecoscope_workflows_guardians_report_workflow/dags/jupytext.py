@@ -50,9 +50,6 @@ from ecoscope_workflows_core.tasks.results import (
     merge_widget_views as merge_widget_views,
 )
 from ecoscope_workflows_core.tasks.skip import (
-    all_keyed_iterables_are_skips as all_keyed_iterables_are_skips,
-)
-from ecoscope_workflows_core.tasks.skip import (
     any_dependency_skipped as any_dependency_skipped,
 )
 from ecoscope_workflows_core.tasks.skip import any_is_empty_df as any_is_empty_df
@@ -90,6 +87,9 @@ from ecoscope_workflows_ext_custom.tasks.results import (
 from ecoscope_workflows_ext_custom.tasks.spatial_ops import (
     reproject_gdf as reproject_gdf,
 )
+from ecoscope_workflows_ext_custom.tasks.transformation import (
+    drop_null_geometry as drop_null_geometry_1,
+)
 from ecoscope_workflows_ext_ecoscope.tasks.analysis import (
     calculate_linear_time_density as calculate_linear_time_density,
 )
@@ -116,7 +116,6 @@ from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     draw_pie_chart as draw_pie_chart,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.results import draw_table as draw_table
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     draw_time_series_bar_chart as draw_time_series_bar_chart,
 )
@@ -133,15 +132,6 @@ from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
     drop_nan_values_by_column as drop_nan_values_by_column,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
-    create_context_page_lg as create_context_page_lg,
-)
-from ecoscope_workflows_ext_lion_guardians.tasks import (
-    create_guardians_ctx_cover as create_guardians_ctx_cover,
-)
-from ecoscope_workflows_ext_lion_guardians.tasks import (
-    create_guardians_grouper_ctx as create_guardians_grouper_ctx,
-)
-from ecoscope_workflows_ext_lion_guardians.tasks import (
     extract_date_parts as extract_date_parts,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
@@ -150,8 +140,10 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     get_patrol_observations_from_patrols_dataframe_and_combined_params as get_patrol_observations_from_patrols_dataframe_and_combined_params,
 )
-from ecoscope_workflows_ext_lion_guardians.tasks import merge_cl_files as merge_cl_files
-from ecoscope_workflows_ext_mnc.tasks import add_totals_row as add_totals_row
+from ecoscope_workflows_ext_mnc.tasks import (
+    exclude_geom_outliers as exclude_geom_outliers,
+)
+from ecoscope_workflows_ext_mnc.tasks import pivot_df as pivot_df_1
 from ecoscope_workflows_ext_ste.tasks import (
     combine_deckgl_map_layers as combine_deckgl_map_layers,
 )
@@ -161,7 +153,10 @@ from ecoscope_workflows_ext_ste.tasks import (
 from ecoscope_workflows_ext_ste.tasks import (
     create_deckgl_layer_from_gdf as create_deckgl_layer_from_gdf,
 )
-from ecoscope_workflows_ext_ste.tasks import create_grouper_page as create_grouper_page
+from ecoscope_workflows_ext_ste.tasks import (
+    custom_view_state_from_gdf as custom_view_state_from_gdf,
+)
+from ecoscope_workflows_ext_ste.tasks import envelope_gdf as envelope_gdf
 from ecoscope_workflows_ext_ste.tasks import (
     fetch_and_persist_file as fetch_and_persist_file,
 )
@@ -210,6 +205,8 @@ workflow_details = (
 time_range_params = dict(
     since=...,
     until=...,
+    timezone=...,
+    time_format=...,
 )
 
 # %%
@@ -227,16 +224,7 @@ time_range = (
         ],
         unpack_depth=1,
     )
-    .partial(
-        time_format="%d %b %Y %H:%M:%S %Z",
-        timezone={
-            "label": "UTC",
-            "tzCode": "UTC",
-            "name": "UTC",
-            "utc_offset": "+03:00",
-        },
-        **time_range_params,
-    )
+    .partial(**time_range_params)
     .call()
 )
 
@@ -839,8 +827,8 @@ custom_amboseli_layer = (
         style={
             "get_line_color": [169, 169, 169],
             "get_fill_color": [169, 169, 169],
-            "get_line_width": 4.0,
-            "opacity": 0.75,
+            "get_line_width": 4.5,
+            "opacity": 0.55,
             "extruded": False,
             "stroked": True,
             "filled": False,
@@ -883,9 +871,9 @@ custom_hotspot_layer = (
         style={
             "get_line_color": [220, 20, 60],
             "get_fill_color": [220, 20, 60],
-            "get_radius": 6,
+            "get_radius": 2.55,
             "get_line_width": 1.95,
-            "opacity": 0.95,
+            "opacity": 0.75,
             "extruded": False,
             "stroked": True,
             "filled": True,
@@ -929,7 +917,7 @@ custom_protected_layer = (
             "get_line_color": [77, 102, 0],
             "get_fill_color": [77, 102, 0],
             "get_line_width": 1.95,
-            "opacity": 0.15,
+            "opacity": 0.35,
             "extruded": False,
             "stroked": True,
             "filled": True,
@@ -971,14 +959,14 @@ create_hotspot_text_layer = (
         geodataframe=reproject_hotspot_areas,
         layer_style={
             "get_text": "name",
-            "get_color": [0, 0, 0, 255],
-            "get_size": 1500,
+            "get_color": [20, 20, 20, 255],
+            "get_size": 1000,
             "size_units": "meters",
-            "size_min_pixels": 65,
-            "size_max_pixels": 100,
-            "size_scale": 2.05,
-            "font_family": "Calibri",
-            "font_weight": "700",
+            "size_min_pixels": 40,
+            "size_max_pixels": 75,
+            "size_scale": 1.25,
+            "font_family": "Arial",
+            "font_weight": "normal",
             "get_text_anchor": "middle",
             "get_alignment_baseline": "center",
             "billboard": True,
@@ -995,7 +983,7 @@ create_hotspot_text_layer = (
 
 
 # %% [markdown]
-# ##
+# ## Set patrol and patrol events params
 
 # %%
 # parameters
@@ -1038,7 +1026,7 @@ er_patrol_and_events_params = (
 
 
 # %% [markdown]
-# ##
+# ## Prefetch patrols
 
 # %%
 # parameters
@@ -1066,7 +1054,7 @@ prefetch_patrols = (
 
 
 # %% [markdown]
-# ##
+# ## Get patrol observations
 
 # %%
 # parameters
@@ -1100,7 +1088,7 @@ patrol_obs = (
 
 
 # %% [markdown]
-# ##
+# ## Get patrol events
 
 # %%
 # parameters
@@ -1134,7 +1122,7 @@ patrol_events = (
 
 
 # %% [markdown]
-# ##
+# ## Get event type display names from events
 
 # %%
 # parameters
@@ -1350,7 +1338,7 @@ patrol_reloc = (
 
 
 # %% [markdown]
-# ##
+# ## Trajectory segment filter
 
 # %%
 # parameters
@@ -1380,7 +1368,7 @@ patrol_traj = (
 
 
 # %% [markdown]
-# ## Add temporal index to Patrol Trajectories
+# ## Add temporal index to patrol trajectories
 
 # %%
 # parameters
@@ -1420,9 +1408,7 @@ traj_add_temporal_index = (
 # %%
 # parameters
 
-traj_rename_grouper_columns_params = dict(
-    raise_if_not_found=...,
-)
+traj_rename_grouper_columns_params = dict()
 
 # %%
 # call the task
@@ -1440,6 +1426,7 @@ traj_rename_grouper_columns = (
         unpack_depth=1,
     )
     .partial(
+        raise_if_not_found=True,
         df=traj_add_temporal_index,
         drop_columns=[],
         retain_columns=[],
@@ -1524,7 +1511,7 @@ traj_colormap = (
 
 
 # %% [markdown]
-# ##
+# ## Filter patrol events
 
 # %%
 # parameters
@@ -1561,7 +1548,7 @@ filter_patrol_events = (
 
 
 # %% [markdown]
-# ## Add temporal index to Patrol Events
+# ## Add temporal index to patrol events
 
 # %%
 # parameters
@@ -1694,19 +1681,19 @@ pe_cols_to_string = (
 
 
 # %% [markdown]
-# ## Set Combined Trajectory & Event Map Title
+# ## Set Event Map Title
 
 # %%
 # parameters
 
-set_traj_pe_map_title_params = dict()
+set_event_map_title_params = dict()
 
 # %%
 # call the task
 
 
-set_traj_pe_map_title = (
-    set_string_var.set_task_instance_id("set_traj_pe_map_title")
+set_event_map_title = (
+    set_string_var.set_task_instance_id("set_event_map_title")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -1716,7 +1703,35 @@ set_traj_pe_map_title = (
         ],
         unpack_depth=1,
     )
-    .partial(var="Trajectories & Patrol Events Map", **set_traj_pe_map_title_params)
+    .partial(var="Patrol Events Map", **set_event_map_title_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Set Combined Trajectory & Event Map Title
+
+# %%
+# parameters
+
+set_traj_map_title_params = dict()
+
+# %%
+# call the task
+
+
+set_traj_map_title = (
+    set_string_var.set_task_instance_id("set_traj_map_title")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(var="Trajectories Map", **set_traj_map_title_params)
     .call()
 )
 
@@ -1871,9 +1886,7 @@ split_pe_groups = (
 # %%
 # parameters
 
-pe_rename_display_columns_params = dict(
-    raise_if_not_found=...,
-)
+pe_rename_display_columns_params = dict()
 
 # %%
 # call the task
@@ -1891,6 +1904,7 @@ pe_rename_display_columns = (
         unpack_depth=1,
     )
     .partial(
+        raise_if_not_found=True,
         drop_columns=[],
         retain_columns=[],
         rename_columns={
@@ -1902,6 +1916,62 @@ pe_rename_display_columns = (
         **pe_rename_display_columns_params,
     )
     .mapvalues(argnames=["df"], argvalues=split_pe_groups)
+)
+
+
+# %% [markdown]
+# ## Exclude geom outliers from events
+
+# %%
+# parameters
+
+exclude_event_outliers_params = dict()
+
+# %%
+# call the task
+
+
+exclude_event_outliers = (
+    exclude_geom_outliers.set_task_instance_id("exclude_event_outliers")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(z_threshold=3, **exclude_event_outliers_params)
+    .mapvalues(argnames=["df"], argvalues=pe_rename_display_columns)
+)
+
+
+# %% [markdown]
+# ## Remove event invalid points
+
+# %%
+# parameters
+
+remove_invalid_geoms_params = dict()
+
+# %%
+# call the task
+
+
+remove_invalid_geoms = (
+    drop_null_geometry_1.set_task_instance_id("remove_invalid_geoms")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(geometry_column="geometry", **remove_invalid_geoms_params)
+    .mapvalues(argnames=["gdf"], argvalues=exclude_event_outliers)
 )
 
 
@@ -1932,14 +2002,243 @@ patrol_events_map_layers = (
     .partial(
         layer_style={
             "get_fill_color": "event_type_colormap",
-            "get_radius": 3,
-            "opacity": 0.55,
+            "get_radius": 5,
+            "opacity": 0.75,
             "stroked": True,
         },
-        legend=None,
+        legend={
+            "title": "Events recorded",
+            "label_column": "Event Type",
+            "color_column": "event_type_colormap",
+            "sort": "ascending",
+            "label_suffix": None,
+        },
         **patrol_events_map_layers_params,
     )
-    .mapvalues(argnames=["geodataframe"], argvalues=pe_rename_display_columns)
+    .mapvalues(argnames=["geodataframe"], argvalues=remove_invalid_geoms)
+)
+
+
+# %% [markdown]
+# ## Combine styled layers with events
+
+# %%
+# parameters
+
+merge_static_wevent_layers_params = dict()
+
+# %%
+# call the task
+
+
+merge_static_wevent_layers = (
+    combine_deckgl_map_layers.set_task_instance_id("merge_static_wevent_layers")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        static_layers=[
+            custom_amboseli_layer,
+            custom_hotspot_layer,
+            custom_protected_layer,
+            create_hotspot_text_layer,
+        ],
+        **merge_static_wevent_layers_params,
+    )
+    .mapvalues(argnames=["grouped_layers"], argvalues=patrol_events_map_layers)
+)
+
+
+# %% [markdown]
+# ## zoom to envelope events
+
+# %%
+# parameters
+
+envelope_events_params = dict()
+
+# %%
+# call the task
+
+
+envelope_events = (
+    envelope_gdf.set_task_instance_id("envelope_events")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(expansion_factor=1.05, **envelope_events_params)
+    .mapvalues(argnames=["gdf"], argvalues=pe_rename_display_columns)
+)
+
+
+# %% [markdown]
+# ## Get image gdf zoom extent
+
+# %%
+# parameters
+
+gdf_events_image_extent_params = dict()
+
+# %%
+# call the task
+
+
+gdf_events_image_extent = (
+    view_state_deck_gdf.set_task_instance_id("gdf_events_image_extent")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(pitch=0, bearing=0, **gdf_events_image_extent_params)
+    .mapvalues(argnames=["gdf"], argvalues=pe_rename_display_columns)
+)
+
+
+# %% [markdown]
+# ## Zoom to gdf extent
+
+# %%
+# parameters
+
+zoom_events_gdf_extent_params = dict()
+
+# %%
+# call the task
+
+
+zoom_events_gdf_extent = (
+    custom_view_state_from_gdf.set_task_instance_id("zoom_events_gdf_extent")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(max_zoom=20, **zoom_events_gdf_extent_params)
+    .mapvalues(argnames=["gdf"], argvalues=envelope_events)
+)
+
+
+# %% [markdown]
+# ## Combine event layers with view state
+
+# %%
+# parameters
+
+zip_events_with_viewstate_params = dict()
+
+# %%
+# call the task
+
+
+zip_events_with_viewstate = (
+    zip_groupbykey.set_task_instance_id("zip_events_with_viewstate")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        sequences=[merge_static_wevent_layers, zoom_events_gdf_extent],
+        **zip_events_with_viewstate_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Draw events map
+
+# %%
+# parameters
+
+draw_events_params = dict()
+
+# %%
+# call the task
+
+
+draw_events = (
+    draw_map.set_task_instance_id("draw_events")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        tile_layers=base_map_defs,
+        static=False,
+        title=None,
+        max_zoom=10,
+        widget_id=set_event_map_title,
+        legend_style={"placement": "bottom-right"},
+        **draw_events_params,
+    )
+    .mapvalues(
+        argnames=["geo_layers", "view_state"], argvalues=zip_events_with_viewstate
+    )
+)
+
+
+# %% [markdown]
+# ## Persist events html
+
+# %%
+# parameters
+
+persist_events_html_params = dict(
+    filename=...,
+)
+
+# %%
+# call the task
+
+
+persist_events_html = (
+    persist_text.set_task_instance_id("persist_events_html")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        filename_suffix="events",
+        **persist_events_html_params,
+    )
+    .mapvalues(argnames=["text"], argvalues=draw_events)
 )
 
 
@@ -1984,9 +2283,7 @@ speed_val_with_unit = (
 # %%
 # parameters
 
-patrol_traj_rename_columns_params = dict(
-    raise_if_not_found=...,
-)
+patrol_traj_rename_columns_params = dict()
 
 # %%
 # call the task
@@ -2004,8 +2301,20 @@ patrol_traj_rename_columns = (
         unpack_depth=1,
     )
     .partial(
+        raise_if_not_found=True,
         drop_columns=[],
-        retain_columns=[],
+        retain_columns=[
+            "speed_kmhr",
+            "geometry",
+            "timespan_seconds",
+            "segment_start",
+            "extra__patrol_type__display",
+            "patrol_serial_number",
+            "patrol_traj_colormap",
+            "patrol_type",
+            "patrol_status",
+            "patrol_subject",
+        ],
         rename_columns={
             "patrol_serial_number": "Patrol Serial",
             "extra__patrol_type__display": "Patrol Type",
@@ -2071,49 +2380,19 @@ patrol_traj_map_layers = (
 
 
 # %% [markdown]
-# ## Combine Trajectories and Patrol Events layers
+# ## Combine styled layers with trajectories
 
 # %%
 # parameters
 
-combined_traj_and_pe_map_layers_params = dict()
+merge_static_traj_layers_params = dict()
 
 # %%
 # call the task
 
 
-combined_traj_and_pe_map_layers = (
-    zip_groupbykey.set_task_instance_id("combined_traj_and_pe_map_layers")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            all_keyed_iterables_are_skips,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        sequences=[patrol_traj_map_layers, patrol_events_map_layers],
-        **combined_traj_and_pe_map_layers_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Combine styled layers with trajectories and events
-
-# %%
-# parameters
-
-merge_static_grouped_layers_params = dict()
-
-# %%
-# call the task
-
-
-merge_static_grouped_layers = (
-    combine_deckgl_map_layers.set_task_instance_id("merge_static_grouped_layers")
+merge_static_traj_layers = (
+    combine_deckgl_map_layers.set_task_instance_id("merge_static_traj_layers")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2130,26 +2409,110 @@ merge_static_grouped_layers = (
             custom_protected_layer,
             create_hotspot_text_layer,
         ],
-        **merge_static_grouped_layers_params,
+        **merge_static_traj_layers_params,
     )
-    .mapvalues(argnames=["grouped_layers"], argvalues=combined_traj_and_pe_map_layers)
+    .mapvalues(argnames=["grouped_layers"], argvalues=patrol_traj_map_layers)
 )
 
 
 # %% [markdown]
-# ## Global map zoom value
+# ## zoom to envelope trajs
 
 # %%
 # parameters
 
-zoom_view_state_params = dict()
+envelope_trajs_params = dict()
 
 # %%
 # call the task
 
 
-zoom_view_state = (
-    view_state_deck_gdf.set_task_instance_id("zoom_view_state")
+envelope_trajs = (
+    envelope_gdf.set_task_instance_id("envelope_trajs")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(expansion_factor=1.05, **envelope_trajs_params)
+    .mapvalues(argnames=["gdf"], argvalues=patrol_traj_rename_columns)
+)
+
+
+# %% [markdown]
+# ## Get image gdf trajs zoom extent
+
+# %%
+# parameters
+
+gdf_trajs_image_extent_params = dict()
+
+# %%
+# call the task
+
+
+gdf_trajs_image_extent = (
+    view_state_deck_gdf.set_task_instance_id("gdf_trajs_image_extent")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(pitch=0, bearing=0, **gdf_trajs_image_extent_params)
+    .mapvalues(argnames=["gdf"], argvalues=pe_rename_display_columns)
+)
+
+
+# %% [markdown]
+# ## Zoom to gdf extent
+
+# %%
+# parameters
+
+zoom_trajs_gdf_extent_params = dict()
+
+# %%
+# call the task
+
+
+zoom_trajs_gdf_extent = (
+    custom_view_state_from_gdf.set_task_instance_id("zoom_trajs_gdf_extent")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(max_zoom=20, **zoom_trajs_gdf_extent_params)
+    .mapvalues(argnames=["gdf"], argvalues=envelope_trajs)
+)
+
+
+# %% [markdown]
+# ## Combine trajectory layers with view state
+
+# %%
+# parameters
+
+zip_trajs_with_viewstate_params = dict()
+
+# %%
+# call the task
+
+
+zip_trajs_with_viewstate = (
+    zip_groupbykey.set_task_instance_id("zip_trajs_with_viewstate")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2160,7 +2523,8 @@ zoom_view_state = (
         unpack_depth=1,
     )
     .partial(
-        pitch=0, bearing=0, gdf=reproject_ambo_boundaries, **zoom_view_state_params
+        sequences=[merge_static_traj_layers, zoom_trajs_gdf_extent],
+        **zip_trajs_with_viewstate_params,
     )
     .call()
 )
@@ -2172,14 +2536,14 @@ zoom_view_state = (
 # %%
 # parameters
 
-traj_patrol_events_ecomap_params = dict()
+trajs_ecomap_params = dict()
 
 # %%
 # call the task
 
 
-traj_patrol_events_ecomap = (
-    draw_map.set_task_instance_id("traj_patrol_events_ecomap")
+trajs_ecomap = (
+    draw_map.set_task_instance_id("trajs_ecomap")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2191,28 +2555,26 @@ traj_patrol_events_ecomap = (
     )
     .partial(
         tile_layers=base_map_defs,
-        legend_style={
-            "title": set_patrol_traj_color_column,
-            "placement": "bottom-right",
-        },
+        legend_style={"placement": "bottom-right"},
         static=False,
         title=None,
         max_zoom=10,
-        widget_id=set_traj_pe_map_title,
-        view_state=zoom_view_state,
-        **traj_patrol_events_ecomap_params,
+        widget_id=set_traj_map_title,
+        **trajs_ecomap_params,
     )
-    .mapvalues(argnames=["geo_layers"], argvalues=merge_static_grouped_layers)
+    .mapvalues(
+        argnames=["geo_layers", "view_state"], argvalues=zip_trajs_with_viewstate
+    )
 )
 
 
 # %% [markdown]
-# ## Persist Patrols Ecomap as Text
+# ## Persist patrol trajectories as text
 
 # %%
 # parameters
 
-traj_pe_ecomap_html_urls_params = dict(
+traj_ecomap_html_urls_params = dict(
     filename=...,
 )
 
@@ -2220,8 +2582,8 @@ traj_pe_ecomap_html_urls_params = dict(
 # call the task
 
 
-traj_pe_ecomap_html_urls = (
-    persist_text.set_task_instance_id("traj_pe_ecomap_html_urls")
+traj_ecomap_html_urls = (
+    persist_text.set_task_instance_id("traj_ecomap_html_urls")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2233,28 +2595,28 @@ traj_pe_ecomap_html_urls = (
     )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        filename_suffix="patrols_ecomap",
-        **traj_pe_ecomap_html_urls_params,
+        filename_suffix="patrol_trajectories",
+        **traj_ecomap_html_urls_params,
     )
-    .mapvalues(argnames=["text"], argvalues=traj_patrol_events_ecomap)
+    .mapvalues(argnames=["text"], argvalues=trajs_ecomap)
 )
 
 
 # %% [markdown]
-# ## Create Map Widgets for Patrol Events
+# ## Create Map Widgets for patrol events
 
 # %%
 # parameters
 
-traj_pe_map_widgets_single_views_params = dict()
+events_map_widgets_single_views_params = dict()
 
 # %%
 # call the task
 
 
-traj_pe_map_widgets_single_views = (
+events_map_widgets_single_views = (
     create_map_widget_single_view.set_task_instance_id(
-        "traj_pe_map_widgets_single_views"
+        "events_map_widgets_single_views"
     )
     .handle_errors()
     .with_tracing()
@@ -2264,25 +2626,25 @@ traj_pe_map_widgets_single_views = (
         ],
         unpack_depth=1,
     )
-    .partial(title=set_traj_pe_map_title, **traj_pe_map_widgets_single_views_params)
-    .map(argnames=["view", "data"], argvalues=traj_pe_ecomap_html_urls)
+    .partial(title=set_event_map_title, **events_map_widgets_single_views_params)
+    .map(argnames=["view", "data"], argvalues=persist_events_html)
 )
 
 
 # %% [markdown]
-# ## Merge EcoMap Widget Views
+# ## Merge events ecomap widgets
 
 # %%
 # parameters
 
-traj_pe_grouped_map_widget_params = dict()
+events_grouped_map_widget_params = dict()
 
 # %%
 # call the task
 
 
-traj_pe_grouped_map_widget = (
-    merge_widget_views.set_task_instance_id("traj_pe_grouped_map_widget")
+events_grouped_map_widget = (
+    merge_widget_views.set_task_instance_id("events_grouped_map_widget")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2293,26 +2655,53 @@ traj_pe_grouped_map_widget = (
         unpack_depth=1,
     )
     .partial(
-        widgets=traj_pe_map_widgets_single_views, **traj_pe_grouped_map_widget_params
+        widgets=events_map_widgets_single_views, **events_grouped_map_widget_params
     )
     .call()
 )
 
 
 # %% [markdown]
-# ## Convert patrol events ecomap html to png
+# ## Create Map Widgets for patrol trajectories
 
 # %%
 # parameters
 
-patrol_html_png_params = dict()
+trajs_map_widgets_single_views_params = dict()
 
 # %%
 # call the task
 
 
-patrol_html_png = (
-    html_to_png.set_task_instance_id("patrol_html_png")
+trajs_map_widgets_single_views = (
+    create_map_widget_single_view.set_task_instance_id("trajs_map_widgets_single_views")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            never,
+        ],
+        unpack_depth=1,
+    )
+    .partial(title=set_traj_map_title, **trajs_map_widgets_single_views_params)
+    .map(argnames=["view", "data"], argvalues=traj_ecomap_html_urls)
+)
+
+
+# %% [markdown]
+# ## Merge trajectories ecomap widgets
+
+# %%
+# parameters
+
+trajs_grouped_map_widget_params = dict()
+
+# %%
+# call the task
+
+
+trajs_grouped_map_widget = (
+    merge_widget_views.set_task_instance_id("trajs_grouped_map_widget")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -2322,22 +2711,13 @@ patrol_html_png = (
         ],
         unpack_depth=1,
     )
-    .partial(
-        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        config={
-            "full_page": False,
-            "device_scale_factor": 2.0,
-            "wait_for_timeout": 30000,
-            "max_concurrent_pages": 5,
-        },
-        **patrol_html_png_params,
-    )
-    .mapvalues(argnames=["html_path"], argvalues=traj_pe_ecomap_html_urls)
+    .partial(widgets=trajs_map_widgets_single_views, **trajs_grouped_map_widget_params)
+    .call()
 )
 
 
 # %% [markdown]
-# ## Calculate Total Patrols Per Group
+# ## Patrol summary statistics
 
 # %%
 # parameters
@@ -2874,7 +3254,7 @@ max_speed_grouped_widget = (
 
 
 # %% [markdown]
-# ##
+# ## Draw time series bar chart
 
 # %%
 # parameters
@@ -3003,43 +3383,6 @@ grouped_bar_plot_widget_merge = (
         widgets=patrol_events_bar_chart_widget, **grouped_bar_plot_widget_merge_params
     )
     .call()
-)
-
-
-# %% [markdown]
-# ## Convert patrol events time series bar chart html to png
-
-# %%
-# parameters
-
-patrol_bar_chart_png_params = dict()
-
-# %%
-# call the task
-
-
-patrol_bar_chart_png = (
-    html_to_png.set_task_instance_id("patrol_bar_chart_png")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        config={
-            "full_page": False,
-            "device_scale_factor": 2.0,
-            "wait_for_timeout": 10,
-            "max_concurrent_pages": 5,
-        },
-        **patrol_bar_chart_png_params,
-    )
-    .mapvalues(argnames=["html_path"], argvalues=patrol_events_bar_chart_html_url)
 )
 
 
@@ -3174,44 +3517,7 @@ patrol_events_pie_widget_grouped = (
 
 
 # %% [markdown]
-# ## Convert patrol events pie chart html to png
-
-# %%
-# parameters
-
-patrol_pie_chart_png_params = dict()
-
-# %%
-# call the task
-
-
-patrol_pie_chart_png = (
-    html_to_png.set_task_instance_id("patrol_pie_chart_png")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        config={
-            "full_page": False,
-            "device_scale_factor": 2.0,
-            "wait_for_timeout": 10,
-            "max_concurrent_pages": 1,
-        },
-        **patrol_pie_chart_png_params,
-    )
-    .mapvalues(argnames=["html_path"], argvalues=pe_pie_chart_html_urls)
-)
-
-
-# %% [markdown]
-# ##
+# ## Create meshgrid
 
 # %%
 # parameters
@@ -3403,9 +3709,7 @@ td_colormap = (
 # %%
 # parameters
 
-patrol_td_rename_columns_params = dict(
-    raise_if_not_found=...,
-)
+patrol_td_rename_columns_params = dict()
 
 # %%
 # call the task
@@ -3423,8 +3727,9 @@ patrol_td_rename_columns = (
         unpack_depth=1,
     )
     .partial(
+        raise_if_not_found=True,
         drop_columns=[],
-        retain_columns=[],
+        retain_columns=["geometry", "percentile", "percentile_colormap"],
         rename_columns={"percentile": "Percentile"},
         **patrol_td_rename_columns_params,
     )
@@ -3485,7 +3790,7 @@ td_map_layer = (
 
 
 # %% [markdown]
-# ## Combine styled layers with trajectories and events
+# ## Combine styled layers with ltd
 
 # %%
 # parameters
@@ -3521,7 +3826,122 @@ merged_time_density_layers = (
 
 
 # %% [markdown]
-# ## Draw Ecomap from Time Density
+# ## zoom to envelope ltd
+
+# %%
+# parameters
+
+envelope_ltd_params = dict()
+
+# %%
+# call the task
+
+
+envelope_ltd = (
+    envelope_gdf.set_task_instance_id("envelope_ltd")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(expansion_factor=1.05, **envelope_ltd_params)
+    .mapvalues(argnames=["gdf"], argvalues=patrol_td_rename_columns)
+)
+
+
+# %% [markdown]
+# ## Get image gdf ltd zoom extent
+
+# %%
+# parameters
+
+gdf_ltd_image_extent_params = dict()
+
+# %%
+# call the task
+
+
+gdf_ltd_image_extent = (
+    view_state_deck_gdf.set_task_instance_id("gdf_ltd_image_extent")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(pitch=0, bearing=0, **gdf_ltd_image_extent_params)
+    .mapvalues(argnames=["gdf"], argvalues=patrol_td_rename_columns)
+)
+
+
+# %% [markdown]
+# ## Zoom to gdf extent
+
+# %%
+# parameters
+
+zoom_ltd_gdf_extent_params = dict()
+
+# %%
+# call the task
+
+
+zoom_ltd_gdf_extent = (
+    custom_view_state_from_gdf.set_task_instance_id("zoom_ltd_gdf_extent")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(max_zoom=20, **zoom_ltd_gdf_extent_params)
+    .mapvalues(argnames=["gdf"], argvalues=envelope_ltd)
+)
+
+
+# %% [markdown]
+# ## Combine ltd layers with view state
+
+# %%
+# parameters
+
+zip_ltd_with_viewstate_params = dict()
+
+# %%
+# call the task
+
+
+zip_ltd_with_viewstate = (
+    zip_groupbykey.set_task_instance_id("zip_ltd_with_viewstate")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        sequences=[merged_time_density_layers, zoom_ltd_gdf_extent],
+        **zip_ltd_with_viewstate_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Draw linear time density map
 
 # %%
 # parameters
@@ -3545,15 +3965,14 @@ td_ecomap = (
     )
     .partial(
         tile_layers=base_map_defs,
-        legend_style={"title": "Time Spent", "placement": "bottom-right"},
+        legend_style={"placement": "bottom-right"},
         static=False,
         title=None,
         max_zoom=10,
         widget_id=set_ltd_map_title,
-        view_state=zoom_view_state,
         **td_ecomap_params,
     )
-    .mapvalues(argnames=["geo_layers"], argvalues=merged_time_density_layers)
+    .mapvalues(argnames=["geo_layers", "view_state"], argvalues=zip_ltd_with_viewstate)
 )
 
 
@@ -3647,43 +4066,6 @@ td_grouped_map_widget = (
 
 
 # %% [markdown]
-# ## Convert time density ecomap html to png
-
-# %%
-# parameters
-
-td_html_png_params = dict()
-
-# %%
-# call the task
-
-
-td_html_png = (
-    html_to_png.set_task_instance_id("td_html_png")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        config={
-            "full_page": False,
-            "device_scale_factor": 2.0,
-            "wait_for_timeout": 20000,
-            "max_concurrent_pages": 1,
-        },
-        **td_html_png_params,
-    )
-    .mapvalues(argnames=["html_path"], argvalues=td_ecomap_html_url)
-)
-
-
-# %% [markdown]
 # ## Summarize patrol efforts by ranger
 
 # %%
@@ -3737,19 +4119,54 @@ summarize_ranger_patrol = (
 
 
 # %% [markdown]
-# ## Persist ranger patrol efforts
+# ## Summarize events by guardian
 
 # %%
 # parameters
 
-persist_ranger_patrol_efforts_params = dict()
+summarize_guardian_events_params = dict()
 
 # %%
 # call the task
 
 
-persist_ranger_patrol_efforts = (
-    persist_df.set_task_instance_id("persist_ranger_patrol_efforts")
+summarize_guardian_events = (
+    summarize_df.set_task_instance_id("summarize_guardian_events")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        groupby_cols=["patrol_subject"],
+        reset_index=True,
+        summary_params=[
+            {"display_name": "no_of_events", "aggregator": "nunique", "column": "id"}
+        ],
+        **summarize_guardian_events_params,
+    )
+    .mapvalues(argnames=["df"], argvalues=pe_rename_display_columns)
+)
+
+
+# %% [markdown]
+# ## Persist a csv
+
+# %%
+# parameters
+
+persist_a_params = dict()
+
+# %%
+# call the task
+
+
+persist_a = (
+    persist_df.set_task_instance_id("persist_a")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -3763,9 +4180,42 @@ persist_ranger_patrol_efforts = (
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filetype="csv",
         filename=None,
-        **persist_ranger_patrol_efforts_params,
+        **persist_a_params,
     )
     .mapvalues(argnames=["df"], argvalues=summarize_ranger_patrol)
+)
+
+
+# %% [markdown]
+# ## Persist b csv
+
+# %%
+# parameters
+
+persist_b_params = dict()
+
+# %%
+# call the task
+
+
+persist_b = (
+    persist_df.set_task_instance_id("persist_b")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        filetype="csv",
+        filename=None,
+        **persist_b_params,
+    )
+    .mapvalues(argnames=["df"], argvalues=summarize_guardian_events)
 )
 
 
@@ -3823,135 +4273,6 @@ summarized_patrol_types = (
 
 
 # %% [markdown]
-# ## Add total row on patrol types summary table
-
-# %%
-# parameters
-
-add_total_patrol_summary_params = dict()
-
-# %%
-# call the task
-
-
-add_total_patrol_summary = (
-    add_totals_row.set_task_instance_id("add_total_patrol_summary")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(label_col="patrol_type", label="Total", **add_total_patrol_summary_params)
-    .mapvalues(argnames=["df"], argvalues=summarized_patrol_types)
-)
-
-
-# %% [markdown]
-# ## Persist patrol types
-
-# %%
-# parameters
-
-persist_patrol_types_params = dict()
-
-# %%
-# call the task
-
-
-persist_patrol_types = (
-    persist_df.set_task_instance_id("persist_patrol_types")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        filetype="csv",
-        filename=None,
-        **persist_patrol_types_params,
-    )
-    .mapvalues(argnames=["df"], argvalues=add_total_patrol_summary)
-)
-
-
-# %% [markdown]
-# ## Summarize events by guardian
-
-# %%
-# parameters
-
-summarize_guardian_events_params = dict()
-
-# %%
-# call the task
-
-
-summarize_guardian_events = (
-    summarize_df.set_task_instance_id("summarize_guardian_events")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        groupby_cols=["patrol_subject"],
-        reset_index=True,
-        summary_params=[
-            {"display_name": "no_of_events", "aggregator": "nunique", "column": "id"}
-        ],
-        **summarize_guardian_events_params,
-    )
-    .mapvalues(argnames=["df"], argvalues=pe_rename_display_columns)
-)
-
-
-# %% [markdown]
-# ## Persist guardian patrol efforts
-
-# %%
-# parameters
-
-persist_gua_patrol_efforts_params = dict()
-
-# %%
-# call the task
-
-
-persist_gua_patrol_efforts = (
-    persist_df.set_task_instance_id("persist_gua_patrol_efforts")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        filetype="csv",
-        filename=None,
-        **persist_gua_patrol_efforts_params,
-    )
-    .mapvalues(argnames=["df"], argvalues=summarize_guardian_events)
-)
-
-
-# %% [markdown]
 # ## Event types grouped by events total
 
 # %%
@@ -3975,14 +4296,14 @@ summarized_event_types = (
         unpack_depth=1,
     )
     .partial(
-        groupby_cols=["event_type"],
+        groupby_cols=["event_type_display"],
         reset_index=True,
         summary_params=[
             {"display_name": "no_of_events", "aggregator": "nunique", "column": "id"}
         ],
         **summarized_event_types_params,
     )
-    .mapvalues(argnames=["df"], argvalues=pe_rename_display_columns)
+    .mapvalues(argnames=["df"], argvalues=split_pe_groups)
 )
 
 
@@ -4138,19 +4459,19 @@ persist_month_patrol_efforts = (
 
 
 # %% [markdown]
-# ## Render no of events recorded
+# ## Summarize events by guardian
 
 # %%
 # parameters
 
-no_of_events_recorded_params = dict()
+summarize_events_params = dict()
 
 # %%
 # call the task
 
 
-no_of_events_recorded = (
-    draw_table.set_task_instance_id("no_of_events_recorded")
+summarize_events = (
+    summarize_df.set_task_instance_id("summarize_events")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -4161,36 +4482,31 @@ no_of_events_recorded = (
         unpack_depth=1,
     )
     .partial(
-        widget_id="No of events recorded by guardian",
-        columns=None,
-        table_config={
-            "enable_sorting": True,
-            "enable_filtering": True,
-            "enable_download": True,
-            "hide_header": False,
-        },
-        **no_of_events_recorded_params,
+        groupby_cols=["patrol_subject", "event_type_display"],
+        reset_index=True,
+        summary_params=[
+            {"display_name": "no_of_events", "aggregator": "nunique", "column": "id"}
+        ],
+        **summarize_events_params,
     )
-    .mapvalues(argnames=["dataframe"], argvalues=summarize_guardian_events)
+    .mapvalues(argnames=["df"], argvalues=split_pe_groups)
 )
 
 
 # %% [markdown]
-# ## Persist no of events recorded table
+# ## Pivot guardian events
 
 # %%
 # parameters
 
-no_of_events_recorded_url_params = dict(
-    filename=...,
-)
+pivot_guardian_events_params = dict()
 
 # %%
 # call the task
 
 
-no_of_events_recorded_url = (
-    persist_text.set_task_instance_id("no_of_events_recorded_url")
+pivot_guardian_events = (
+    pivot_df_1.set_task_instance_id("pivot_guardian_events")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -4201,124 +4517,30 @@ no_of_events_recorded_url = (
         unpack_depth=1,
     )
     .partial(
-        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        filename_suffix="no_of_events_recorded_table",
-        **no_of_events_recorded_url_params,
+        index_col="patrol_subject",
+        columns_col="event_type_display",
+        values_col="no_of_events",
+        reset_idx=True,
+        **pivot_guardian_events_params,
     )
-    .mapvalues(argnames=["text"], argvalues=no_of_events_recorded)
+    .mapvalues(argnames=["df"], argvalues=summarize_events)
 )
 
 
 # %% [markdown]
-# ## Create table widget for no of events recorded (SV)
+# ## Persist guardian patrol efforts pivot
 
 # %%
 # parameters
 
-no_events_recorded_sv_params = dict()
+persist_pivot_patrol_efforts_params = dict()
 
 # %%
 # call the task
 
 
-no_events_recorded_sv = (
-    create_plot_widget_single_view.set_task_instance_id("no_events_recorded_sv")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(title="No of events recorded by Guardian", **no_events_recorded_sv_params)
-    .map(argnames=["view", "data"], argvalues=no_of_events_recorded_url)
-)
-
-
-# %% [markdown]
-# ## Merge no of events table widgets
-
-# %%
-# parameters
-
-no_of_events_table_widget_params = dict()
-
-# %%
-# call the task
-
-
-no_of_events_table_widget = (
-    merge_widget_views.set_task_instance_id("no_of_events_table_widget")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(widgets=no_events_recorded_sv, **no_of_events_table_widget_params)
-    .call()
-)
-
-
-# %% [markdown]
-# ## Render ranger patrols recorded
-
-# %%
-# parameters
-
-ranger_patrol_recorded_params = dict()
-
-# %%
-# call the task
-
-
-ranger_patrol_recorded = (
-    draw_table.set_task_instance_id("ranger_patrol_recorded")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        widget_id="Ranger patrols summary",
-        columns=None,
-        table_config={
-            "enable_sorting": True,
-            "enable_filtering": True,
-            "enable_download": True,
-            "hide_header": False,
-        },
-        **ranger_patrol_recorded_params,
-    )
-    .mapvalues(argnames=["dataframe"], argvalues=summarize_ranger_patrol)
-)
-
-
-# %% [markdown]
-# ## Persist ranger patrols recorded table
-
-# %%
-# parameters
-
-ranger_patrol_recorded_url_params = dict(
-    filename=...,
-)
-
-# %%
-# call the task
-
-
-ranger_patrol_recorded_url = (
-    persist_text.set_task_instance_id("ranger_patrol_recorded_url")
+persist_pivot_patrol_efforts = (
+    persist_df.set_task_instance_id("persist_pivot_patrol_efforts")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -4330,527 +4552,28 @@ ranger_patrol_recorded_url = (
     )
     .partial(
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        filename_suffix="ranger_patrol_recorded_table",
-        **ranger_patrol_recorded_url_params,
-    )
-    .mapvalues(argnames=["text"], argvalues=ranger_patrol_recorded)
-)
-
-
-# %% [markdown]
-# ## Create table widget for ranger patrols recorded (SV)
-
-# %%
-# parameters
-
-ranger_patrols_sv_params = dict()
-
-# %%
-# call the task
-
-
-ranger_patrols_sv = (
-    create_plot_widget_single_view.set_task_instance_id("ranger_patrols_sv")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(title="Ranger patrol summary by Guardian", **ranger_patrols_sv_params)
-    .map(argnames=["view", "data"], argvalues=ranger_patrol_recorded_url)
-)
-
-
-# %% [markdown]
-# ## Merge ranger patrols table widgets
-
-# %%
-# parameters
-
-ranger_patrol_table_widget_params = dict()
-
-# %%
-# call the task
-
-
-ranger_patrol_table_widget = (
-    merge_widget_views.set_task_instance_id("ranger_patrol_table_widget")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(widgets=ranger_patrols_sv, **ranger_patrol_table_widget_params)
-    .call()
-)
-
-
-# %% [markdown]
-# ## Render patrol types recorded
-
-# %%
-# parameters
-
-patrol_types_recorded_params = dict()
-
-# %%
-# call the task
-
-
-patrol_types_recorded = (
-    draw_table.set_task_instance_id("patrol_types_recorded")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        widget_id="Patrol types summary",
-        columns=None,
-        table_config={
-            "enable_sorting": True,
-            "enable_filtering": True,
-            "enable_download": True,
-            "hide_header": False,
-        },
-        **patrol_types_recorded_params,
-    )
-    .mapvalues(argnames=["dataframe"], argvalues=summarized_patrol_types)
-)
-
-
-# %% [markdown]
-# ## Persist patrol types recorded table
-
-# %%
-# parameters
-
-patrol_types_recorded_url_params = dict(
-    filename=...,
-)
-
-# %%
-# call the task
-
-
-patrol_types_recorded_url = (
-    persist_text.set_task_instance_id("patrol_types_recorded_url")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        filename_suffix="patrol_types_recorded_table",
-        **patrol_types_recorded_url_params,
-    )
-    .mapvalues(argnames=["text"], argvalues=patrol_types_recorded)
-)
-
-
-# %% [markdown]
-# ## Create table widget for patrol types recorded (SV)
-
-# %%
-# parameters
-
-patrol_types_sv_params = dict()
-
-# %%
-# call the task
-
-
-patrol_types_sv = (
-    create_plot_widget_single_view.set_task_instance_id("patrol_types_sv")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(title="Patrol types summary", **patrol_types_sv_params)
-    .map(argnames=["view", "data"], argvalues=patrol_types_recorded_url)
-)
-
-
-# %% [markdown]
-# ## Merge patrol types table widgets
-
-# %%
-# parameters
-
-patrol_types_table_widget_params = dict()
-
-# %%
-# call the task
-
-
-patrol_types_table_widget = (
-    merge_widget_views.set_task_instance_id("patrol_types_table_widget")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(widgets=patrol_types_sv, **patrol_types_table_widget_params)
-    .call()
-)
-
-
-# %% [markdown]
-# ## Render event types recorded
-
-# %%
-# parameters
-
-event_types_recorded_params = dict()
-
-# %%
-# call the task
-
-
-event_types_recorded = (
-    draw_table.set_task_instance_id("event_types_recorded")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        widget_id="Event types summary",
-        columns=None,
-        table_config={
-            "enable_sorting": True,
-            "enable_filtering": True,
-            "enable_download": True,
-            "hide_header": False,
-        },
-        **event_types_recorded_params,
-    )
-    .mapvalues(argnames=["dataframe"], argvalues=summarized_event_types)
-)
-
-
-# %% [markdown]
-# ## Persist event types recorded table
-
-# %%
-# parameters
-
-event_types_recorded_url_params = dict(
-    filename=...,
-)
-
-# %%
-# call the task
-
-
-event_types_recorded_url = (
-    persist_text.set_task_instance_id("event_types_recorded_url")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        filename_suffix="event_types_recorded_table",
-        **event_types_recorded_url_params,
-    )
-    .mapvalues(argnames=["text"], argvalues=event_types_recorded)
-)
-
-
-# %% [markdown]
-# ## Create table widget for event types recorded (SV)
-
-# %%
-# parameters
-
-event_types_sv_params = dict()
-
-# %%
-# call the task
-
-
-event_types_sv = (
-    create_plot_widget_single_view.set_task_instance_id("event_types_sv")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(title="Event types summary", **event_types_sv_params)
-    .map(argnames=["view", "data"], argvalues=event_types_recorded_url)
-)
-
-
-# %% [markdown]
-# ## Merge event types table widgets
-
-# %%
-# parameters
-
-event_types_table_widget_params = dict()
-
-# %%
-# call the task
-
-
-event_types_table_widget = (
-    merge_widget_views.set_task_instance_id("event_types_table_widget")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(widgets=event_types_sv, **event_types_table_widget_params)
-    .call()
-)
-
-
-# %% [markdown]
-# ## Create context cover page
-
-# %%
-# parameters
-
-context_cover_page_params = dict()
-
-# %%
-# call the task
-
-
-context_cover_page = (
-    create_guardians_ctx_cover.set_task_instance_id("context_cover_page")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        report_period=time_range, prepared_by="Ecoscope", **context_cover_page_params
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Persist context page for guardians report
-
-# %%
-# parameters
-
-persist_ctx_page_params = dict()
-
-# %%
-# call the task
-
-
-persist_ctx_page = (
-    create_context_page_lg.set_task_instance_id("persist_ctx_page")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        template_path=persist_cover_page,
-        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        context=context_cover_page,
-        filename="context_page.docx",
-        **persist_ctx_page_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Group context values together
-
-# %%
-# parameters
-
-group_context_values_params = dict()
-
-# %%
-# call the task
-
-
-group_context_values = (
-    zip_groupbykey.set_task_instance_id("group_context_values")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        sequences=[
-            split_patrol_traj_groups,
-            total_patrols,
-            total_patrol_dist,
-            total_patrol_time,
-            patrol_html_png,
-            td_html_png,
-            patrol_pie_chart_png,
-            patrol_bar_chart_png,
-            persist_gua_patrol_efforts,
-            persist_event_tefforts,
-            persist_month_patrol_efforts,
-            persist_ranger_patrol_efforts,
-        ],
-        **group_context_values_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Create individual patrol context page
-
-# %%
-# parameters
-
-indv_cl_ctx_params = dict()
-
-# %%
-# call the task
-
-
-indv_cl_ctx = (
-    create_guardians_grouper_ctx.set_task_instance_id("indv_cl_ctx")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(grouper_name=groupers, **indv_cl_ctx_params)
-    .mapvalues(
-        argnames=[
-            "df",
-            "total_patrols",
-            "total_distance",
-            "total_time",
-            "patrol_events_track_map",
-            "patrol_time_density_map",
-            "events_pie_chart",
-            "events_time_series_bar_chart",
-            "patrol_events",
-            "event_efforts",
-            "month_stats",
-            "guardian_stats",
-        ],
-        argvalues=group_context_values,
-    )
-)
-
-
-# %% [markdown]
-# ## Create grouper word doc
-
-# %%
-# parameters
-
-create_grouper_doc_params = dict()
-
-# %%
-# call the task
-
-
-create_grouper_doc = (
-    create_grouper_page.set_task_instance_id("create_grouper_doc")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        template_path=persist_indv_subject_page,
-        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        filetype="csv",
         filename=None,
-        validate_images=True,
-        box_h_cm=6.5,
-        box_w_cm=11.11,
-        **create_grouper_doc_params,
+        **persist_pivot_patrol_efforts_params,
     )
-    .mapvalues(argnames=["context"], argvalues=indv_cl_ctx)
+    .mapvalues(argnames=["df"], argvalues=pivot_guardian_events)
 )
 
 
 # %% [markdown]
-# ## Merge word docs
+# ## Persist guardian patrol efforts
 
 # %%
 # parameters
 
-merge_docx_params = dict()
+persist_gua_patrol_efforts_params = dict()
 
 # %%
 # call the task
 
 
-merge_docx = (
-    merge_cl_files.set_task_instance_id("merge_docx")
+persist_gua_patrol_efforts = (
+    persist_df.set_task_instance_id("persist_gua_patrol_efforts")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -4861,13 +4584,86 @@ merge_docx = (
         unpack_depth=1,
     )
     .partial(
-        cover_page_path=persist_ctx_page,
-        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        context_page_items=create_grouper_doc,
+        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        filetype="csv",
         filename=None,
-        **merge_docx_params,
+        **persist_gua_patrol_efforts_params,
     )
-    .call()
+    .mapvalues(argnames=["df"], argvalues=summarize_events)
+)
+
+
+# %% [markdown]
+# ## Convert patrol events pie chart html to png
+
+# %%
+# parameters
+
+patrol_pie_chart_png_params = dict()
+
+# %%
+# call the task
+
+
+patrol_pie_chart_png = (
+    html_to_png.set_task_instance_id("patrol_pie_chart_png")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        config={
+            "full_page": False,
+            "device_scale_factor": 2.0,
+            "wait_for_timeout": 10,
+            "max_concurrent_pages": 1,
+        },
+        **patrol_pie_chart_png_params,
+    )
+    .mapvalues(argnames=["html_path"], argvalues=pe_pie_chart_html_urls)
+)
+
+
+# %% [markdown]
+# ## Convert patrol events time series bar chart html to png
+
+# %%
+# parameters
+
+patrol_bar_chart_png_params = dict()
+
+# %%
+# call the task
+
+
+patrol_bar_chart_png = (
+    html_to_png.set_task_instance_id("patrol_bar_chart_png")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        config={
+            "full_page": False,
+            "device_scale_factor": 2.0,
+            "wait_for_timeout": 10,
+            "max_concurrent_pages": 5,
+        },
+        **patrol_bar_chart_png_params,
+    )
+    .mapvalues(argnames=["html_path"], argvalues=patrol_events_bar_chart_html_url)
 )
 
 
@@ -4898,21 +4694,7 @@ patrol_dashboard = (
     )
     .partial(
         details=workflow_details,
-        widgets=[
-            traj_pe_grouped_map_widget,
-            td_grouped_map_widget,
-            grouped_bar_plot_widget_merge,
-            patrol_events_pie_widget_grouped,
-            total_patrols_grouped_sv_widget,
-            patrol_time_grouped_widget,
-            patrol_dist_grouped_widget,
-            avg_speed_grouped_widget,
-            max_speed_grouped_widget,
-            no_of_events_table_widget,
-            ranger_patrol_table_widget,
-            patrol_types_table_widget,
-            event_types_table_widget,
-        ],
+        widgets=[],
         groupers=groupers,
         time_range=time_range,
         **patrol_dashboard_params,
