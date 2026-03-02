@@ -116,7 +116,6 @@ from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     draw_pie_chart as draw_pie_chart,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.results import draw_table as draw_table
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     draw_time_series_bar_chart as draw_time_series_bar_chart,
 )
@@ -4875,134 +4874,6 @@ patrol_bar_chart_png = (
 
 
 # %% [markdown]
-# ## Render pivot patrol efforts
-
-# %%
-# parameters
-
-pivot_guardian_efforts_params = dict()
-
-# %%
-# call the task
-
-
-pivot_guardian_efforts = (
-    draw_table.set_task_instance_id("pivot_guardian_efforts")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        widget_id="Guardian efforts",
-        columns=None,
-        table_config={
-            "enable_sorting": True,
-            "enable_filtering": True,
-            "enable_download": True,
-            "hide_header": False,
-        },
-        **pivot_guardian_efforts_params,
-    )
-    .mapvalues(argnames=["dataframe"], argvalues=persist_pivot_patrol_efforts)
-)
-
-
-# %% [markdown]
-# ## Persist guardian patrol efforts
-
-# %%
-# parameters
-
-pivot_guardian_efforts_url_params = dict(
-    filename=...,
-)
-
-# %%
-# call the task
-
-
-pivot_guardian_efforts_url = (
-    persist_text.set_task_instance_id("pivot_guardian_efforts_url")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        filename_suffix="guardian_efforts_table",
-        **pivot_guardian_efforts_url_params,
-    )
-    .mapvalues(argnames=["text"], argvalues=pivot_guardian_efforts)
-)
-
-
-# %% [markdown]
-# ## Create table widget for no of events recorded (SV)
-
-# %%
-# parameters
-
-no_events_recorded_sv_params = dict()
-
-# %%
-# call the task
-
-
-no_events_recorded_sv = (
-    create_plot_widget_single_view.set_task_instance_id("no_events_recorded_sv")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(title="Guardian Efforts", **no_events_recorded_sv_params)
-    .map(argnames=["view", "data"], argvalues=pivot_guardian_efforts_url)
-)
-
-
-# %% [markdown]
-# ## Merge no of events table widgets
-
-# %%
-# parameters
-
-no_of_events_table_widget_params = dict()
-
-# %%
-# call the task
-
-
-no_of_events_table_widget = (
-    merge_widget_views.set_task_instance_id("no_of_events_table_widget")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(widgets=no_events_recorded_sv, **no_of_events_table_widget_params)
-    .call()
-)
-
-
-# %% [markdown]
 # ## Create Dashboard with Patrol Map Widgets
 
 # %%
@@ -5040,7 +4911,6 @@ patrol_dashboard = (
             grouped_bar_plot_widget_merge,
             patrol_events_pie_widget_grouped,
             td_grouped_map_widget,
-            no_of_events_table_widget,
         ],
         groupers=groupers,
         time_range=time_range,

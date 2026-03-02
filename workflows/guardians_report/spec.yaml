@@ -1695,48 +1695,6 @@ workflow:
       argnames: html_path
       argvalues: ${{ workflow.patrol_events_bar_chart_html_url.return }}
 
-  - name: Render pivot patrol efforts
-    id: pivot_guardian_efforts
-    task: draw_table 
-    partial:
-      widget_id: "Guardian efforts"
-      columns: null
-      table_config: 
-        enable_sorting: true
-        enable_filtering: true 
-        enable_download: true
-        hide_header: false
-    mapvalues: 
-      argnames: dataframe 
-      argvalues: ${{ workflow.persist_pivot_patrol_efforts.return }}
-  
-  - name: Persist guardian patrol efforts
-    id: pivot_guardian_efforts_url
-    task: persist_text
-    partial:
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      filename_suffix: "guardian_efforts_table"
-    mapvalues:
-      argnames: text
-      argvalues: ${{ workflow.pivot_guardian_efforts.return }}
-
-  - name: Create table widget for no of events recorded (SV)
-    id: no_events_recorded_sv
-    task: create_plot_widget_single_view
-    partial:
-      title: "Guardian Efforts"
-    map:
-      argnames:
-        - view
-        - data
-      argvalues: ${{ workflow.pivot_guardian_efforts_url.return }}
-
-  - name: Merge no of events table widgets
-    id: no_of_events_table_widget
-    task: merge_widget_views
-    partial:
-      widgets: ${{ workflow.no_events_recorded_sv.return }}
-
   - name: Create Dashboard with Patrol Map Widgets
     id: patrol_dashboard
     task: gather_dashboard
@@ -1755,8 +1713,6 @@ workflow:
 
         - ${{ workflow.patrol_events_pie_widget_grouped.return }}
         - ${{ workflow.td_grouped_map_widget.return }}
-
-        - ${{ workflow.no_of_events_table_widget.return }}
 
       groupers: ${{ workflow.groupers.return }}
       time_range: ${{ workflow.time_range.return}}

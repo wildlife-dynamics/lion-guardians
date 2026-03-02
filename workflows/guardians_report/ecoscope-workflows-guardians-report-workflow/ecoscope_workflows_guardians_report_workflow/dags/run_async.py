@@ -107,7 +107,6 @@ from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     draw_pie_chart as draw_pie_chart,
 )
-from ecoscope_workflows_ext_ecoscope.tasks.results import draw_table as draw_table
 from ecoscope_workflows_ext_ecoscope.tasks.results import (
     draw_time_series_bar_chart as draw_time_series_bar_chart,
 )
@@ -358,10 +357,6 @@ def main(params: Params):
         "persist_gua_patrol_efforts": ["summarize_events"],
         "patrol_pie_chart_png": ["pe_pie_chart_html_urls"],
         "patrol_bar_chart_png": ["patrol_events_bar_chart_html_url"],
-        "pivot_guardian_efforts": ["persist_pivot_patrol_efforts"],
-        "pivot_guardian_efforts_url": ["pivot_guardian_efforts"],
-        "no_events_recorded_sv": ["pivot_guardian_efforts_url"],
-        "no_of_events_table_widget": ["no_events_recorded_sv"],
         "patrol_dashboard": [
             "workflow_details",
             "events_grouped_map_widget",
@@ -374,7 +369,6 @@ def main(params: Params):
             "grouped_bar_plot_widget_merge",
             "patrol_events_pie_widget_grouped",
             "td_grouped_map_widget",
-            "no_of_events_table_widget",
             "groupers",
             "time_range",
         ],
@@ -3916,102 +3910,6 @@ def main(params: Params):
                 "argvalues": DependsOn("patrol_events_bar_chart_html_url"),
             },
         ),
-        "pivot_guardian_efforts": Node(
-            async_task=draw_table.validate()
-            .set_task_instance_id("pivot_guardian_efforts")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "widget_id": "Guardian efforts",
-                "columns": None,
-                "table_config": {
-                    "enable_sorting": True,
-                    "enable_filtering": True,
-                    "enable_download": True,
-                    "hide_header": False,
-                },
-            }
-            | (params_dict.get("pivot_guardian_efforts") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["dataframe"],
-                "argvalues": DependsOn("persist_pivot_patrol_efforts"),
-            },
-        ),
-        "pivot_guardian_efforts_url": Node(
-            async_task=persist_text.validate()
-            .set_task_instance_id("pivot_guardian_efforts_url")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "filename_suffix": "guardian_efforts_table",
-            }
-            | (params_dict.get("pivot_guardian_efforts_url") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["text"],
-                "argvalues": DependsOn("pivot_guardian_efforts"),
-            },
-        ),
-        "no_events_recorded_sv": Node(
-            async_task=create_plot_widget_single_view.validate()
-            .set_task_instance_id("no_events_recorded_sv")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "title": "Guardian Efforts",
-            }
-            | (params_dict.get("no_events_recorded_sv") or {}),
-            method="map",
-            kwargs={
-                "argnames": ["view", "data"],
-                "argvalues": DependsOn("pivot_guardian_efforts_url"),
-            },
-        ),
-        "no_of_events_table_widget": Node(
-            async_task=merge_widget_views.validate()
-            .set_task_instance_id("no_of_events_table_widget")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "widgets": DependsOn("no_events_recorded_sv"),
-            }
-            | (params_dict.get("no_of_events_table_widget") or {}),
-            method="call",
-        ),
         "patrol_dashboard": Node(
             async_task=gather_dashboard.validate()
             .set_task_instance_id("patrol_dashboard")
@@ -4038,7 +3936,6 @@ def main(params: Params):
                     DependsOn("grouped_bar_plot_widget_merge"),
                     DependsOn("patrol_events_pie_widget_grouped"),
                     DependsOn("td_grouped_map_widget"),
-                    DependsOn("no_of_events_table_widget"),
                 ],
                 "groupers": DependsOn("groupers"),
                 "time_range": DependsOn("time_range"),
