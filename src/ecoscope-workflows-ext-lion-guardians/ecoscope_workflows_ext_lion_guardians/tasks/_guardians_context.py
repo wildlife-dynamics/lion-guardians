@@ -210,6 +210,13 @@ def guardians_ctx(
 
     print(f"grouper_value: {grouper_value}")
 
+    def ensure_dataframe(value):
+        if value is None:
+            return None
+        if isinstance(value, str):
+            return pd.read_csv(value)
+        return value
+
     events_map = unwrap_skip(events_map)
     patrols_trajectories_map = unwrap_skip(patrols_trajectories_map)
     time_density_map = unwrap_skip(time_density_map)
@@ -222,6 +229,12 @@ def guardians_ctx(
     patrol_subject_events_csv = unwrap_skip(patrol_subject_events_csv)
     patrol_subject_stats_csv = unwrap_skip(patrol_subject_stats_csv)
     events_recorded_csv = unwrap_skip(events_recorded_csv)
+
+    monthly_csv = ensure_dataframe(monthly_csv)
+    patrol_subject_pivot_csv = ensure_dataframe(patrol_subject_pivot_csv)
+    patrol_subject_events_csv = ensure_dataframe(patrol_subject_events_csv)
+    patrol_subject_stats_csv = ensure_dataframe(patrol_subject_stats_csv)
+    events_recorded_csv = ensure_dataframe(events_recorded_csv)
 
     merged = patrol_subject_stats_csv.merge(
         patrol_subject_events_csv, left_on="patrol_subject", right_on="patrol_subject"

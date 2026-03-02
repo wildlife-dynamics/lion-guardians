@@ -123,6 +123,7 @@ from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
     drop_nan_values_by_column as drop_nan_values_by_column,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
+<<<<<<< HEAD
     create_context_page_lg as create_context_page_lg,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
@@ -133,6 +134,9 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     generate_guardians_report as generate_guardians_report,
+=======
+    extract_date_parts as extract_date_parts,
+>>>>>>> main
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     get_event_type_display_names_from_events_aliased as get_event_type_display_names_from_events_aliased,
@@ -140,15 +144,21 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     get_patrol_observations_from_patrols_dataframe_and_combined_params as get_patrol_observations_from_patrols_dataframe_and_combined_params,
 )
+<<<<<<< HEAD
 from ecoscope_workflows_ext_lion_guardians.tasks import guardians_ctx as guardians_ctx
 from ecoscope_workflows_ext_lion_guardians.tasks import merge_cl_files as merge_cl_files
+=======
+>>>>>>> main
 from ecoscope_workflows_ext_mnc.tasks import (
     exclude_geom_outliers as exclude_geom_outliers,
 )
 from ecoscope_workflows_ext_mnc.tasks import pivot_df as pivot_df_1
+<<<<<<< HEAD
 from ecoscope_workflows_ext_ste.tasks import (
     adjust_map_zoom_and_screenshot as adjust_map_zoom_and_screenshot,
 )
+=======
+>>>>>>> main
 from ecoscope_workflows_ext_ste.tasks import (
     combine_deckgl_map_layers as combine_deckgl_map_layers,
 )
@@ -254,8 +264,11 @@ def main(params: Params):
             "zip_events_with_viewstate",
         ],
         "persist_events_html": ["draw_events"],
+<<<<<<< HEAD
         "zip_events_value": ["gdf_events_image_extent", "persist_events_html"],
         "generate_events_png": ["zip_events_value"],
+=======
+>>>>>>> main
         "speed_val_with_unit": ["split_patrol_traj_groups"],
         "patrol_traj_rename_columns": ["speed_val_with_unit"],
         "patrol_traj_map_layers": [
@@ -282,8 +295,11 @@ def main(params: Params):
             "zip_trajs_with_viewstate",
         ],
         "traj_ecomap_html_urls": ["trajs_ecomap"],
+<<<<<<< HEAD
         "zip_trajs_value": ["gdf_trajs_image_extent", "traj_ecomap_html_urls"],
         "generate_trajs_png": ["zip_trajs_value"],
+=======
+>>>>>>> main
         "events_map_widgets_single_views": [
             "set_event_map_title",
             "persist_events_html",
@@ -354,8 +370,13 @@ def main(params: Params):
         "td_grouped_map_widget": ["td_map_widget"],
         "summarize_ranger_patrol": ["split_patrol_traj_groups"],
         "summarize_guardian_events": ["pe_rename_display_columns"],
+<<<<<<< HEAD
         "persist_guardian_patrol": ["summarize_ranger_patrol"],
         "persist_guardian_events": ["summarize_guardian_events"],
+=======
+        "persist_a": ["summarize_ranger_patrol"],
+        "persist_b": ["summarize_guardian_events"],
+>>>>>>> main
         "summarized_patrol_types": ["split_patrol_traj_groups"],
         "summarized_event_types": ["split_pe_groups"],
         "persist_event_tefforts": ["summarized_event_types"],
@@ -368,6 +389,7 @@ def main(params: Params):
         "persist_gua_patrol_efforts": ["summarize_events"],
         "patrol_pie_chart_png": ["pe_pie_chart_html_urls"],
         "patrol_bar_chart_png": ["patrol_events_bar_chart_html_url"],
+<<<<<<< HEAD
         "context_cover_page": ["time_range"],
         "persist_ctx_page": ["persist_cover_page", "context_cover_page"],
         "group_context_values": [
@@ -404,6 +426,9 @@ def main(params: Params):
             "groupers",
             "time_range",
         ],
+=======
+        "patrol_dashboard": ["workflow_details", "groupers", "time_range"],
+>>>>>>> main
     }
 
     nodes = {
@@ -1866,6 +1891,7 @@ def main(params: Params):
                 "argvalues": DependsOn("draw_events"),
             },
         ),
+<<<<<<< HEAD
         "zip_events_value": Node(
             async_task=zip_groupbykey.validate()
             .set_task_instance_id("zip_events_value")
@@ -1917,6 +1943,8 @@ def main(params: Params):
                 "argvalues": DependsOn("zip_events_value"),
             },
         ),
+=======
+>>>>>>> main
         "speed_val_with_unit": Node(
             async_task=map_values_with_unit.validate()
             .set_task_instance_id("speed_val_with_unit")
@@ -2203,9 +2231,37 @@ def main(params: Params):
                 "argvalues": DependsOn("trajs_ecomap"),
             },
         ),
+<<<<<<< HEAD
         "zip_trajs_value": Node(
             async_task=zip_groupbykey.validate()
             .set_task_instance_id("zip_trajs_value")
+=======
+        "events_map_widgets_single_views": Node(
+            async_task=create_map_widget_single_view.validate()
+            .set_task_instance_id("events_map_widgets_single_views")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    never,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "title": DependsOn("set_event_map_title"),
+            }
+            | (params_dict.get("events_map_widgets_single_views") or {}),
+            method="map",
+            kwargs={
+                "argnames": ["view", "data"],
+                "argvalues": DependsOn("persist_events_html"),
+            },
+        ),
+        "events_grouped_map_widget": Node(
+            async_task=merge_widget_views.validate()
+            .set_task_instance_id("events_grouped_map_widget")
+>>>>>>> main
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -2217,6 +2273,7 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
+<<<<<<< HEAD
                 "sequences": [
                     DependsOn("gdf_trajs_image_extent"),
                     DependsOn("traj_ecomap_html_urls"),
@@ -2228,6 +2285,38 @@ def main(params: Params):
         "generate_trajs_png": Node(
             async_task=adjust_map_zoom_and_screenshot.validate()
             .set_task_instance_id("generate_trajs_png")
+=======
+                "widgets": DependsOn("events_map_widgets_single_views"),
+            }
+            | (params_dict.get("events_grouped_map_widget") or {}),
+            method="call",
+        ),
+        "trajs_map_widgets_single_views": Node(
+            async_task=create_map_widget_single_view.validate()
+            .set_task_instance_id("trajs_map_widgets_single_views")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    never,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "title": DependsOn("set_traj_map_title"),
+            }
+            | (params_dict.get("trajs_map_widgets_single_views") or {}),
+            method="map",
+            kwargs={
+                "argnames": ["view", "data"],
+                "argvalues": DependsOn("traj_ecomap_html_urls"),
+            },
+        ),
+        "trajs_grouped_map_widget": Node(
+            async_task=merge_widget_views.validate()
+            .set_task_instance_id("trajs_grouped_map_widget")
+>>>>>>> main
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -2239,6 +2328,7 @@ def main(params: Params):
             )
             .set_executor("lithops"),
             partial={
+<<<<<<< HEAD
                 "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "screenshot_config": {
                     "full_page": False,
@@ -2253,6 +2343,12 @@ def main(params: Params):
                 "argnames": ["view_state", "input_file"],
                 "argvalues": DependsOn("zip_trajs_value"),
             },
+=======
+                "widgets": DependsOn("trajs_map_widgets_single_views"),
+            }
+            | (params_dict.get("trajs_grouped_map_widget") or {}),
+            method="call",
+>>>>>>> main
         ),
         "events_map_widgets_single_views": Node(
             async_task=create_map_widget_single_view.validate()
@@ -3519,9 +3615,15 @@ def main(params: Params):
                 "argvalues": DependsOn("pe_rename_display_columns"),
             },
         ),
+<<<<<<< HEAD
         "persist_guardian_patrol": Node(
             async_task=persist_df.validate()
             .set_task_instance_id("persist_guardian_patrol")
+=======
+        "persist_a": Node(
+            async_task=persist_df.validate()
+            .set_task_instance_id("persist_a")
+>>>>>>> main
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -3537,16 +3639,26 @@ def main(params: Params):
                 "filetype": "csv",
                 "filename": None,
             }
+<<<<<<< HEAD
             | (params_dict.get("persist_guardian_patrol") or {}),
+=======
+            | (params_dict.get("persist_a") or {}),
+>>>>>>> main
             method="mapvalues",
             kwargs={
                 "argnames": ["df"],
                 "argvalues": DependsOn("summarize_ranger_patrol"),
             },
         ),
+<<<<<<< HEAD
         "persist_guardian_events": Node(
             async_task=persist_df.validate()
             .set_task_instance_id("persist_guardian_events")
+=======
+        "persist_b": Node(
+            async_task=persist_df.validate()
+            .set_task_instance_id("persist_b")
+>>>>>>> main
             .handle_errors()
             .with_tracing()
             .skipif(
@@ -3562,7 +3674,11 @@ def main(params: Params):
                 "filetype": "csv",
                 "filename": None,
             }
+<<<<<<< HEAD
             | (params_dict.get("persist_guardian_events") or {}),
+=======
+            | (params_dict.get("persist_b") or {}),
+>>>>>>> main
             method="mapvalues",
             kwargs={
                 "argnames": ["df"],
@@ -3850,6 +3966,7 @@ def main(params: Params):
             partial={
                 "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "filetype": "csv",
+<<<<<<< HEAD
                 "filename": None,
             }
             | (params_dict.get("persist_pivot_patrol_efforts") or {}),
@@ -4095,10 +4212,99 @@ def main(params: Params):
                 "cover_page_path": DependsOn("persist_ctx_page"),
                 "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
                 "context_page_items": DependsOn("create_grouper_doc"),
+=======
+>>>>>>> main
                 "filename": None,
             }
-            | (params_dict.get("merge_docx") or {}),
-            method="call",
+            | (params_dict.get("persist_pivot_patrol_efforts") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("pivot_guardian_events"),
+            },
+        ),
+        "persist_gua_patrol_efforts": Node(
+            async_task=persist_df.validate()
+            .set_task_instance_id("persist_gua_patrol_efforts")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "root_path": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "filetype": "csv",
+                "filename": None,
+            }
+            | (params_dict.get("persist_gua_patrol_efforts") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["df"],
+                "argvalues": DependsOn("summarize_events"),
+            },
+        ),
+        "patrol_pie_chart_png": Node(
+            async_task=html_to_png.validate()
+            .set_task_instance_id("patrol_pie_chart_png")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "config": {
+                    "full_page": False,
+                    "device_scale_factor": 2.0,
+                    "wait_for_timeout": 10,
+                    "max_concurrent_pages": 1,
+                },
+            }
+            | (params_dict.get("patrol_pie_chart_png") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["html_path"],
+                "argvalues": DependsOn("pe_pie_chart_html_urls"),
+            },
+        ),
+        "patrol_bar_chart_png": Node(
+            async_task=html_to_png.validate()
+            .set_task_instance_id("patrol_bar_chart_png")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+                "config": {
+                    "full_page": False,
+                    "device_scale_factor": 2.0,
+                    "wait_for_timeout": 10,
+                    "max_concurrent_pages": 5,
+                },
+            }
+            | (params_dict.get("patrol_bar_chart_png") or {}),
+            method="mapvalues",
+            kwargs={
+                "argnames": ["html_path"],
+                "argvalues": DependsOn("patrol_events_bar_chart_html_url"),
+            },
         ),
         "patrol_dashboard": Node(
             async_task=gather_dashboard.validate()
@@ -4115,6 +4321,7 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "details": DependsOn("workflow_details"),
+<<<<<<< HEAD
                 "widgets": [
                     DependsOn("events_grouped_map_widget"),
                     DependsOn("trajs_grouped_map_widget"),
@@ -4127,6 +4334,8 @@ def main(params: Params):
                     DependsOn("patrol_events_pie_widget_grouped"),
                     DependsOn("td_grouped_map_widget"),
                 ],
+=======
+>>>>>>> main
                 "groupers": DependsOn("groupers"),
                 "time_range": DependsOn("time_range"),
             }
