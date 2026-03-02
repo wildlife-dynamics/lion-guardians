@@ -144,7 +144,16 @@ from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
     drop_nan_values_by_column as drop_nan_values_by_column,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
+    create_context_page_lg as create_context_page_lg,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    create_guardians_ctx_cover as create_guardians_ctx_cover,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
     extract_date_parts as extract_date_parts,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    generate_guardians_report as generate_guardians_report,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     get_event_type_display_names_from_events_aliased as get_event_type_display_names_from_events_aliased,
@@ -152,6 +161,8 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     get_patrol_observations_from_patrols_dataframe_and_combined_params as get_patrol_observations_from_patrols_dataframe_and_combined_params,
 )
+from ecoscope_workflows_ext_lion_guardians.tasks import guardians_ctx as guardians_ctx
+from ecoscope_workflows_ext_lion_guardians.tasks import merge_cl_files as merge_cl_files
 from ecoscope_workflows_ext_mnc.tasks import (
     exclude_geom_outliers as exclude_geom_outliers,
 )
@@ -3246,6 +3257,159 @@ def main(params: Params):
             **(params_dict.get("patrol_bar_chart_png") or {}),
         )
         .mapvalues(argnames=["html_path"], argvalues=patrol_events_bar_chart_html_url)
+    )
+
+    context_cover_page = (
+        create_guardians_ctx_cover.validate()
+        .set_task_instance_id("context_cover_page")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            report_period=time_range,
+            prepared_by="Ecoscope",
+            **(params_dict.get("context_cover_page") or {}),
+        )
+        .call()
+    )
+
+    persist_ctx_page = (
+        create_context_page_lg.validate()
+        .set_task_instance_id("persist_ctx_page")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            template_path=persist_cover_page,
+            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            context=context_cover_page,
+            filename="context_page.docx",
+            **(params_dict.get("persist_ctx_page") or {}),
+        )
+        .call()
+    )
+
+    group_context_values = (
+        zip_groupbykey.validate()
+        .set_task_instance_id("group_context_values")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            sequences=[
+                generate_events_png,
+                generate_trajs_png,
+                generate_ltd_png,
+                patrol_pie_chart_png,
+                patrol_bar_chart_png,
+                persist_month_patrol_efforts,
+                persist_pivot_patrol_efforts,
+                persist_guardian_events,
+                persist_guardian_patrol,
+                persist_event_tefforts,
+                split_patrol_traj_groups,
+            ],
+            **(params_dict.get("group_context_values") or {}),
+        )
+        .call()
+    )
+
+    individual_patrol_ctx_page = (
+        guardians_ctx.validate()
+        .set_task_instance_id("individual_patrol_ctx_page")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            grouper_name=groupers,
+            **(params_dict.get("individual_patrol_ctx_page") or {}),
+        )
+        .mapvalues(
+            argnames=[
+                "events_map",
+                "patrols_trajectories_map",
+                "time_density_map",
+                "pie_chart",
+                "time_series_bar_chart",
+                "monthly_csv",
+                "patrol_subject_pivot_csv",
+                "patrol_subject_events_csv",
+                "patrol_subject_stats_csv",
+                "events_recorded_csv",
+                "df",
+            ],
+            argvalues=group_context_values,
+        )
+    )
+
+    create_grouper_doc = (
+        generate_guardians_report.validate()
+        .set_task_instance_id("create_grouper_doc")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            template_path=persist_indv_subject_page,
+            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            filename=None,
+            box_h_inches=6.48,
+            box_w_inches=3.85,
+            validate_images=True,
+            **(params_dict.get("create_grouper_doc") or {}),
+        )
+        .mapvalues(argnames=["context"], argvalues=individual_patrol_ctx_page)
+    )
+
+    merge_docx = (
+        merge_cl_files.validate()
+        .set_task_instance_id("merge_docx")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(
+            cover_page_path=persist_ctx_page,
+            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+            context_page_items=create_grouper_doc,
+            filename=None,
+            **(params_dict.get("merge_docx") or {}),
+        )
+        .call()
     )
 
     patrol_dashboard = (

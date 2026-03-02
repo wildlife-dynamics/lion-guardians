@@ -25,8 +25,8 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-lion-guardians
-    version: "0.0.5.*"
-    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+    version: "*"
+    channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
 
 rjsf-overrides:
   properties:
@@ -1695,6 +1695,84 @@ workflow:
       argnames: html_path
       argvalues: ${{ workflow.patrol_events_bar_chart_html_url.return }}
 
+  - name: Create context cover page
+    id: context_cover_page
+    task: create_guardians_ctx_cover
+    partial:  
+      report_period: ${{ workflow.time_range.return}}
+      prepared_by: Ecoscope
+
+  - name: Persist context page for guardians report 
+    id: persist_ctx_page 
+    task: create_context_page_lg 
+    partial:  
+      template_path: ${{ workflow.persist_cover_page.return }}
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      context: ${{ workflow.context_cover_page.return }}
+      filename: context_page.docx
+
+  - name: Group context values together 
+    id: group_context_values 
+    task: zip_groupbykey
+    partial: 
+      sequences:
+        - ${{ workflow.generate_events_png.return }} # events map 
+        - ${{ workflow.generate_trajs_png.return }} # trajs map
+        - ${{ workflow.generate_ltd_png.return }} # ltd map 
+
+        - ${{ workflow.patrol_pie_chart_png.return }} # pie chart
+        - ${{ workflow.patrol_bar_chart_png.return }} # bar chart
+
+        - ${{ workflow.persist_month_patrol_efforts.return }} #month patrol efforts 
+        - ${{ workflow.persist_pivot_patrol_efforts.return }} # pivot guardian events
+        - ${{ workflow.persist_guardian_events.return }} # subject events 
+        - ${{ workflow.persist_guardian_patrol.return }} # subject stats
+        - ${{ workflow.persist_event_tefforts.return }} # subject events
+        - ${{ workflow.split_patrol_traj_groups.return }}
+
+  - name: Create individual patrol context page 
+    id: individual_patrol_ctx_page
+    task: guardians_ctx 
+    partial: 
+      grouper_name: ${{ workflow.groupers.return }}
+    mapvalues: 
+      argnames: 
+        -  events_map 
+        - patrols_trajectories_map 
+        - time_density_map
+        - pie_chart 
+        - time_series_bar_chart
+        - monthly_csv
+        - patrol_subject_pivot_csv
+        - patrol_subject_events_csv
+        - patrol_subject_stats_csv
+        - events_recorded_csv
+        - df
+      argvalues: ${{ workflow.group_context_values.return }}
+
+  - name: Create grouper word doc 
+    id: create_grouper_doc 
+    task: generate_guardians_report 
+    partial: 
+      template_path: ${{ workflow.persist_indv_subject_page.return }}
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      filename: null
+      box_h_inches: 6.48
+      box_w_inches: 3.85
+      validate_images: true 
+    mapvalues: 
+      argnames: context 
+      argvalues: ${{ workflow.individual_patrol_ctx_page.return }}
+
+  - name: Merge word docs
+    id: merge_docx
+    task: merge_cl_files 
+    partial: 
+      cover_page_path: ${{ workflow.persist_ctx_page.return }}
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      context_page_items: ${{ workflow.create_grouper_doc.return }}
+      filename: null
+      
   - name: Create Dashboard with Patrol Map Widgets
     id: patrol_dashboard
     task: gather_dashboard

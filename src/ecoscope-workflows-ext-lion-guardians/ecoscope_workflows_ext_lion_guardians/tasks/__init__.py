@@ -17,8 +17,11 @@ from ._retrieve_patrols import (
     get_event_type_display_names_from_events_aliased,
 )
 
+from ._guardians_context import generate_guardians_report, guardians_ctx
+
 __all__ = [
-    "add_two_thousand",
+    "guardians_ctx",
+    "generate_guardians_report",
     "create_cl_ctx_cover",
     "create_context_page_lg",
     "merge_cl_files",
