@@ -1699,17 +1699,8 @@ workflow:
     id: context_cover_page
     task: create_guardians_ctx_cover
     partial:  
-      groupby_cols: 
-        - patrol_subject
-        - event_type_display
-      reset_index: true
-      summary_params:
-        - display_name: no_of_events
-          aggregator: nunique
-          column: id
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.split_pe_groups.return }}
+      report_period: ${{ workflow.time_range.return }}
+      prepared_by: Ecoscope 
 
   - name: Persist context page for guardians report 
     id: persist_ctx_page 
@@ -1766,19 +1757,20 @@ workflow:
       template_path: ${{ workflow.persist_indv_subject_page.return }}
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: null
-      box_h_inches: 6.48
-      box_w_inches: 3.85
+      box_h_inches: 3.85 #6.48
+      box_w_inches: 6.48 #3.85
       validate_images: true 
     mapvalues: 
       argnames: context 
       argvalues: ${{ workflow.individual_patrol_ctx_page.return }}
 
-  - name: Persist guardian patrol efforts
-    id: persist_gua_patrol_efforts
-    task: persist_df
-    partial:
-      root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      filetype: csv
+  - name: Merge word docs
+    id: merge_docx
+    task: merge_cl_files 
+    partial: 
+      cover_page_path: ${{ workflow.persist_ctx_page.return }}
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      context_page_items: ${{ workflow.create_grouper_doc.return }}
       filename: null
       
   - name: Create Dashboard with Patrol Map Widgets

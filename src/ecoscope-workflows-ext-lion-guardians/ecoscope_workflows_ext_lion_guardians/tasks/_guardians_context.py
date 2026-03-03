@@ -7,6 +7,7 @@ from docxtpl import DocxTemplate, InlineImage
 from ecoscope_workflows_core.decorators import task
 from ecoscope_workflows_core.annotations import AnyDataFrame
 from ecoscope_workflows_core.skip import SkipSentinel, SKIP_SENTINEL
+from ecoscope_workflows_ext_custom.tasks.io._path_utils import remove_file_scheme
 
 
 def _format_temporal_grouper(grouper: Any, df: AnyDataFrame) -> str:
@@ -130,7 +131,7 @@ def guardians_ctx(
     patrol_subject_stats_csv: str | SkipSentinel | None,
     events_recorded_csv: str | SkipSentinel | None,  # events
     df: Optional[AnyDataFrame] = None,
-) -> Dict[str, Optional[str]]:
+) -> Dict[str, Optional[Any]]:
     def unwrap_skip(value):
         """
         Recursively unwrap SkipSentinel values from nested structures.
@@ -241,11 +242,13 @@ def guardians_ctx(
     )
     merged = merged[["patrol_subject", "no_of_patrols", "total_distance", "total_time", "no_of_events"]]
     merged["no_of_patrols"] = merged["no_of_patrols"].astype(int)
-    # patrol_subject_pivot_csv = patrol_subject_pivot_csv.drop(columns=['Unnamed: 0'])
+
+    print(f"inspecting patrol subject pivot CSV: {patrol_subject_pivot_csv.columns}")
+    print(f" checking out the data : {patrol_subject_pivot_csv.head()}")
+
+    patrol_subject_pivot_csv = patrol_subject_pivot_csv.drop(columns=["Unnamed: 0"])
     patrol_subject_pivot_csv = patrol_subject_pivot_csv.fillna(0)
-    patrol_subject_pivot_csv = patrol_subject_pivot_csv.rename(columns={"patrol_subject": "guardian"})
-    patrol_subject_pivot_csv["Total"] = patrol_subject_pivot_csv.iloc[:, 1:].sum(axis=1)
-    numeric_cols = patrol_subject_pivot_csv.columns.difference(["guardian"])
+    numeric_cols = patrol_subject_pivot_csv.columns.difference(["patrol_subject"])
     patrol_subject_pivot_csv[numeric_cols] = patrol_subject_pivot_csv[numeric_cols].fillna(0).astype(int)
 
     context = {
@@ -294,6 +297,12 @@ def generate_guardians_report(
         Absolute path to the generated .docx file.
     """
     IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".gif", ".bmp"}
+
+    template_path = remove_file_scheme(template_path)
+    output_dir = remove_file_scheme(output_dir)
+
+    print(f"\nTemplate Path: {template_path}")
+    print(f"Output Directory: {output_dir}")
 
     # --- Validate inputs ---
     if not os.path.isfile(template_path):
