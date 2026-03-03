@@ -132,7 +132,16 @@ from ecoscope_workflows_ext_ecoscope.tasks.transformation import (
     drop_nan_values_by_column as drop_nan_values_by_column,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
+    create_context_page_lg as create_context_page_lg,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    create_guardians_ctx_cover as create_guardians_ctx_cover,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
     extract_date_parts as extract_date_parts,
+)
+from ecoscope_workflows_ext_lion_guardians.tasks import (
+    generate_guardians_report as generate_guardians_report,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     get_event_type_display_names_from_events_aliased as get_event_type_display_names_from_events_aliased,
@@ -140,10 +149,15 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     get_patrol_observations_from_patrols_dataframe_and_combined_params as get_patrol_observations_from_patrols_dataframe_and_combined_params,
 )
+from ecoscope_workflows_ext_lion_guardians.tasks import guardians_ctx as guardians_ctx
+from ecoscope_workflows_ext_lion_guardians.tasks import merge_cl_files as merge_cl_files
 from ecoscope_workflows_ext_mnc.tasks import (
     exclude_geom_outliers as exclude_geom_outliers,
 )
 from ecoscope_workflows_ext_mnc.tasks import pivot_df as pivot_df_1
+from ecoscope_workflows_ext_ste.tasks import (
+    adjust_map_zoom_and_screenshot as adjust_map_zoom_and_screenshot,
+)
 from ecoscope_workflows_ext_ste.tasks import (
     combine_deckgl_map_layers as combine_deckgl_map_layers,
 )
@@ -2243,6 +2257,74 @@ persist_events_html = (
 
 
 # %% [markdown]
+# ## Combine events path with zoom value
+
+# %%
+# parameters
+
+zip_events_value_params = dict()
+
+# %%
+# call the task
+
+
+zip_events_value = (
+    zip_groupbykey.set_task_instance_id("zip_events_value")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        sequences=[gdf_events_image_extent, persist_events_html],
+        **zip_events_value_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Convert events html to png
+
+# %%
+# parameters
+
+generate_events_png_params = dict()
+
+# %%
+# call the task
+
+
+generate_events_png = (
+    adjust_map_zoom_and_screenshot.set_task_instance_id("generate_events_png")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        screenshot_config={
+            "full_page": False,
+            "device_scale_factor": 2.0,
+            "wait_for_timeout": 40000,
+            "max_concurrent_pages": 1,
+        },
+        **generate_events_png_params,
+    )
+    .mapvalues(argnames=["view_state", "input_file"], argvalues=zip_events_value)
+)
+
+
+# %% [markdown]
 # ## Format speed values for display
 
 # %%
@@ -2599,6 +2681,74 @@ traj_ecomap_html_urls = (
         **traj_ecomap_html_urls_params,
     )
     .mapvalues(argnames=["text"], argvalues=trajs_ecomap)
+)
+
+
+# %% [markdown]
+# ## Combine trajectories path with zoom value
+
+# %%
+# parameters
+
+zip_trajs_value_params = dict()
+
+# %%
+# call the task
+
+
+zip_trajs_value = (
+    zip_groupbykey.set_task_instance_id("zip_trajs_value")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        sequences=[gdf_trajs_image_extent, traj_ecomap_html_urls],
+        **zip_trajs_value_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Convert trajs html to png
+
+# %%
+# parameters
+
+generate_trajs_png_params = dict()
+
+# %%
+# call the task
+
+
+generate_trajs_png = (
+    adjust_map_zoom_and_screenshot.set_task_instance_id("generate_trajs_png")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        screenshot_config={
+            "full_page": False,
+            "device_scale_factor": 2.0,
+            "wait_for_timeout": 40000,
+            "max_concurrent_pages": 1,
+        },
+        **generate_trajs_png_params,
+    )
+    .mapvalues(argnames=["view_state", "input_file"], argvalues=zip_trajs_value)
 )
 
 
@@ -4011,6 +4161,73 @@ td_ecomap_html_url = (
 
 
 # %% [markdown]
+# ## Combine homerange ltd map path with zoom value
+
+# %%
+# parameters
+
+zip_ltd_value_params = dict()
+
+# %%
+# call the task
+
+
+zip_ltd_value = (
+    zip_groupbykey.set_task_instance_id("zip_ltd_value")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        sequences=[gdf_ltd_image_extent, td_ecomap_html_url], **zip_ltd_value_params
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Convert homerange ltd html to png
+
+# %%
+# parameters
+
+generate_ltd_png_params = dict()
+
+# %%
+# call the task
+
+
+generate_ltd_png = (
+    adjust_map_zoom_and_screenshot.set_task_instance_id("generate_ltd_png")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        screenshot_config={
+            "full_page": False,
+            "device_scale_factor": 2.0,
+            "wait_for_timeout": 40000,
+            "max_concurrent_pages": 1,
+        },
+        **generate_ltd_png_params,
+    )
+    .mapvalues(argnames=["view_state", "input_file"], argvalues=zip_ltd_value)
+)
+
+
+# %% [markdown]
 # ## Create time density map widget
 
 # %%
@@ -4154,19 +4371,19 @@ summarize_guardian_events = (
 
 
 # %% [markdown]
-# ## Persist a csv
+# ## Persist guardian patrol efforts csv
 
 # %%
 # parameters
 
-persist_a_params = dict()
+persist_guardian_patrol_params = dict()
 
 # %%
 # call the task
 
 
-persist_a = (
-    persist_df.set_task_instance_id("persist_a")
+persist_guardian_patrol = (
+    persist_df.set_task_instance_id("persist_guardian_patrol")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -4180,26 +4397,26 @@ persist_a = (
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filetype="csv",
         filename=None,
-        **persist_a_params,
+        **persist_guardian_patrol_params,
     )
     .mapvalues(argnames=["df"], argvalues=summarize_ranger_patrol)
 )
 
 
 # %% [markdown]
-# ## Persist b csv
+# ## Persist guardian events csv
 
 # %%
 # parameters
 
-persist_b_params = dict()
+persist_guardian_events_params = dict()
 
 # %%
 # call the task
 
 
-persist_b = (
-    persist_df.set_task_instance_id("persist_b")
+persist_guardian_events = (
+    persist_df.set_task_instance_id("persist_guardian_events")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -4213,7 +4430,7 @@ persist_b = (
         root_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
         filetype="csv",
         filename=None,
-        **persist_b_params,
+        **persist_guardian_events_params,
     )
     .mapvalues(argnames=["df"], argvalues=summarize_guardian_events)
 )
@@ -4668,6 +4885,226 @@ patrol_bar_chart_png = (
 
 
 # %% [markdown]
+# ## Create context cover page
+
+# %%
+# parameters
+
+context_cover_page_params = dict()
+
+# %%
+# call the task
+
+
+context_cover_page = (
+    create_guardians_ctx_cover.set_task_instance_id("context_cover_page")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        report_period=time_range, prepared_by="Ecoscope", **context_cover_page_params
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Persist context page for guardians report
+
+# %%
+# parameters
+
+persist_ctx_page_params = dict()
+
+# %%
+# call the task
+
+
+persist_ctx_page = (
+    create_context_page_lg.set_task_instance_id("persist_ctx_page")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        template_path=persist_cover_page,
+        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        context=context_cover_page,
+        filename="context_page.docx",
+        **persist_ctx_page_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Group context values together
+
+# %%
+# parameters
+
+group_context_values_params = dict()
+
+# %%
+# call the task
+
+
+group_context_values = (
+    zip_groupbykey.set_task_instance_id("group_context_values")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        sequences=[
+            generate_events_png,
+            generate_trajs_png,
+            generate_ltd_png,
+            patrol_pie_chart_png,
+            patrol_bar_chart_png,
+            persist_month_patrol_efforts,
+            persist_pivot_patrol_efforts,
+            persist_guardian_events,
+            persist_guardian_patrol,
+            persist_event_tefforts,
+            split_patrol_traj_groups,
+        ],
+        **group_context_values_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Create individual patrol context page
+
+# %%
+# parameters
+
+individual_patrol_ctx_page_params = dict()
+
+# %%
+# call the task
+
+
+individual_patrol_ctx_page = (
+    guardians_ctx.set_task_instance_id("individual_patrol_ctx_page")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(grouper_name=groupers, **individual_patrol_ctx_page_params)
+    .mapvalues(
+        argnames=[
+            "events_map",
+            "patrols_trajectories_map",
+            "time_density_map",
+            "pie_chart",
+            "time_series_bar_chart",
+            "monthly_csv",
+            "patrol_subject_pivot_csv",
+            "patrol_subject_events_csv",
+            "patrol_subject_stats_csv",
+            "events_recorded_csv",
+            "df",
+        ],
+        argvalues=group_context_values,
+    )
+)
+
+
+# %% [markdown]
+# ## Create grouper word doc
+
+# %%
+# parameters
+
+create_grouper_doc_params = dict()
+
+# %%
+# call the task
+
+
+create_grouper_doc = (
+    generate_guardians_report.set_task_instance_id("create_grouper_doc")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        template_path=persist_indv_subject_page,
+        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        filename=None,
+        box_h_inches=3.85,
+        box_w_inches=6.48,
+        validate_images=True,
+        **create_grouper_doc_params,
+    )
+    .mapvalues(argnames=["context"], argvalues=individual_patrol_ctx_page)
+)
+
+
+# %% [markdown]
+# ## Merge word docs
+
+# %%
+# parameters
+
+merge_docx_params = dict()
+
+# %%
+# call the task
+
+
+merge_docx = (
+    merge_cl_files.set_task_instance_id("merge_docx")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        cover_page_path=persist_ctx_page,
+        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        context_page_items=create_grouper_doc,
+        filename=None,
+        **merge_docx_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
 # ## Create Dashboard with Patrol Map Widgets
 
 # %%
@@ -4694,7 +5131,18 @@ patrol_dashboard = (
     )
     .partial(
         details=workflow_details,
-        widgets=[],
+        widgets=[
+            events_grouped_map_widget,
+            trajs_grouped_map_widget,
+            total_patrols_grouped_sv_widget,
+            patrol_time_grouped_widget,
+            patrol_dist_grouped_widget,
+            avg_speed_grouped_widget,
+            max_speed_grouped_widget,
+            grouped_bar_plot_widget_merge,
+            patrol_events_pie_widget_grouped,
+            td_grouped_map_widget,
+        ],
         groupers=groupers,
         time_range=time_range,
         **patrol_dashboard_params,
