@@ -1,15 +1,15 @@
 id: collared_lions
 requirements:
   - name: ecoscope-workflows-core
-    version: "0.22.9.*"
+    version: "0.22.17.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-ecoscope
-    version: "0.22.9.*"
+    version: "0.22.17.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
-    version: "0.0.28.*"
+    version: "0.0.38.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-ste
@@ -19,10 +19,15 @@ requirements:
   - name: ecoscope-workflows-ext-mnc
     version: "0.0.7.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+  
+  - name: ecoscope-workflows-ext-big-life
+    version: "0.0.7.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-lion-guardians
     version: "0.0.6.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+  
 
 rjsf-overrides:
   $defs:
@@ -287,6 +292,7 @@ workflow:
       raise_on_empty: false
       include_details: false
       include_subjectsource_details: false
+      filter: clean
   
   #Process relocations 
   - name: Transform observations to relocations
@@ -983,6 +989,7 @@ workflow:
         - ${{ workflow.total_min_speed_sv_widget.return }}
         - ${{ workflow.total_max_speed_sv_widget.return }}
         - ${{ workflow.total_distance_sv_widget.return }}
+        
         - ${{ workflow.td_grouped_map_widget.return }}
         - ${{ workflow.sm_grouped_map_widget.return }}
 

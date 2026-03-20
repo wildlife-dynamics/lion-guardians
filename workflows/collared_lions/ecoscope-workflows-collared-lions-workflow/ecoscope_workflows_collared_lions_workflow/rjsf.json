@@ -110,20 +110,6 @@
           "title": "Subject Group Name",
           "type": "string",
           "description": "\u26a0\ufe0f The use of a group with mixed subtypes could lead to unexpected results"
-        },
-        "filter": {
-          "default": "clean",
-          "enum": [
-            "none",
-            "clean",
-            "manually_filtered",
-            "automatically_filtered",
-            "manually_and_automatically_filtered"
-          ],
-          "title": "Filter",
-          "type": "string",
-          "description": "Filter observations based on exclusion flags.",
-          "ecoscope:advanced": true
         }
       },
       "required": [
@@ -450,12 +436,6 @@
         "until",
         "timezone",
         "time_format"
-      ]
-    },
-    "subject_obs": {
-      "ui:order": [
-        "subject_group_name",
-        "filter"
       ]
     },
     "Time density map": {

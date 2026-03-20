@@ -1,15 +1,15 @@
 id: guardians_report
 requirements:
   - name: ecoscope-workflows-core
-    version: "0.22.9.*"
+    version: "0.22.17.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-ecoscope
-    version: "0.22.9.*"
+    version: "0.22.17.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
-    version: "0.0.28.*"
+    version: "0.0.38.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-ste
@@ -22,6 +22,10 @@ requirements:
 
   - name: ecoscope-workflows-ext-icf
     version: "0.0.0.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+
+  - name: ecoscope-workflows-ext-big-life
+    version: "0.0.7.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-lion-guardians
@@ -81,9 +85,20 @@ workflow:
     id: er_client_name
     task: set_er_connection
 
-  - name: Configure base map layers
+  # Set base maps
+  - name: Base Maps
     id: base_map_defs
     task: set_base_maps_pydeck
+    partial: 
+      base_maps:
+        - url: >-
+            https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}
+          opacity: 1
+          max_zoom: 20
+        - url: >-
+            https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}
+          opacity: 0.15
+          max_zoom: 20
 
   # Download amboseli group ranches and the collared lions templates
   - name: Download amboseli group ranches
@@ -295,6 +310,7 @@ workflow:
       raise_on_empty: false
       truncate_to_time_range: true 
       sub_page_size: 150 
+      patrols_overlap_daterange: false
 
   - name: Prefetch patrols 
     id: prefetch_patrols
@@ -304,7 +320,7 @@ workflow:
 
   - name: Get patrol observations
     id: patrol_obs
-    task: get_patrol_observations_from_patrols_dataframe_and_combined_params
+    task: get_patrol_observations_from_patrols_df_and_combined_params
     partial:
       patrols_df: ${{ workflow.prefetch_patrols.return }}
       combined_params: ${{ workflow.er_patrol_and_events_params.return }}
@@ -318,7 +334,7 @@ workflow:
 
   - name: Get event type display names from events 
     id: event_type_display_names
-    task: get_event_type_display_names_from_events_aliased
+    task: get_event_type_display_names_from_events
     partial:
       client: ${{ workflow.er_client_name.return }}
       events_gdf: ${{ workflow.patrol_events.return }}
@@ -1204,7 +1220,7 @@ workflow:
     partial:
       widgets: ${{ workflow.patrol_events_pie_chart_widgets.return }}
 
-  - name: Create meshgrid
+  - name: Create Linear Time Density Meshgrid
     id: ltd_meshgrid
     task: create_meshgrid
     partial:
@@ -1779,14 +1795,15 @@ workflow:
     partial:
       details: ${{ workflow.workflow_details.return}}
       widgets:
+        - ${{ workflow.patrol_dist_grouped_widget.return }} # total distance
+        - ${{ workflow.avg_speed_grouped_widget.return }} # average speed
+        - ${{ workflow.max_speed_grouped_widget.return }} # max speed
+        - ${{ workflow.total_patrols_grouped_sv_widget.return }} # total patrols
+
         - ${{ workflow.events_grouped_map_widget.return }}
         - ${{ workflow.trajs_grouped_map_widget.return }}
-        - ${{ workflow.total_patrols_grouped_sv_widget.return }}
+       
         - ${{ workflow.patrol_time_grouped_widget.return }}
-
-        - ${{ workflow.patrol_dist_grouped_widget.return }}
-        - ${{ workflow.avg_speed_grouped_widget.return }}
-        - ${{ workflow.max_speed_grouped_widget.return }}
         - ${{ workflow.grouped_bar_plot_widget_merge.return }}
 
         - ${{ workflow.patrol_events_pie_widget_grouped.return }}

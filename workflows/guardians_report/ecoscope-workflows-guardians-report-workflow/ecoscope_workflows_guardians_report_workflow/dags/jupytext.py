@@ -88,7 +88,7 @@ from ecoscope_workflows_ext_custom.tasks.spatial_ops import (
     reproject_gdf as reproject_gdf,
 )
 from ecoscope_workflows_ext_custom.tasks.transformation import (
-    drop_null_geometry as drop_null_geometry_1,
+    drop_null_geometry as drop_null_geometry,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.analysis import (
     calculate_linear_time_density as calculate_linear_time_density,
@@ -97,6 +97,12 @@ from ecoscope_workflows_ext_ecoscope.tasks.analysis import (
     create_meshgrid as create_meshgrid,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.analysis import summarize_df as summarize_df
+from ecoscope_workflows_ext_ecoscope.tasks.io import (
+    get_event_type_display_names_from_events as get_event_type_display_names_from_events,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.io import (
+    get_patrol_observations_from_patrols_df_and_combined_params as get_patrol_observations_from_patrols_df_and_combined_params,
+)
 from ecoscope_workflows_ext_ecoscope.tasks.io import (
     get_patrols_from_combined_params as get_patrols_from_combined_params,
 )
@@ -142,12 +148,6 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     generate_guardians_report as generate_guardians_report,
-)
-from ecoscope_workflows_ext_lion_guardians.tasks import (
-    get_event_type_display_names_from_events_aliased as get_event_type_display_names_from_events_aliased,
-)
-from ecoscope_workflows_ext_lion_guardians.tasks import (
-    get_patrol_observations_from_patrols_dataframe_and_combined_params as get_patrol_observations_from_patrols_dataframe_and_combined_params,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import guardians_ctx as guardians_ctx
 from ecoscope_workflows_ext_lion_guardians.tasks import merge_cl_files as merge_cl_files
@@ -332,14 +332,12 @@ er_client_name = (
 
 
 # %% [markdown]
-# ## Configure base map layers
+# ## Base Maps
 
 # %%
 # parameters
 
-base_map_defs_params = dict(
-    base_maps=...,
-)
+base_map_defs_params = dict()
 
 # %%
 # call the task
@@ -356,7 +354,21 @@ base_map_defs = (
         ],
         unpack_depth=1,
     )
-    .partial(**base_map_defs_params)
+    .partial(
+        base_maps=[
+            {
+                "url": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
+                "opacity": 1,
+                "max_zoom": 20,
+            },
+            {
+                "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+                "opacity": 0.15,
+                "max_zoom": 20,
+            },
+        ],
+        **base_map_defs_params,
+    )
     .call()
 )
 
@@ -1033,6 +1045,7 @@ er_patrol_and_events_params = (
         raise_on_empty=False,
         truncate_to_time_range=True,
         sub_page_size=150,
+        patrols_overlap_daterange=False,
         **er_patrol_and_events_params_params,
     )
     .call()
@@ -1080,7 +1093,7 @@ patrol_obs_params = dict()
 
 
 patrol_obs = (
-    get_patrol_observations_from_patrols_dataframe_and_combined_params.set_task_instance_id(
+    get_patrol_observations_from_patrols_df_and_combined_params.set_task_instance_id(
         "patrol_obs"
     )
     .handle_errors()
@@ -1148,7 +1161,7 @@ event_type_display_names_params = dict()
 
 
 event_type_display_names = (
-    get_event_type_display_names_from_events_aliased.set_task_instance_id(
+    get_event_type_display_names_from_events.set_task_instance_id(
         "event_type_display_names"
     )
     .handle_errors()
@@ -1974,7 +1987,7 @@ remove_invalid_geoms_params = dict()
 
 
 remove_invalid_geoms = (
-    drop_null_geometry_1.set_task_instance_id("remove_invalid_geoms")
+    drop_null_geometry.set_task_instance_id("remove_invalid_geoms")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -3667,7 +3680,7 @@ patrol_events_pie_widget_grouped = (
 
 
 # %% [markdown]
-# ## Create meshgrid
+# ## Create Linear Time Density Meshgrid
 
 # %%
 # parameters
@@ -5132,13 +5145,13 @@ patrol_dashboard = (
     .partial(
         details=workflow_details,
         widgets=[
-            events_grouped_map_widget,
-            trajs_grouped_map_widget,
-            total_patrols_grouped_sv_widget,
-            patrol_time_grouped_widget,
             patrol_dist_grouped_widget,
             avg_speed_grouped_widget,
             max_speed_grouped_widget,
+            total_patrols_grouped_sv_widget,
+            events_grouped_map_widget,
+            trajs_grouped_map_widget,
+            patrol_time_grouped_widget,
             grouped_bar_plot_widget_merge,
             patrol_events_pie_widget_grouped,
             td_grouped_map_widget,

@@ -50,6 +50,21 @@ get_patrols_from_combined_params = create_task_magicmock(  # 🧪
     anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
     func_name="get_patrols_from_combined_params",  # 🧪
 )  # 🧪
+
+get_patrol_observations_from_patrols_df_and_combined_params = (
+    create_task_magicmock(  # 🧪
+        anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
+        func_name="get_patrol_observations_from_patrols_df_and_combined_params",  # 🧪
+    )
+)  # 🧪
+from ecoscope_workflows_ext_ecoscope.tasks.io import (
+    unpack_events_from_patrols_df_and_combined_params as unpack_events_from_patrols_df_and_combined_params,
+)
+
+get_event_type_display_names_from_events = create_task_magicmock(  # 🧪
+    anchor="ecoscope_workflows_ext_ecoscope.tasks.io",  # 🧪
+    func_name="get_event_type_display_names_from_events",  # 🧪
+)  # 🧪
 from ecoscope_workflows_core.tasks.analysis import (
     dataframe_column_max as dataframe_column_max,
 )
@@ -106,7 +121,7 @@ from ecoscope_workflows_ext_custom.tasks.results import (
 )
 from ecoscope_workflows_ext_custom.tasks.results import draw_map as draw_map
 from ecoscope_workflows_ext_custom.tasks.transformation import (
-    drop_null_geometry as drop_null_geometry_1,
+    drop_null_geometry as drop_null_geometry,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.analysis import (
     calculate_linear_time_density as calculate_linear_time_density,
@@ -116,9 +131,6 @@ from ecoscope_workflows_ext_ecoscope.tasks.analysis import (
 )
 from ecoscope_workflows_ext_ecoscope.tasks.analysis import summarize_df as summarize_df
 from ecoscope_workflows_ext_ecoscope.tasks.io import persist_df as persist_df
-from ecoscope_workflows_ext_ecoscope.tasks.io import (
-    unpack_events_from_patrols_df_and_combined_params as unpack_events_from_patrols_df_and_combined_params,
-)
 from ecoscope_workflows_ext_ecoscope.tasks.preprocessing import (
     process_relocations as process_relocations,
 )
@@ -154,12 +166,6 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     generate_guardians_report as generate_guardians_report,
-)
-from ecoscope_workflows_ext_lion_guardians.tasks import (
-    get_event_type_display_names_from_events_aliased as get_event_type_display_names_from_events_aliased,
-)
-from ecoscope_workflows_ext_lion_guardians.tasks import (
-    get_patrol_observations_from_patrols_dataframe_and_combined_params as get_patrol_observations_from_patrols_dataframe_and_combined_params,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import guardians_ctx as guardians_ctx
 from ecoscope_workflows_ext_lion_guardians.tasks import merge_cl_files as merge_cl_files
@@ -280,7 +286,21 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(**(params_dict.get("base_map_defs") or {}))
+        .partial(
+            base_maps=[
+                {
+                    "url": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
+                    "opacity": 1,
+                    "max_zoom": 20,
+                },
+                {
+                    "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+                    "opacity": 0.15,
+                    "max_zoom": 20,
+                },
+            ],
+            **(params_dict.get("base_map_defs") or {}),
+        )
         .call()
     )
 
@@ -735,6 +755,7 @@ def main(params: Params):
             raise_on_empty=False,
             truncate_to_time_range=True,
             sub_page_size=150,
+            patrols_overlap_daterange=False,
             **(params_dict.get("er_patrol_and_events_params") or {}),
         )
         .call()
@@ -760,7 +781,7 @@ def main(params: Params):
     )
 
     patrol_obs = (
-        get_patrol_observations_from_patrols_dataframe_and_combined_params.validate()
+        get_patrol_observations_from_patrols_df_and_combined_params.validate()
         .set_task_instance_id("patrol_obs")
         .handle_errors()
         .with_tracing()
@@ -800,7 +821,7 @@ def main(params: Params):
     )
 
     event_type_display_names = (
-        get_event_type_display_names_from_events_aliased.validate()
+        get_event_type_display_names_from_events.validate()
         .set_task_instance_id("event_type_display_names")
         .handle_errors()
         .with_tracing()
@@ -1330,7 +1351,7 @@ def main(params: Params):
     )
 
     remove_invalid_geoms = (
-        drop_null_geometry_1.validate()
+        drop_null_geometry.validate()
         .set_task_instance_id("remove_invalid_geoms")
         .handle_errors()
         .with_tracing()
@@ -3427,13 +3448,13 @@ def main(params: Params):
         .partial(
             details=workflow_details,
             widgets=[
-                events_grouped_map_widget,
-                trajs_grouped_map_widget,
-                total_patrols_grouped_sv_widget,
-                patrol_time_grouped_widget,
                 patrol_dist_grouped_widget,
                 avg_speed_grouped_widget,
                 max_speed_grouped_widget,
+                total_patrols_grouped_sv_widget,
+                events_grouped_map_widget,
+                trajs_grouped_map_widget,
+                patrol_time_grouped_widget,
                 grouped_bar_plot_widget_merge,
                 patrol_events_pie_widget_grouped,
                 td_grouped_map_widget,
