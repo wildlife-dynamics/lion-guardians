@@ -1,15 +1,15 @@
 id: vehicles_report
 requirements:
   - name: ecoscope-workflows-core
-    version: "0.22.9.*"
+    version: "0.22.17.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-ecoscope
-    version: "0.22.9.*"
+    version: "0.22.17.*"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
-    version: "0.0.28.*"
+    version: "0.0.38.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-ste
@@ -24,6 +24,10 @@ requirements:
     version: "0.0.0.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
+  - name: ecoscope-workflows-ext-big-life
+    version: "0.0.7.*"
+    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+    
   - name: ecoscope-workflows-ext-lion-guardians
     version: "0.0.6.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
@@ -64,7 +68,7 @@ workflow:
   - name: Data Source
     id: er_client_name
     task: set_er_connection
-
+    
   # Set base maps
   - name: Base Maps
     id: base_map_defs
@@ -1089,12 +1093,14 @@ workflow:
     partial: 
       details: ${{ workflow.workflow_details.return }}
       widgets: 
-        - ${{ workflow.total_mean_speed_sv_widget.return }}
-        - ${{ workflow.total_min_speed_sv_widget.return }}
-        - ${{ workflow.total_max_speed_sv_widget.return }}
-        - ${{ workflow.total_distance_sv_widget.return }}
+        - ${{ workflow.total_mean_speed_sv_widget.return }} # mean speed widget
+        - ${{ workflow.total_min_speed_sv_widget.return }} # min speed widget
+        - ${{ workflow.total_max_speed_sv_widget.return }} # max speed widget
+        - ${{ workflow.total_distance_sv_widget.return }} # total distance widget
+
         - ${{ workflow.merge_speedmap_widgets.return }}
         - ${{ workflow.merge_tracks_widgets.return }}
         - ${{ workflow.grouped_plot_widget_merge.return }}
+        
       time_range: ${{ workflow.time_range.return }}
       groupers: ${{ workflow.groupers.return }}

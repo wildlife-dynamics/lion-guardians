@@ -925,7 +925,6 @@ create_hotspot_text_layer = (
 
 subject_obs_params = dict(
     subject_group_name=...,
-    filter=...,
 )
 
 # %%
@@ -949,6 +948,7 @@ subject_obs = (
         raise_on_empty=False,
         include_details=False,
         include_subjectsource_details=False,
+        filter="clean",
         **subject_obs_params,
     )
     .call()

@@ -78,7 +78,7 @@ from ecoscope_workflows_ext_custom.tasks.spatial_ops import (
     reproject_gdf as reproject_gdf,
 )
 from ecoscope_workflows_ext_custom.tasks.transformation import (
-    drop_null_geometry as drop_null_geometry_1,
+    drop_null_geometry as drop_null_geometry,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.analysis import (
     calculate_linear_time_density as calculate_linear_time_density,
@@ -87,6 +87,12 @@ from ecoscope_workflows_ext_ecoscope.tasks.analysis import (
     create_meshgrid as create_meshgrid,
 )
 from ecoscope_workflows_ext_ecoscope.tasks.analysis import summarize_df as summarize_df
+from ecoscope_workflows_ext_ecoscope.tasks.io import (
+    get_event_type_display_names_from_events as get_event_type_display_names_from_events,
+)
+from ecoscope_workflows_ext_ecoscope.tasks.io import (
+    get_patrol_observations_from_patrols_df_and_combined_params as get_patrol_observations_from_patrols_df_and_combined_params,
+)
 from ecoscope_workflows_ext_ecoscope.tasks.io import (
     get_patrols_from_combined_params as get_patrols_from_combined_params,
 )
@@ -132,12 +138,6 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     generate_guardians_report as generate_guardians_report,
-)
-from ecoscope_workflows_ext_lion_guardians.tasks import (
-    get_event_type_display_names_from_events_aliased as get_event_type_display_names_from_events_aliased,
-)
-from ecoscope_workflows_ext_lion_guardians.tasks import (
-    get_patrol_observations_from_patrols_dataframe_and_combined_params as get_patrol_observations_from_patrols_dataframe_and_combined_params,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import guardians_ctx as guardians_ctx
 from ecoscope_workflows_ext_lion_guardians.tasks import merge_cl_files as merge_cl_files
@@ -266,7 +266,21 @@ def main(params: Params):
             ],
             unpack_depth=1,
         )
-        .partial(**(params_dict.get("base_map_defs") or {}))
+        .partial(
+            base_maps=[
+                {
+                    "url": "https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}",
+                    "opacity": 1,
+                    "max_zoom": 20,
+                },
+                {
+                    "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
+                    "opacity": 0.15,
+                    "max_zoom": 20,
+                },
+            ],
+            **(params_dict.get("base_map_defs") or {}),
+        )
         .call()
     )
 
@@ -720,7 +734,8 @@ def main(params: Params):
             include_patrol_details=True,
             raise_on_empty=False,
             truncate_to_time_range=True,
-            sub_page_size=150,
+            sub_page_size=200,
+            patrols_overlap_daterange=False,
             **(params_dict.get("er_patrol_and_events_params") or {}),
         )
         .call()
@@ -746,7 +761,7 @@ def main(params: Params):
     )
 
     patrol_obs = (
-        get_patrol_observations_from_patrols_dataframe_and_combined_params.validate()
+        get_patrol_observations_from_patrols_df_and_combined_params.validate()
         .set_task_instance_id("patrol_obs")
         .handle_errors()
         .with_tracing()
@@ -786,7 +801,7 @@ def main(params: Params):
     )
 
     event_type_display_names = (
-        get_event_type_display_names_from_events_aliased.validate()
+        get_event_type_display_names_from_events.validate()
         .set_task_instance_id("event_type_display_names")
         .handle_errors()
         .with_tracing()
@@ -1316,7 +1331,7 @@ def main(params: Params):
     )
 
     remove_invalid_geoms = (
-        drop_null_geometry_1.validate()
+        drop_null_geometry.validate()
         .set_task_instance_id("remove_invalid_geoms")
         .handle_errors()
         .with_tracing()
@@ -1787,50 +1802,6 @@ def main(params: Params):
             **(params_dict.get("traj_ecomap_html_urls") or {}),
         )
         .mapvalues(argnames=["text"], argvalues=trajs_ecomap)
-    )
-
-    zip_trajs_value = (
-        zip_groupbykey.validate()
-        .set_task_instance_id("zip_trajs_value")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(
-            sequences=[gdf_trajs_image_extent, traj_ecomap_html_urls],
-            **(params_dict.get("zip_trajs_value") or {}),
-        )
-        .call()
-    )
-
-    generate_trajs_png = (
-        adjust_map_zoom_and_screenshot.validate()
-        .set_task_instance_id("generate_trajs_png")
-        .handle_errors()
-        .with_tracing()
-        .skipif(
-            conditions=[
-                any_is_empty_df,
-                any_dependency_skipped,
-            ],
-            unpack_depth=1,
-        )
-        .partial(
-            output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-            screenshot_config={
-                "full_page": False,
-                "device_scale_factor": 2.0,
-                "wait_for_timeout": 40000,
-                "max_concurrent_pages": 1,
-            },
-            **(params_dict.get("generate_trajs_png") or {}),
-        )
-        .mapvalues(argnames=["view_state", "input_file"], argvalues=zip_trajs_value)
     )
 
     events_map_widgets_single_views = (
@@ -3302,7 +3273,7 @@ def main(params: Params):
         .partial(
             sequences=[
                 generate_events_png,
-                generate_trajs_png,
+                generate_events_png,
                 generate_ltd_png,
                 patrol_pie_chart_png,
                 patrol_bar_chart_png,
@@ -3413,13 +3384,13 @@ def main(params: Params):
         .partial(
             details=workflow_details,
             widgets=[
-                events_grouped_map_widget,
-                trajs_grouped_map_widget,
-                total_patrols_grouped_sv_widget,
-                patrol_time_grouped_widget,
                 patrol_dist_grouped_widget,
                 avg_speed_grouped_widget,
                 max_speed_grouped_widget,
+                total_patrols_grouped_sv_widget,
+                patrol_time_grouped_widget,
+                events_grouped_map_widget,
+                trajs_grouped_map_widget,
                 grouped_bar_plot_widget_merge,
                 patrol_events_pie_widget_grouped,
                 td_grouped_map_widget,

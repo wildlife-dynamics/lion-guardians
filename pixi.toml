@@ -20,19 +20,14 @@ hatch-vcs="*"
 virtualenv = "20.39.0.*"
 
 [feature.compile.dependencies]
-# Include this if you add new tasks and the package has been built
 ecoscope-workflows-ext-lion-guardians = "0.0.6.*"
 
+ecoscope-workflows-ext-big-life = "0.0.7.*"
 ecoscope-workflows-ext-ste = "0.0.17.*"
 ecoscope-workflows-ext-mnc = "0.0.7.*"
 ecoscope-workflows-ext-icf ="0.0.0.*"
-ecoscope-workflows-core = "0.22.9.*"
-ecoscope-workflows-ext-custom = "0.0.28.*"
-# Here we don't specify the channel on purpose, as we want to use the local channel if it exists,
-# otherwise we fall back to the remote channel.
-# If you want to ensure a specific channel to incorporate your local changes, you can uncomment the line below.
-# ecoscope-workflows-core = { version = "*", channel = "file:///tmp/ecoscope-workflows/release/artifacts/" }
-# ecoscope-workflows-ext-lion-guardians = { version = "*", channel = "file:///tmp/ecoscope-workflows-custom/release/artifacts/" }
+ecoscope-workflows-core = "0.22.17.*"
+ecoscope-workflows-ext-custom = "0.0.38.*"
 
 [environments]
 compile = { features = [
