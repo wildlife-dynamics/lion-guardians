@@ -1044,7 +1044,7 @@ er_patrol_and_events_params = (
         include_patrol_details=True,
         raise_on_empty=False,
         truncate_to_time_range=True,
-        sub_page_size=150,
+        sub_page_size=200,
         patrols_overlap_daterange=False,
         **er_patrol_and_events_params_params,
     )
@@ -2694,74 +2694,6 @@ traj_ecomap_html_urls = (
         **traj_ecomap_html_urls_params,
     )
     .mapvalues(argnames=["text"], argvalues=trajs_ecomap)
-)
-
-
-# %% [markdown]
-# ## Combine trajectories path with zoom value
-
-# %%
-# parameters
-
-zip_trajs_value_params = dict()
-
-# %%
-# call the task
-
-
-zip_trajs_value = (
-    zip_groupbykey.set_task_instance_id("zip_trajs_value")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        sequences=[gdf_trajs_image_extent, traj_ecomap_html_urls],
-        **zip_trajs_value_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Convert trajs html to png
-
-# %%
-# parameters
-
-generate_trajs_png_params = dict()
-
-# %%
-# call the task
-
-
-generate_trajs_png = (
-    adjust_map_zoom_and_screenshot.set_task_instance_id("generate_trajs_png")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        screenshot_config={
-            "full_page": False,
-            "device_scale_factor": 2.0,
-            "wait_for_timeout": 40000,
-            "max_concurrent_pages": 1,
-        },
-        **generate_trajs_png_params,
-    )
-    .mapvalues(argnames=["view_state", "input_file"], argvalues=zip_trajs_value)
 )
 
 
@@ -4987,7 +4919,7 @@ group_context_values = (
     .partial(
         sequences=[
             generate_events_png,
-            generate_trajs_png,
+            generate_events_png,
             generate_ltd_png,
             patrol_pie_chart_png,
             patrol_bar_chart_png,
@@ -5149,9 +5081,9 @@ patrol_dashboard = (
             avg_speed_grouped_widget,
             max_speed_grouped_widget,
             total_patrols_grouped_sv_widget,
+            patrol_time_grouped_widget,
             events_grouped_map_widget,
             trajs_grouped_map_widget,
-            patrol_time_grouped_widget,
             grouped_bar_plot_widget_merge,
             patrol_events_pie_widget_grouped,
             td_grouped_map_widget,

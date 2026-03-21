@@ -282,8 +282,6 @@ def main(params: Params):
             "zip_trajs_with_viewstate",
         ],
         "traj_ecomap_html_urls": ["trajs_ecomap"],
-        "zip_trajs_value": ["gdf_trajs_image_extent", "traj_ecomap_html_urls"],
-        "generate_trajs_png": ["zip_trajs_value"],
         "events_map_widgets_single_views": [
             "set_event_map_title",
             "persist_events_html",
@@ -372,7 +370,7 @@ def main(params: Params):
         "persist_ctx_page": ["persist_cover_page", "context_cover_page"],
         "group_context_values": [
             "generate_events_png",
-            "generate_trajs_png",
+            "generate_events_png",
             "generate_ltd_png",
             "patrol_pie_chart_png",
             "patrol_bar_chart_png",
@@ -395,9 +393,9 @@ def main(params: Params):
             "avg_speed_grouped_widget",
             "max_speed_grouped_widget",
             "total_patrols_grouped_sv_widget",
+            "patrol_time_grouped_widget",
             "events_grouped_map_widget",
             "trajs_grouped_map_widget",
-            "patrol_time_grouped_widget",
             "grouped_bar_plot_widget_merge",
             "patrol_events_pie_widget_grouped",
             "td_grouped_map_widget",
@@ -1016,7 +1014,7 @@ def main(params: Params):
                 "include_patrol_details": True,
                 "raise_on_empty": False,
                 "truncate_to_time_range": True,
-                "sub_page_size": 150,
+                "sub_page_size": 200,
                 "patrols_overlap_daterange": False,
             }
             | (params_dict.get("er_patrol_and_events_params") or {}),
@@ -2216,57 +2214,6 @@ def main(params: Params):
             kwargs={
                 "argnames": ["text"],
                 "argvalues": DependsOn("trajs_ecomap"),
-            },
-        ),
-        "zip_trajs_value": Node(
-            async_task=zip_groupbykey.validate()
-            .set_task_instance_id("zip_trajs_value")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "sequences": [
-                    DependsOn("gdf_trajs_image_extent"),
-                    DependsOn("traj_ecomap_html_urls"),
-                ],
-            }
-            | (params_dict.get("zip_trajs_value") or {}),
-            method="call",
-        ),
-        "generate_trajs_png": Node(
-            async_task=adjust_map_zoom_and_screenshot.validate()
-            .set_task_instance_id("generate_trajs_png")
-            .handle_errors()
-            .with_tracing()
-            .skipif(
-                conditions=[
-                    any_is_empty_df,
-                    any_dependency_skipped,
-                ],
-                unpack_depth=1,
-            )
-            .set_executor("lithops"),
-            partial={
-                "output_dir": os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-                "screenshot_config": {
-                    "full_page": False,
-                    "device_scale_factor": 2.0,
-                    "wait_for_timeout": 40000,
-                    "max_concurrent_pages": 1,
-                },
-            }
-            | (params_dict.get("generate_trajs_png") or {}),
-            method="mapvalues",
-            kwargs={
-                "argnames": ["view_state", "input_file"],
-                "argvalues": DependsOn("zip_trajs_value"),
             },
         ),
         "events_map_widgets_single_views": Node(
@@ -4015,7 +3962,7 @@ def main(params: Params):
             partial={
                 "sequences": [
                     DependsOn("generate_events_png"),
-                    DependsOn("generate_trajs_png"),
+                    DependsOn("generate_events_png"),
                     DependsOn("generate_ltd_png"),
                     DependsOn("patrol_pie_chart_png"),
                     DependsOn("patrol_bar_chart_png"),
@@ -4135,9 +4082,9 @@ def main(params: Params):
                     DependsOn("avg_speed_grouped_widget"),
                     DependsOn("max_speed_grouped_widget"),
                     DependsOn("total_patrols_grouped_sv_widget"),
+                    DependsOn("patrol_time_grouped_widget"),
                     DependsOn("events_grouped_map_widget"),
                     DependsOn("trajs_grouped_map_widget"),
-                    DependsOn("patrol_time_grouped_widget"),
                     DependsOn("grouped_bar_plot_widget_merge"),
                     DependsOn("patrol_events_pie_widget_grouped"),
                     DependsOn("td_grouped_map_widget"),

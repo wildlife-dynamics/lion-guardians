@@ -309,7 +309,7 @@ workflow:
       include_patrol_details: true 
       raise_on_empty: false
       truncate_to_time_range: true 
-      sub_page_size: 150 
+      sub_page_size: 200
       patrols_overlap_daterange: false
 
   - name: Prefetch patrols 
@@ -872,30 +872,30 @@ workflow:
       argnames: text
       argvalues: ${{ workflow.trajs_ecomap.return }}
 
-  - name: Combine trajectories path with zoom value 
-    id: zip_trajs_value
-    task: zip_groupbykey 
-    partial: 
-      sequences: 
-        - ${{ workflow.gdf_trajs_image_extent.return }}
-        - ${{ workflow.traj_ecomap_html_urls.return }}
+  # - name: Combine trajectories path with zoom value 
+  #   id: zip_trajs_value
+  #   task: zip_groupbykey 
+  #   partial: 
+  #     sequences: 
+  #       - ${{ workflow.gdf_trajs_image_extent.return }}
+  #       - ${{ workflow.traj_ecomap_html_urls.return }}
 
-  - name: Convert trajs html to png 
-    id: generate_trajs_png 
-    task: adjust_map_zoom_and_screenshot
-    partial:
-      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      screenshot_config: 
-        full_page: false
-        device_scale_factor: 2.0
-        wait_for_timeout: 40000
-        max_concurrent_pages: 1
+  # - name: Convert trajs html to png 
+  #   id: generate_trajs_png 
+  #   task: adjust_map_zoom_and_screenshot
+  #   partial:
+  #     output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+  #     screenshot_config: 
+  #       full_page: false
+  #       device_scale_factor: 2.0
+  #       wait_for_timeout: 40000
+  #       max_concurrent_pages: 1
     
-    mapvalues:
-      argnames: 
-        - view_state
-        - input_file
-      argvalues: ${{ workflow.zip_trajs_value.return }}
+  #   mapvalues:
+  #     argnames: 
+  #       - view_state
+  #       - input_file
+  #     argvalues: ${{ workflow.zip_trajs_value.return }}
 
   - name: Create Map Widgets for patrol events 
     id: events_map_widgets_single_views
@@ -1733,7 +1733,8 @@ workflow:
     partial: 
       sequences:
         - ${{ workflow.generate_events_png.return }} # events map 
-        - ${{ workflow.generate_trajs_png.return }} # trajs map
+        - ${{ workflow.generate_events_png.return }} # placeholder for trajs map as they are huge
+        #- ${{ workflow.generate_trajs_png.return }} # trajs map
         - ${{ workflow.generate_ltd_png.return }} # ltd map 
 
         - ${{ workflow.patrol_pie_chart_png.return }} # pie chart
@@ -1799,11 +1800,10 @@ workflow:
         - ${{ workflow.avg_speed_grouped_widget.return }} # average speed
         - ${{ workflow.max_speed_grouped_widget.return }} # max speed
         - ${{ workflow.total_patrols_grouped_sv_widget.return }} # total patrols
+        - ${{ workflow.patrol_time_grouped_widget.return }}
 
         - ${{ workflow.events_grouped_map_widget.return }}
         - ${{ workflow.trajs_grouped_map_widget.return }}
-       
-        - ${{ workflow.patrol_time_grouped_widget.return }}
         - ${{ workflow.grouped_bar_plot_widget_merge.return }}
 
         - ${{ workflow.patrol_events_pie_widget_grouped.return }}
