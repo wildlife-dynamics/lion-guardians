@@ -9,11 +9,11 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
-    version: "0.0.38.*"
+    version: "0.0.39.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-ste
-    version: "0.0.17.*"
+    version: "0.0.18.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-mnc
@@ -25,7 +25,7 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-big-life
-    version: "0.0.7.*"
+    version: "0.0.8.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-lion-guardians
@@ -1711,12 +1711,24 @@ workflow:
       argnames: html_path
       argvalues: ${{ workflow.patrol_events_bar_chart_html_url.return }}
 
+  - name: Get user name to use on template 
+    id: get_user_name 
+    task: get_current_user
+    partial: 
+      client: ${{ workflow.er_client_name.return }}
+  
+  - name: Get user full name 
+    id: get_fullname 
+    task: get_user_full_name 
+    partial: 
+      user: ${{ workflow.get_user_name.return }}
+
   - name: Create context cover page
     id: context_cover_page
     task: create_guardians_ctx_cover
     partial:  
       report_period: ${{ workflow.time_range.return }}
-      prepared_by: Ecoscope 
+      prepared_by: ${{ workflow.get_fullname.return }} #"Ecoscope"
 
   - name: Persist context page for guardians report 
     id: persist_ctx_page 
