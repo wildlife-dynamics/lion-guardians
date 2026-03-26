@@ -110,6 +110,10 @@ from ecoscope_workflows_core.tasks.transformation import (
 )
 from ecoscope_workflows_core.tasks.transformation import sort_values as sort_values
 from ecoscope_workflows_core.tasks.transformation import with_unit as with_unit
+from ecoscope_workflows_ext_big_life.tasks import (
+    get_user_full_name as get_user_full_name,
+)
+from ecoscope_workflows_ext_custom.tasks.io import get_current_user as get_current_user
 from ecoscope_workflows_ext_custom.tasks.io import html_to_png as html_to_png
 from ecoscope_workflows_ext_custom.tasks.results import (
     create_geojson_layer as create_geojson_layer,
@@ -386,7 +390,9 @@ def main(params: Params):
         "persist_gua_patrol_efforts": ["summarize_events"],
         "patrol_pie_chart_png": ["pe_pie_chart_html_urls"],
         "patrol_bar_chart_png": ["patrol_events_bar_chart_html_url"],
-        "context_cover_page": ["time_range"],
+        "get_user_name": ["er_client_name"],
+        "get_fullname": ["get_user_name"],
+        "context_cover_page": ["time_range", "get_fullname"],
         "persist_ctx_page": ["persist_cover_page", "context_cover_page"],
         "group_context_values": [
             "generate_events_png",
@@ -3924,6 +3930,44 @@ def main(params: Params):
                 "argvalues": DependsOn("patrol_events_bar_chart_html_url"),
             },
         ),
+        "get_user_name": Node(
+            async_task=get_current_user.validate()
+            .set_task_instance_id("get_user_name")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "client": DependsOn("er_client_name"),
+            }
+            | (params_dict.get("get_user_name") or {}),
+            method="call",
+        ),
+        "get_fullname": Node(
+            async_task=get_user_full_name.validate()
+            .set_task_instance_id("get_fullname")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "user": DependsOn("get_user_name"),
+            }
+            | (params_dict.get("get_fullname") or {}),
+            method="call",
+        ),
         "context_cover_page": Node(
             async_task=create_guardians_ctx_cover.validate()
             .set_task_instance_id("context_cover_page")
@@ -3939,7 +3983,7 @@ def main(params: Params):
             .set_executor("lithops"),
             partial={
                 "report_period": DependsOn("time_range"),
-                "prepared_by": "Ecoscope",
+                "prepared_by": DependsOn("get_fullname"),
             }
             | (params_dict.get("context_cover_page") or {}),
             method="call",

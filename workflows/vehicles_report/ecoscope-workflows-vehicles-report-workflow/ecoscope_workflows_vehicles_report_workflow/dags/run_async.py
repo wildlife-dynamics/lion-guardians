@@ -43,6 +43,10 @@ from ecoscope_workflows_core.tasks.transformation import (
     map_values_with_unit as map_values_with_unit,
 )
 from ecoscope_workflows_core.tasks.transformation import sort_values as sort_values
+from ecoscope_workflows_ext_big_life.tasks import (
+    get_user_full_name as get_user_full_name,
+)
+from ecoscope_workflows_ext_custom.tasks.io import get_current_user as get_current_user
 from ecoscope_workflows_ext_custom.tasks.io import html_to_png as html_to_png
 from ecoscope_workflows_ext_custom.tasks.io import load_df as load_df
 from ecoscope_workflows_ext_custom.tasks.results import (
@@ -217,7 +221,9 @@ def main(params: Params):
         "download_cover_page": [],
         "download_sect_templates": [],
         "unique_subjects": ["traj_add_temporal_index"],
-        "create_cover_tpl_context": ["unique_subjects", "time_range"],
+        "get_user_name": ["er_client_name"],
+        "get_fullname": ["get_user_name"],
+        "create_cover_tpl_context": ["unique_subjects", "time_range", "get_fullname"],
         "persist_cover_context": ["download_cover_page", "create_cover_tpl_context"],
         "group_context_values": [
             "split_subject_traj_groups",
@@ -2362,6 +2368,44 @@ def main(params: Params):
             | (params_dict.get("unique_subjects") or {}),
             method="call",
         ),
+        "get_user_name": Node(
+            async_task=get_current_user.validate()
+            .set_task_instance_id("get_user_name")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "client": DependsOn("er_client_name"),
+            }
+            | (params_dict.get("get_user_name") or {}),
+            method="call",
+        ),
+        "get_fullname": Node(
+            async_task=get_user_full_name.validate()
+            .set_task_instance_id("get_fullname")
+            .handle_errors()
+            .with_tracing()
+            .skipif(
+                conditions=[
+                    any_is_empty_df,
+                    any_dependency_skipped,
+                ],
+                unpack_depth=1,
+            )
+            .set_executor("lithops"),
+            partial={
+                "user": DependsOn("get_user_name"),
+            }
+            | (params_dict.get("get_fullname") or {}),
+            method="call",
+        ),
         "create_cover_tpl_context": Node(
             async_task=create_cl_ctx_cover.validate()
             .set_task_instance_id("create_cover_tpl_context")
@@ -2378,7 +2422,7 @@ def main(params: Params):
             partial={
                 "count": DependsOn("unique_subjects"),
                 "report_period": DependsOn("time_range"),
-                "prepared_by": "Ecoscope",
+                "prepared_by": DependsOn("get_fullname"),
             }
             | (params_dict.get("create_cover_tpl_context") or {}),
             method="call",
