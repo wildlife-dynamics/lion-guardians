@@ -52,6 +52,10 @@ from ecoscope_workflows_core.tasks.transformation import (
     map_values_with_unit as map_values_with_unit,
 )
 from ecoscope_workflows_core.tasks.transformation import sort_values as sort_values
+from ecoscope_workflows_ext_big_life.tasks import (
+    get_user_full_name as get_user_full_name,
+)
+from ecoscope_workflows_ext_custom.tasks.io import get_current_user as get_current_user
 from ecoscope_workflows_ext_custom.tasks.io import html_to_png as html_to_png
 from ecoscope_workflows_ext_custom.tasks.io import load_df as load_df
 from ecoscope_workflows_ext_custom.tasks.results import (
@@ -2906,6 +2910,62 @@ unique_subjects = (
 
 
 # %% [markdown]
+# ## Get user name to use on template
+
+# %%
+# parameters
+
+get_user_name_params = dict()
+
+# %%
+# call the task
+
+
+get_user_name = (
+    get_current_user.set_task_instance_id("get_user_name")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(client=er_client_name, **get_user_name_params)
+    .call()
+)
+
+
+# %% [markdown]
+# ## Get user full name
+
+# %%
+# parameters
+
+get_fullname_params = dict()
+
+# %%
+# call the task
+
+
+get_fullname = (
+    get_user_full_name.set_task_instance_id("get_fullname")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(user=get_user_name, **get_fullname_params)
+    .call()
+)
+
+
+# %% [markdown]
 # ## Create cover template context
 
 # %%
@@ -2931,7 +2991,7 @@ create_cover_tpl_context = (
     .partial(
         count=unique_subjects,
         report_period=time_range,
-        prepared_by="Ecoscope",
+        prepared_by=get_fullname,
         **create_cover_tpl_context_params,
     )
     .call()

@@ -59,6 +59,10 @@ from ecoscope_workflows_core.tasks.transformation import (
 )
 from ecoscope_workflows_core.tasks.transformation import sort_values as sort_values
 from ecoscope_workflows_core.tasks.transformation import with_unit as with_unit
+from ecoscope_workflows_ext_big_life.tasks import (
+    get_user_full_name as get_user_full_name,
+)
+from ecoscope_workflows_ext_custom.tasks.io import get_current_user as get_current_user
 from ecoscope_workflows_ext_custom.tasks.io import html_to_png as html_to_png
 from ecoscope_workflows_ext_custom.tasks.io import load_df as load_df
 from ecoscope_workflows_ext_custom.tasks.results import (
@@ -3216,6 +3220,38 @@ def main(params: Params):
         .mapvalues(argnames=["html_path"], argvalues=patrol_events_bar_chart_html_url)
     )
 
+    get_user_name = (
+        get_current_user.validate()
+        .set_task_instance_id("get_user_name")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(client=er_client_name, **(params_dict.get("get_user_name") or {}))
+        .call()
+    )
+
+    get_fullname = (
+        get_user_full_name.validate()
+        .set_task_instance_id("get_fullname")
+        .handle_errors()
+        .with_tracing()
+        .skipif(
+            conditions=[
+                any_is_empty_df,
+                any_dependency_skipped,
+            ],
+            unpack_depth=1,
+        )
+        .partial(user=get_user_name, **(params_dict.get("get_fullname") or {}))
+        .call()
+    )
+
     context_cover_page = (
         create_guardians_ctx_cover.validate()
         .set_task_instance_id("context_cover_page")
@@ -3230,7 +3266,7 @@ def main(params: Params):
         )
         .partial(
             report_period=time_range,
-            prepared_by="Ecoscope",
+            prepared_by=get_fullname,
             **(params_dict.get("context_cover_page") or {}),
         )
         .call()
