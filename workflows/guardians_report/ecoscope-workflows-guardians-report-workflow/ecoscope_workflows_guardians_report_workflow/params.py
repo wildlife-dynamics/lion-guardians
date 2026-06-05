@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from datetime import datetime
 from enum import Enum
-from typing import List, Literal, Optional, Union
+from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field, confloat
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class WorkflowDetails(BaseModel):
@@ -16,44 +16,6 @@ class WorkflowDetails(BaseModel):
     )
     name: str = Field(..., title="Workflow Name")
     description: Optional[str] = Field("", title="Workflow Description")
-
-
-class StatusEnum(str, Enum):
-    active = "active"
-    overdue = "overdue"
-    done = "done"
-    cancelled = "cancelled"
-
-
-class ErPatrolAndEventsParams(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    patrol_types: List[str] = Field(
-        ...,
-        description="Specify the patrol type(s) to analyze (optional). Leave empty to analyze all patrol types.",
-        title="Patrol Types",
-    )
-    event_types: List[str] = Field(
-        ...,
-        description="Specify the event type(s) to analyze (optional). Leave this section empty to analyze all event types.",
-        title="Event Types",
-    )
-    status: Optional[List[StatusEnum]] = Field(
-        ["done"],
-        description="Choose to analyze patrols with a certain status. If left empty, patrols of all status will be analyzed",
-        title="Patrol Status",
-    )
-    include_null_geometry: Optional[bool] = Field(
-        True, title="Include Events Without a Geometry (point or polygon)"
-    )
-
-
-class SetPatrolTrajColorColumn(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    var: str = Field(..., title="")
 
 
 class TimeInterval(str, Enum):
@@ -78,78 +40,8 @@ class TimezoneInfo(BaseModel):
     utc: str = Field(..., title="Utc")
 
 
-class SpatialGrouper(BaseModel):
-    spatial_index_name: str = Field(..., title="Spatial Regions")
-
-
-class TemporalGrouper(BaseModel):
-    temporal_index: str = Field(..., title="Time")
-
-
-class ValueGrouper(BaseModel):
-    index_name: str = Field(..., title="Category")
-
-
 class EarthRangerConnection(BaseModel):
     name: str = Field(..., title="Data Source")
-
-
-class TrajectorySegmentFilter(BaseModel):
-    min_length_meters: Optional[confloat(ge=0.001)] = Field(
-        0.001, title="Minimum Segment Length (Meters)"
-    )
-    max_length_meters: Optional[confloat(gt=0.001)] = Field(
-        100000, title="Maximum Segment Length (Meters)"
-    )
-    min_time_secs: Optional[confloat(ge=1.0)] = Field(
-        1, title="Minimum Segment Duration (Seconds)"
-    )
-    max_time_secs: Optional[confloat(gt=1.0)] = Field(
-        172800, title="Maximum Segment Duration (Seconds)"
-    )
-    min_speed_kmhr: Optional[confloat(gt=0.001)] = Field(
-        0.01, title="Minimum Segment Speed (Kilometers per Hour)"
-    )
-    max_speed_kmhr: Optional[confloat(gt=0.001)] = Field(
-        500, title="Maximum Segment Speed (Kilometers per Hour)"
-    )
-
-
-class BoundingBox(BaseModel):
-    min_y: Optional[float] = Field(-90.0, title="Min Latitude")
-    max_y: Optional[float] = Field(90.0, title="Max Latitude")
-    min_x: Optional[float] = Field(-180.0, title="Min Longitude")
-    max_x: Optional[float] = Field(180.0, title="Max Longitude")
-
-
-class Coordinate(BaseModel):
-    y: float = Field(..., description="Example -0.15293", title="Latitude")
-    x: float = Field(..., description="Example 37.30906", title="Longitude")
-
-
-class AutoScaleOrCustom(str, Enum):
-    Auto_scale = "Auto-scale"
-
-
-class AutoScaleGridCellSize(BaseModel):
-    auto_scale_or_custom: Literal["Auto-scale"] = Field(
-        "Auto-scale", title="Grid Cell Size"
-    )
-
-
-class AutoScaleOrCustom1(str, Enum):
-    Customize = "Customize"
-
-
-class CustomGridCellSize(BaseModel):
-    auto_scale_or_custom: Literal["Customize"] = Field(
-        "Customize", title="Grid Cell Size"
-    )
-    grid_cell_size: Optional[confloat(lt=10000.0, gt=0.0)] = Field(
-        5000,
-        description="Define the resolution of the raster grid (in the unit of measurement defined by the coordinate reference system set below). A smaller grid cell size provides more detail, while a larger size generalizes the data.",
-        title="Custom Grid Cell Size",
-    )
 
 
 class TimeRange(BaseModel):
@@ -164,85 +56,12 @@ class TimeRange(BaseModel):
     )
 
 
-class Groupers(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    groupers: Optional[List[Union[ValueGrouper, TemporalGrouper, SpatialGrouper]]] = (
-        Field(
-            None,
-            description="            Specify how the data should be grouped to create the views for your dashboard.\n            This field is optional; if left blank, all the data will appear in a single view.\n            ",
-            title=" ",
-        )
-    )
-
-
 class ErClientName(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
     data_source: EarthRangerConnection = Field(
         ..., description="Select one of your configured data sources.", title=""
-    )
-
-
-class PatrolTraj(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    trajectory_segment_filter: Optional[TrajectorySegmentFilter] = Field(
-        default_factory=lambda: TrajectorySegmentFilter.model_validate(
-            {
-                "min_length_meters": 0.001,
-                "max_length_meters": 100000,
-                "min_time_secs": 1,
-                "max_time_secs": 172800,
-                "min_speed_kmhr": 0.01,
-                "max_speed_kmhr": 500,
-            }
-        ),
-        description="Filter track data by setting limits on track segment length, duration, and speed. Segments outside these bounds are removed, reducing noise and to focus on meaningful movement patterns.",
-        title=" ",
-    )
-
-
-class FilterPatrolEvents(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    bounding_box: Optional[BoundingBox] = Field(
-        default_factory=lambda: BoundingBox.model_validate(
-            {"min_y": -90.0, "max_y": 90.0, "min_x": -180.0, "max_x": 180.0}
-        ),
-        description="Filter events to inside these bounding coordinates.",
-        title="Bounding Box",
-    )
-    filter_point_coords: Optional[List[Coordinate]] = Field(
-        [],
-        description="By adding a filter, the workflow will not include events recorded at the specified coordinates.",
-        title="Filter Exact Point Coordinates",
-    )
-    reset_index: Optional[bool] = Field(
-        True, description="Reset index after filtering", title="Reset Index"
-    )
-
-
-class LtdMeshgrid(BaseModel):
-    model_config = ConfigDict(
-        extra="forbid",
-    )
-    auto_scale_or_custom_cell_size: Optional[
-        Union[AutoScaleGridCellSize, CustomGridCellSize]
-    ] = Field(
-        default_factory=lambda: AutoScaleGridCellSize.model_validate(
-            {"auto_scale_or_custom": "Auto-scale"}
-        ),
-        title="Grid Cell Size",
-    )
-    crs: Optional[str] = Field(
-        "EPSG:3857",
-        description="The coordinate reference system in which to perform the calculation, must be a valid CRS authority code, for example ESRI:53042",
-        title="Coordinate Reference System",
     )
 
 
@@ -258,21 +77,7 @@ class Params(BaseModel):
     time_range: Optional[TimeRange] = Field(
         None, description="Choose the period of time to analyze.", title="Time range"
     )
-    groupers: Optional[Groupers] = Field(None, title="Set groupers")
-    er_client_name: Optional[ErClientName] = Field(None, title="Connect to ER")
-    er_patrol_and_events_params: Optional[ErPatrolAndEventsParams] = Field(
-        None, title="Set patrol and patrol events params"
-    )
-    set_patrol_traj_color_column: Optional[SetPatrolTrajColorColumn] = Field(
-        None, title=""
-    )
-    patrol_traj: Optional[PatrolTraj] = Field(None, title="Trajectory segment filter")
-    filter_patrol_events: Optional[FilterPatrolEvents] = Field(
-        None, title="Filter patrol events"
-    )
+    er_client_name: Optional[ErClientName] = Field(None, title="Connect to EarthRanger")
     patrol_events_bar_chart: Optional[PatrolEventsBarChart] = Field(
         None, title="Draw time series bar chart"
-    )
-    ltd_meshgrid: Optional[LtdMeshgrid] = Field(
-        None, title="Create Linear Time Density Meshgrid"
     )

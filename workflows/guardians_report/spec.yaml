@@ -29,32 +29,32 @@ requirements:
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-lion-guardians
-    version: "0.0.6.*"
-    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+    version: "*"
+    channel: "file:///tmp/ecoscope-workflows-custom/release/artifacts/"
 
-rjsf-overrides:
-  properties:
-    Trajectory Category.properties.set_patrol_traj_color_column.properties.var.oneOf:
-      - const: patrol_type
-        title: Patrol Type
+rjsf-overrides: {}
+  # properties:
+  #   Trajectory Category.properties.set_patrol_traj_color_column.properties.var.oneOf:
+  #     - const: patrol_type
+  #       title: Patrol Type
 
-      - const: patrol_subject
-        title: Patrol Subject
+  #     - const: patrol_subject
+  #       title: Patrol Subject
 
-      - const: patrol_serial_number
-        title: Patrol Serial Number
-    Trajectory Category.properties.set_patrol_traj_color_column.properties.var.title: Category
-    Trajectory Category.properties.set_patrol_traj_color_column.properties.var.default: patrol_type
-  $defs:
-    ValueGrouper.oneOf:
-      - const: patrol_type
-        title: Patrol Type
+  #     - const: patrol_serial_number
+  #       title: Patrol Serial Number
+  #   Trajectory Category.properties.set_patrol_traj_color_column.properties.var.title: Category
+  #   Trajectory Category.properties.set_patrol_traj_color_column.properties.var.default: patrol_type
+  # $defs:
+  #   ValueGrouper.oneOf:
+  #     - const: patrol_type
+  #       title: Patrol Type
 
-      - const: patrol_serial_number
-        title: Patrol Serial Number
+  #     - const: patrol_serial_number
+  #       title: Patrol Serial Number
 
-      - const: patrol_subject
-        title: Patrol Subject
+  #     - const: patrol_subject
+  #       title: Patrol Subject
 
 task-instance-defaults:
   skipif:
@@ -81,8 +81,10 @@ workflow:
   - name: Set groupers
     id: groupers
     task: set_groupers
+    partial: 
+      groupers: []
 
-  - name: Connect to ER
+  - name: Connect to EarthRanger
     id: er_client_name
     task: set_er_connection
 
@@ -122,15 +124,15 @@ workflow:
       retries: 3
       unzip: false
 
-  - name: Download protected areas gpkg
-    id: persist_protected_gpkg
-    task: fetch_and_persist_file
-    partial:
-      url: https://www.dropbox.com/scl/fi/i5yczgyln3zh1n8c4ppl5/lg_protected_areas.gpkg?rlkey=5ea21haq2tmsmx7g502p3qag5&st=zt6ztcku&dl=0
-      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      overwrite_existing: false
-      retries: 3
-      unzip: false
+  # - name: Download protected areas gpkg
+  #   id: persist_protected_gpkg
+  #   task: fetch_and_persist_file
+  #   partial:
+  #     url: https://www.dropbox.com/scl/fi/i5yczgyln3zh1n8c4ppl5/lg_protected_areas.gpkg?rlkey=5ea21haq2tmsmx7g502p3qag5&st=zt6ztcku&dl=0
+  #     output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+  #     overwrite_existing: false
+  #     retries: 3
+  #     unzip: false
 
   - name: Download guardians report cover page
     id: persist_cover_page
@@ -168,13 +170,13 @@ workflow:
       layer: null
       deserialize_json: false
 
-  - name: Load protected areas
-    id: load_protected_areas
-    task: load_df
-    partial:
-      file_path: ${{ workflow.persist_protected_gpkg.return }}
-      layer: null
-      deserialize_json: false
+  # - name: Load protected areas
+  #   id: load_protected_areas
+  #   task: load_df
+  #   partial:
+  #     file_path: ${{ workflow.persist_protected_gpkg.return }}
+  #     layer: null
+  #     deserialize_json: false
 
   - name: Reproject gdf to 4326 for ambo layers
     id: reproject_ambo_boundaries
@@ -190,12 +192,12 @@ workflow:
       gdf: ${{ workflow.load_hotspot_areas.return }}
       target_crs: "EPSG:4326"
 
-  - name: Reproject gdf to 4326 for protected areas
-    id: reproject_protected_areas
-    task: reproject_gdf
-    partial:
-      gdf: ${{ workflow.load_protected_areas.return }}
-      target_crs: "EPSG:4326"
+  # - name: Reproject gdf to 4326 for protected areas
+  #   id: reproject_protected_areas
+  #   task: reproject_gdf
+  #   partial:
+  #     gdf: ${{ workflow.load_protected_areas.return }}
+  #     target_crs: "EPSG:4326"
 
   - name: Annotate amboseli layers with geom type
     id: annotate_ambo_layers
@@ -209,11 +211,11 @@ workflow:
     partial:
       gdf: ${{ workflow.reproject_hotspot_areas.return }}
 
-  - name: Annotate protected areas with geom type
-    id: annotate_protected_layers
-    task: get_gdf_geom_type
-    partial:
-      gdf: ${{ workflow.reproject_protected_areas.return }}
+  # - name: Annotate protected areas with geom type
+  #   id: annotate_protected_layers
+  #   task: get_gdf_geom_type
+  #   partial:
+  #     gdf: ${{ workflow.reproject_protected_areas.return }}
 
   - name: Create layer for amboseli group ranch
     id: custom_amboseli_layer
@@ -223,8 +225,8 @@ workflow:
       style:
         get_line_color: [169, 169, 169]
         get_fill_color: [169, 169, 169]
-        get_line_width: 4.50
-        opacity: 0.55
+        get_line_width: 1.25
+        opacity: 0.45
         extruded: false
         stroked: true
         filled: false
@@ -242,9 +244,9 @@ workflow:
       style:
         get_line_color: [220, 20, 60]
         get_fill_color: [220, 20, 60]
-        get_radius: 2.55
-        get_line_width: 1.95
-        opacity: 0.75
+        get_radius: 2.05
+        get_line_width: 1.25
+        opacity: 0.45
         extruded: false
         stroked: true
         filled: true
@@ -254,24 +256,24 @@ workflow:
           - label: Hotspot areas
             color: "#dc143c"
 
-  - name: Create layer for protected areas
-    id: custom_protected_layer
-    task: create_deckgl_layer_from_gdf
-    partial:
-      gdf: ${{ workflow.annotate_protected_layers.return }}
-      style:
-        get_line_color: [77, 102, 0]
-        get_fill_color: [77, 102, 0]
-        get_line_width: 1.95
-        opacity: 0.35
-        extruded: false
-        stroked: true
-        filled: true
-      legend:
-        title: ""
-        values:
-          - label: National parks and reserves
-            color: "#4d6600"
+  # - name: Create layer for protected areas
+  #   id: custom_protected_layer
+  #   task: create_deckgl_layer_from_gdf
+  #   partial:
+  #     gdf: ${{ workflow.annotate_protected_layers.return }}
+  #     style:
+  #       get_line_color: [77, 102, 0]
+  #       get_fill_color: [77, 102, 0]
+  #       get_line_width: 1.95
+  #       opacity: 0.35
+  #       extruded: false
+  #       stroked: true
+  #       filled: true
+  #     legend:
+  #       title: ""
+  #       values:
+  #         - label: National parks and reserves
+  #           color: "#4d6600"
 
   - name: Create text layer for conflict hotspots
     id: create_hotspot_text_layer
@@ -306,11 +308,15 @@ workflow:
     partial:
       client: ${{ workflow.er_client_name.return }}
       time_range: ${{ workflow.time_range.return }}
+      event_types: []
+      status: ["done"]
+      include_null_geometry: false
       include_patrol_details: true
       raise_on_empty: false
       truncate_to_time_range: true
       sub_page_size: 200
       patrols_overlap_daterange: false
+      patrol_types: ["routine_patrol"]
 
   - name: Prefetch patrols
     id: prefetch_patrols
@@ -370,13 +376,13 @@ workflow:
       df: ${{ workflow.convert_events_to_user_timezone.return }}
       filename: events
 
-  - title: Trajectory Category
-    type: task-group
-    description: Differentiate tracks by color using the selected category.
-    tasks:
-      - name: null
-        id: set_patrol_traj_color_column
-        task: set_string_var
+  # - title: Trajectory Category
+  #   type: task-group
+  #   description: Differentiate tracks by color using the selected category.
+  #   tasks:
+  #     - name: null
+  #       id: set_patrol_traj_color_column
+  #       task: set_string_var
 
   - name: Transform Observations to Relocations
     id: patrol_reloc
@@ -405,11 +411,27 @@ workflow:
         - x: 1.000000
           y: 1.000000
 
+  - name: Filter patrols to only have daytime patrols
+    id: filter_daytime_patrol
+    task: ecoscope_workflows_ext_lion_guardians.tasks.filter_daytime_patrols
+    partial:
+      start_hour: 6
+      end_hour: 19
+      df: ${{ workflow.patrol_reloc.return }}
+
+  # restrict to only foot patrols for now
   - name: Trajectory segment filter
     id: patrol_traj
     task: relocations_to_trajectory
     partial:
-      relocations: ${{ workflow.patrol_reloc.return }}
+      relocations: ${{ workflow.filter_daytime_patrol.return }}
+      trajectory_segment_filter: 
+        min_length_meters: 10
+        max_length_meters: 100000
+        min_time_secs: 10
+        max_time_secs: 21600
+        min_speed_kmhr: 1
+        max_speed_kmhr: 7 
 
   - name: Add temporal index to patrol trajectories
     id: traj_add_temporal_index
@@ -444,14 +466,14 @@ workflow:
       df: ${{ workflow.traj_rename_grouper_columns.return }}
       filename: trajectories
 
-  - name: Patrol Traj Colormap
-    id: traj_colormap
-    task: apply_color_map
-    partial:
-      df: ${{ workflow.traj_rename_grouper_columns.return }}
-      colormap: Paired
-      input_column_name: ${{ workflow.set_patrol_traj_color_column.return }}
-      output_column_name: patrol_traj_colormap
+  # - name: Patrol Traj Colormap
+  #   id: traj_colormap
+  #   task: apply_color_map
+  #   partial:
+  #     df: ${{ workflow.traj_rename_grouper_columns.return }}
+  #     colormap: Paired
+  #     input_column_name: ${{ workflow.set_patrol_traj_color_column.return }}
+  #     output_column_name: patrol_traj_colormap
 
   - name: Filter patrol events
     id: filter_patrol_events
@@ -460,6 +482,15 @@ workflow:
       df: ${{ workflow.convert_events_to_user_timezone.return }}
       roi_gdf: null
       roi_name: null
+      reset_index: true 
+      filter_point_coords: null 
+      bounding_box: 
+        min_y: -2.8975255
+        max_y: -2.19024722
+        min_x: 36.90394594
+        max_x: 37.87889203
+
+    #36.90394594, -2.8975255 , 37.87889203, -2.19024722
 
   - name: Add temporal index to patrol events
     id: pe_add_temporal_index
@@ -484,7 +515,8 @@ workflow:
     id: patrol_traj_cols_to_string
     task: convert_column_values_to_string
     partial:
-      df: ${{ workflow.traj_colormap.return }}
+      df: ${{ workflow.traj_rename_grouper_columns.return }} #
+      #${{ workflow.traj_colormap.return }}
       columns:
         - patrol_serial_number
         - patrol_type
@@ -620,7 +652,7 @@ workflow:
       static_layers:
         - ${{ workflow.custom_amboseli_layer.return }}
         - ${{ workflow.custom_hotspot_layer.return }}
-        - ${{ workflow.custom_protected_layer.return }}
+        # - ${{ workflow.custom_protected_layer.return }}
         - ${{ workflow.create_hotspot_text_layer.return }}
     mapvalues:
       argnames: grouped_layers
@@ -743,7 +775,7 @@ workflow:
         - segment_start
         - extra__patrol_type__display
         - patrol_serial_number
-        - patrol_traj_colormap
+        # - patrol_traj_colormap
         - patrol_type
         - patrol_status
         - patrol_subject
@@ -768,7 +800,7 @@ workflow:
         - all_geometry_are_none
     partial:
       layer_style:
-        get_color: patrol_traj_colormap
+        get_color: [0, 139, 139]
         get_width: 1.85
         width_scale: 1
         width_min_pixels: 2
@@ -781,11 +813,14 @@ workflow:
         stroked: true
 
       legend:
-        title: "Patrol Trajectories"
-        label_column: ${{ workflow.set_patrol_traj_color_column.return }}
-        color_column: patrol_traj_colormap
-        sort: ascending
-        label_suffix: null
+        title: "Patrols"
+        values: 
+          - label: Foot patrols 
+            color: "#008b8b"
+        # label_column: ${{ workflow.set_patrol_traj_color_column.return }}
+        # color_column: "#008b8b" #patrol_traj_colormap
+        # sort: ascending
+        # label_suffix: null
     mapvalues:
       argnames: geodataframe
       argvalues: ${{ workflow.patrol_traj_rename_columns.return }}
@@ -801,7 +836,7 @@ workflow:
       static_layers:
         - ${{ workflow.custom_amboseli_layer.return }}
         - ${{ workflow.custom_hotspot_layer.return }}
-        - ${{ workflow.custom_protected_layer.return }}
+        # - ${{ workflow.custom_protected_layer.return }}
         - ${{ workflow.create_hotspot_text_layer.return }}
     mapvalues:
       argnames: grouped_layers
@@ -871,30 +906,30 @@ workflow:
       argnames: text
       argvalues: ${{ workflow.trajs_ecomap.return }}
 
-  # - name: Combine trajectories path with zoom value
-  #   id: zip_trajs_value
-  #   task: zip_groupbykey
-  #   partial:
-  #     sequences:
-  #       - ${{ workflow.gdf_trajs_image_extent.return }}
-  #       - ${{ workflow.traj_ecomap_html_urls.return }}
+  - name: Combine trajectories path with zoom value
+    id: zip_trajs_value
+    task: zip_groupbykey
+    partial:
+      sequences:
+        - ${{ workflow.gdf_trajs_image_extent.return }}
+        - ${{ workflow.traj_ecomap_html_urls.return }}
 
-  # - name: Convert trajs html to png
-  #   id: generate_trajs_png
-  #   task: adjust_map_zoom_and_screenshot
-  #   partial:
-  #     output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-  #     screenshot_config:
-  #       full_page: false
-  #       device_scale_factor: 2.0
-  #       wait_for_timeout: 40000
-  #       max_concurrent_pages: 1
+  - name: Convert trajs html to png
+    id: generate_trajs_png
+    task: adjust_map_zoom_and_screenshot
+    partial:
+      output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      screenshot_config:
+        full_page: false
+        device_scale_factor: 2.0
+        wait_for_timeout: 40000
+        max_concurrent_pages: 1
 
-  #   mapvalues:
-  #     argnames:
-  #       - view_state
-  #       - input_file
-  #     argvalues: ${{ workflow.zip_trajs_value.return }}
+    mapvalues:
+      argnames:
+        - view_state
+        - input_file
+      argvalues: ${{ workflow.zip_trajs_value.return }}
 
   - name: Create Map Widgets for patrol events
     id: events_map_widgets_single_views
@@ -1225,6 +1260,9 @@ workflow:
     partial:
       aoi: ${{ workflow.patrol_traj_cols_to_string.return }}
       intersecting_only: false
+      crs: "EPSG:3857"
+      auto_scale_or_custom_cell_size: 
+        auto_scale_or_custom: "Auto-scale"
 
   - name: Crate Linear Time Density from Trajectory
     id: ltd
@@ -1339,7 +1377,7 @@ workflow:
       static_layers:
         - ${{ workflow.custom_amboseli_layer.return }}
         - ${{ workflow.custom_hotspot_layer.return }}
-        - ${{ workflow.custom_protected_layer.return }}
+        # - ${{ workflow.custom_protected_layer.return }}
         - ${{ workflow.create_hotspot_text_layer.return }}
     mapvalues:
       argnames: grouped_layers
@@ -1744,8 +1782,8 @@ workflow:
     partial:
       sequences:
         - ${{ workflow.generate_events_png.return }} # events map
-        - ${{ workflow.generate_events_png.return }} # placeholder for trajs map as they are huge
-        #- ${{ workflow.generate_trajs_png.return }} # trajs map
+        #- ${{ workflow.generate_events_png.return }} # placeholder for trajs map as they are huge
+        - ${{ workflow.generate_trajs_png.return }} # trajs map
         - ${{ workflow.generate_ltd_png.return }} # ltd map
 
         - ${{ workflow.patrol_pie_chart_png.return }} # pie chart
