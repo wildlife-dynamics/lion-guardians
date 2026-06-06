@@ -9,14 +9,7 @@ from ._collared_lions_context import (
 )
 
 from ._tabular import extract_date_parts
-
-from ._retrieve_patrols import (
-    get_patrol_observations_from_patrols_dataframe,
-    get_patrols_from_combined_parameters,
-    get_patrol_observations_from_patrols_dataframe_and_combined_params,
-    get_event_type_display_names_from_events_aliased,
-)
-
+from ._retrieve_patrols import filter_daytime_patrols
 from ._guardians_context import generate_guardians_report, guardians_ctx
 
 __all__ = [
@@ -29,9 +22,6 @@ __all__ = [
     "create_guardians_ctx_cover",
     "extract_date_parts",
     "create_guardians_grouper_ctx",
-    "get_patrol_observations_from_patrols_dataframe",
-    "get_patrols_from_combined_parameters",
-    "get_patrol_observations_from_patrols_dataframe_and_combined_params",
-    "get_event_type_display_names_from_events_aliased",
+    "filter_daytime_patrols",
     "create_vehicles_grouper_ctx",
 ]

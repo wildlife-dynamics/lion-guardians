@@ -69,10 +69,6 @@ from ecoscope_workflows_core.tasks.transformation import (
 )
 from ecoscope_workflows_core.tasks.transformation import sort_values as sort_values
 from ecoscope_workflows_core.tasks.transformation import with_unit as with_unit
-from ecoscope_workflows_ext_big_life.tasks import (
-    get_user_full_name as get_user_full_name,
-)
-from ecoscope_workflows_ext_custom.tasks.io import get_current_user as get_current_user
 from ecoscope_workflows_ext_custom.tasks.io import html_to_png as html_to_png
 from ecoscope_workflows_ext_custom.tasks.io import load_df as load_df
 from ecoscope_workflows_ext_custom.tasks.results import (
@@ -90,6 +86,9 @@ from ecoscope_workflows_ext_custom.tasks.results import (
 )
 from ecoscope_workflows_ext_custom.tasks.spatial_ops import (
     reproject_gdf as reproject_gdf,
+)
+from ecoscope_workflows_ext_custom.tasks.transformation import (
+    decompose_datetime as decompose_datetime,
 )
 from ecoscope_workflows_ext_custom.tasks.transformation import (
     drop_null_geometry as drop_null_geometry,
@@ -148,7 +147,7 @@ from ecoscope_workflows_ext_lion_guardians.tasks import (
     create_guardians_ctx_cover as create_guardians_ctx_cover,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
-    extract_date_parts as extract_date_parts,
+    filter_daytime_patrols as filter_daytime_patrols,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks import (
     generate_guardians_report as generate_guardians_report,
@@ -281,9 +280,7 @@ get_timezone = (
 # %%
 # parameters
 
-groupers_params = dict(
-    groupers=...,
-)
+groupers_params = dict()
 
 # %%
 # call the task
@@ -300,13 +297,13 @@ groupers = (
         ],
         unpack_depth=1,
     )
-    .partial(**groupers_params)
+    .partial(groupers=[], **groupers_params)
     .call()
 )
 
 
 # %% [markdown]
-# ## Connect to ER
+# ## Connect to EarthRanger
 
 # %%
 # parameters
@@ -442,41 +439,6 @@ persist_hotspot_areas = (
         retries=3,
         unzip=False,
         **persist_hotspot_areas_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Download protected areas gpkg
-
-# %%
-# parameters
-
-persist_protected_gpkg_params = dict()
-
-# %%
-# call the task
-
-
-persist_protected_gpkg = (
-    fetch_and_persist_file.set_task_instance_id("persist_protected_gpkg")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        url="https://www.dropbox.com/scl/fi/i5yczgyln3zh1n8c4ppl5/lg_protected_areas.gpkg?rlkey=5ea21haq2tmsmx7g502p3qag5&st=zt6ztcku&dl=0",
-        output_path=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
-        overwrite_existing=False,
-        retries=3,
-        unzip=False,
-        **persist_protected_gpkg_params,
     )
     .call()
 )
@@ -619,39 +581,6 @@ load_hotspot_areas = (
 
 
 # %% [markdown]
-# ## Load protected areas
-
-# %%
-# parameters
-
-load_protected_areas_params = dict()
-
-# %%
-# call the task
-
-
-load_protected_areas = (
-    load_df.set_task_instance_id("load_protected_areas")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        file_path=persist_protected_gpkg,
-        layer=None,
-        deserialize_json=False,
-        **load_protected_areas_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
 # ## Reproject gdf to 4326 for ambo layers
 
 # %%
@@ -714,38 +643,6 @@ reproject_hotspot_areas = (
 
 
 # %% [markdown]
-# ## Reproject gdf to 4326 for protected areas
-
-# %%
-# parameters
-
-reproject_protected_areas_params = dict()
-
-# %%
-# call the task
-
-
-reproject_protected_areas = (
-    reproject_gdf.set_task_instance_id("reproject_protected_areas")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        gdf=load_protected_areas,
-        target_crs="EPSG:4326",
-        **reproject_protected_areas_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
 # ## Annotate amboseli layers with geom type
 
 # %%
@@ -802,34 +699,6 @@ annotate_hotspot_layers = (
 
 
 # %% [markdown]
-# ## Annotate protected areas with geom type
-
-# %%
-# parameters
-
-annotate_protected_layers_params = dict()
-
-# %%
-# call the task
-
-
-annotate_protected_layers = (
-    get_gdf_geom_type.set_task_instance_id("annotate_protected_layers")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(gdf=reproject_protected_areas, **annotate_protected_layers_params)
-    .call()
-)
-
-
-# %% [markdown]
 # ## Create layer for amboseli group ranch
 
 # %%
@@ -857,8 +726,8 @@ custom_amboseli_layer = (
         style={
             "get_line_color": [169, 169, 169],
             "get_fill_color": [169, 169, 169],
-            "get_line_width": 4.5,
-            "opacity": 0.55,
+            "get_line_width": 1.25,
+            "opacity": 0.45,
             "extruded": False,
             "stroked": True,
             "filled": False,
@@ -901,9 +770,9 @@ custom_hotspot_layer = (
         style={
             "get_line_color": [220, 20, 60],
             "get_fill_color": [220, 20, 60],
-            "get_radius": 2.55,
-            "get_line_width": 1.95,
-            "opacity": 0.75,
+            "get_radius": 2.05,
+            "get_line_width": 1.25,
+            "opacity": 0.45,
             "extruded": False,
             "stroked": True,
             "filled": True,
@@ -913,50 +782,6 @@ custom_hotspot_layer = (
             "values": [{"label": "Hotspot areas", "color": "#dc143c"}],
         },
         **custom_hotspot_layer_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
-# ## Create layer for protected areas
-
-# %%
-# parameters
-
-custom_protected_layer_params = dict()
-
-# %%
-# call the task
-
-
-custom_protected_layer = (
-    create_deckgl_layer_from_gdf.set_task_instance_id("custom_protected_layer")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        gdf=annotate_protected_layers,
-        style={
-            "get_line_color": [77, 102, 0],
-            "get_fill_color": [77, 102, 0],
-            "get_line_width": 1.95,
-            "opacity": 0.35,
-            "extruded": False,
-            "stroked": True,
-            "filled": True,
-        },
-        legend={
-            "title": "",
-            "values": [{"label": "National parks and reserves", "color": "#4d6600"}],
-        },
-        **custom_protected_layer_params,
     )
     .call()
 )
@@ -1018,12 +843,7 @@ create_hotspot_text_layer = (
 # %%
 # parameters
 
-er_patrol_and_events_params_params = dict(
-    patrol_types=...,
-    event_types=...,
-    status=...,
-    include_null_geometry=...,
-)
+er_patrol_and_events_params_params = dict()
 
 # %%
 # call the task
@@ -1045,11 +865,15 @@ er_patrol_and_events_params = (
     .partial(
         client=er_client_name,
         time_range=time_range,
+        event_types=[],
+        status=["done"],
+        include_null_geometry=False,
         include_patrol_details=True,
         raise_on_empty=False,
         truncate_to_time_range=True,
         sub_page_size=200,
         patrols_overlap_daterange=False,
+        patrol_types=["routine_patrol"],
         **er_patrol_and_events_params_params,
     )
     .call()
@@ -1288,36 +1112,6 @@ persist_events_geoparquet = (
 
 
 # %% [markdown]
-# ##
-
-# %%
-# parameters
-
-set_patrol_traj_color_column_params = dict(
-    var=...,
-)
-
-# %%
-# call the task
-
-
-set_patrol_traj_color_column = (
-    set_string_var.set_task_instance_id("set_patrol_traj_color_column")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(**set_patrol_traj_color_column_params)
-    .call()
-)
-
-
-# %% [markdown]
 # ## Transform Observations to Relocations
 
 # %%
@@ -1369,14 +1163,40 @@ patrol_reloc = (
 
 
 # %% [markdown]
+# ## Filter patrols to only have daytime patrols
+
+# %%
+# parameters
+
+filter_daytime_patrol_params = dict()
+
+# %%
+# call the task
+
+
+filter_daytime_patrol = (
+    filter_daytime_patrols.set_task_instance_id("filter_daytime_patrol")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(start_hour=6, end_hour=19, df=patrol_reloc, **filter_daytime_patrol_params)
+    .call()
+)
+
+
+# %% [markdown]
 # ## Trajectory segment filter
 
 # %%
 # parameters
 
-patrol_traj_params = dict(
-    trajectory_segment_filter=...,
-)
+patrol_traj_params = dict()
 
 # %%
 # call the task
@@ -1393,7 +1213,18 @@ patrol_traj = (
         ],
         unpack_depth=1,
     )
-    .partial(relocations=patrol_reloc, **patrol_traj_params)
+    .partial(
+        relocations=filter_daytime_patrol,
+        trajectory_segment_filter={
+            "min_length_meters": 10,
+            "max_length_meters": 100000,
+            "min_time_secs": 10,
+            "max_time_secs": 21600,
+            "min_speed_kmhr": 1,
+            "max_speed_kmhr": 7,
+        },
+        **patrol_traj_params,
+    )
     .call()
 )
 
@@ -1508,50 +1339,12 @@ persist_patrols_geoparquet = (
 
 
 # %% [markdown]
-# ## Patrol Traj Colormap
-
-# %%
-# parameters
-
-traj_colormap_params = dict()
-
-# %%
-# call the task
-
-
-traj_colormap = (
-    apply_color_map.set_task_instance_id("traj_colormap")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(
-        df=traj_rename_grouper_columns,
-        colormap="Paired",
-        input_column_name=set_patrol_traj_color_column,
-        output_column_name="patrol_traj_colormap",
-        **traj_colormap_params,
-    )
-    .call()
-)
-
-
-# %% [markdown]
 # ## Filter patrol events
 
 # %%
 # parameters
 
-filter_patrol_events_params = dict(
-    bounding_box=...,
-    filter_point_coords=...,
-    reset_index=...,
-)
+filter_patrol_events_params = dict()
 
 # %%
 # call the task
@@ -1572,6 +1365,14 @@ filter_patrol_events = (
         df=convert_events_to_user_timezone,
         roi_gdf=None,
         roi_name=None,
+        reset_index=True,
+        filter_point_coords=None,
+        bounding_box={
+            "min_y": -2.8975255,
+            "max_y": -2.19024722,
+            "min_x": 36.90394594,
+            "max_x": 37.87889203,
+        },
         **filter_patrol_events_params,
     )
     .call()
@@ -1671,7 +1472,7 @@ patrol_traj_cols_to_string = (
         unpack_depth=1,
     )
     .partial(
-        df=traj_colormap,
+        df=traj_rename_grouper_columns,
         columns=["patrol_serial_number", "patrol_type"],
         **patrol_traj_cols_to_string_params,
     )
@@ -2077,7 +1878,6 @@ merge_static_wevent_layers = (
         static_layers=[
             custom_amboseli_layer,
             custom_hotspot_layer,
-            custom_protected_layer,
             create_hotspot_text_layer,
         ],
         **merge_static_wevent_layers_params,
@@ -2409,7 +2209,6 @@ patrol_traj_rename_columns = (
             "segment_start",
             "extra__patrol_type__display",
             "patrol_serial_number",
-            "patrol_traj_colormap",
             "patrol_type",
             "patrol_status",
             "patrol_subject",
@@ -2453,7 +2252,7 @@ patrol_traj_map_layers = (
     )
     .partial(
         layer_style={
-            "get_color": "patrol_traj_colormap",
+            "get_color": [0, 139, 139],
             "get_width": 1.85,
             "width_scale": 1,
             "width_min_pixels": 2,
@@ -2466,11 +2265,8 @@ patrol_traj_map_layers = (
             "stroked": True,
         },
         legend={
-            "title": "Patrol Trajectories",
-            "label_column": set_patrol_traj_color_column,
-            "color_column": "patrol_traj_colormap",
-            "sort": "ascending",
-            "label_suffix": None,
+            "title": "Patrols",
+            "values": [{"label": "Foot patrols", "color": "#008b8b"}],
         },
         **patrol_traj_map_layers_params,
     )
@@ -2505,7 +2301,6 @@ merge_static_traj_layers = (
         static_layers=[
             custom_amboseli_layer,
             custom_hotspot_layer,
-            custom_protected_layer,
             create_hotspot_text_layer,
         ],
         **merge_static_traj_layers_params,
@@ -2698,6 +2493,74 @@ traj_ecomap_html_urls = (
         **traj_ecomap_html_urls_params,
     )
     .mapvalues(argnames=["text"], argvalues=trajs_ecomap)
+)
+
+
+# %% [markdown]
+# ## Combine trajectories path with zoom value
+
+# %%
+# parameters
+
+zip_trajs_value_params = dict()
+
+# %%
+# call the task
+
+
+zip_trajs_value = (
+    zip_groupbykey.set_task_instance_id("zip_trajs_value")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        sequences=[gdf_trajs_image_extent, traj_ecomap_html_urls],
+        **zip_trajs_value_params,
+    )
+    .call()
+)
+
+
+# %% [markdown]
+# ## Convert trajs html to png
+
+# %%
+# parameters
+
+generate_trajs_png_params = dict()
+
+# %%
+# call the task
+
+
+generate_trajs_png = (
+    adjust_map_zoom_and_screenshot.set_task_instance_id("generate_trajs_png")
+    .handle_errors()
+    .with_tracing()
+    .skipif(
+        conditions=[
+            any_is_empty_df,
+            any_dependency_skipped,
+        ],
+        unpack_depth=1,
+    )
+    .partial(
+        output_dir=os.environ["ECOSCOPE_WORKFLOWS_RESULTS"],
+        screenshot_config={
+            "full_page": False,
+            "device_scale_factor": 2.0,
+            "wait_for_timeout": 40000,
+            "max_concurrent_pages": 1,
+        },
+        **generate_trajs_png_params,
+    )
+    .mapvalues(argnames=["view_state", "input_file"], argvalues=zip_trajs_value)
 )
 
 
@@ -3621,10 +3484,7 @@ patrol_events_pie_widget_grouped = (
 # %%
 # parameters
 
-ltd_meshgrid_params = dict(
-    auto_scale_or_custom_cell_size=...,
-    crs=...,
-)
+ltd_meshgrid_params = dict()
 
 # %%
 # call the task
@@ -3642,7 +3502,11 @@ ltd_meshgrid = (
         unpack_depth=1,
     )
     .partial(
-        aoi=patrol_traj_cols_to_string, intersecting_only=False, **ltd_meshgrid_params
+        aoi=patrol_traj_cols_to_string,
+        intersecting_only=False,
+        crs="EPSG:3857",
+        auto_scale_or_custom_cell_size={"auto_scale_or_custom": "Auto-scale"},
+        **ltd_meshgrid_params,
     )
     .call()
 )
@@ -3915,7 +3779,6 @@ merged_time_density_layers = (
         static_layers=[
             custom_amboseli_layer,
             custom_hotspot_layer,
-            custom_protected_layer,
             create_hotspot_text_layer,
         ],
         **merged_time_density_layers_params,
@@ -4519,7 +4382,7 @@ add_month_name_params = dict()
 
 
 add_month_name = (
-    extract_date_parts.set_task_instance_id("add_month_name")
+    decompose_datetime.set_task_instance_id("add_month_name")
     .handle_errors()
     .with_tracing()
     .skipif(
@@ -4530,8 +4393,10 @@ add_month_name = (
         unpack_depth=1,
     )
     .partial(
-        date_column="extra__patrol_start_time",
-        parts=["month", "day", "month_name"],
+        datetime_column="extra__patrol_start_time",
+        components=["month_name"],
+        remove_source=False,
+        column_prefix="time",
         **add_month_name_params,
     )
     .mapvalues(argnames=["df"], argvalues=split_patrol_traj_groups)
@@ -4562,7 +4427,7 @@ summarize_month_patrol = (
         unpack_depth=1,
     )
     .partial(
-        groupby_cols=["month_name"],
+        groupby_cols=["time_month_name"],
         reset_index=True,
         summary_params=[
             {
@@ -4834,62 +4699,6 @@ patrol_bar_chart_png = (
 
 
 # %% [markdown]
-# ## Get user name to use on template
-
-# %%
-# parameters
-
-get_user_name_params = dict()
-
-# %%
-# call the task
-
-
-get_user_name = (
-    get_current_user.set_task_instance_id("get_user_name")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(client=er_client_name, **get_user_name_params)
-    .call()
-)
-
-
-# %% [markdown]
-# ## Get user full name
-
-# %%
-# parameters
-
-get_fullname_params = dict()
-
-# %%
-# call the task
-
-
-get_fullname = (
-    get_user_full_name.set_task_instance_id("get_fullname")
-    .handle_errors()
-    .with_tracing()
-    .skipif(
-        conditions=[
-            any_is_empty_df,
-            any_dependency_skipped,
-        ],
-        unpack_depth=1,
-    )
-    .partial(user=get_user_name, **get_fullname_params)
-    .call()
-)
-
-
-# %% [markdown]
 # ## Create context cover page
 
 # %%
@@ -4913,7 +4722,7 @@ context_cover_page = (
         unpack_depth=1,
     )
     .partial(
-        report_period=time_range, prepared_by=get_fullname, **context_cover_page_params
+        report_period=time_range, prepared_by="Ecoscope", **context_cover_page_params
     )
     .call()
 )
@@ -4979,7 +4788,7 @@ group_context_values = (
     .partial(
         sequences=[
             generate_events_png,
-            generate_events_png,
+            generate_trajs_png,
             generate_ltd_png,
             patrol_pie_chart_png,
             patrol_bar_chart_png,
