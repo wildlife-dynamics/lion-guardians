@@ -24,10 +24,13 @@ requirements:
     - pip
   run:
     - python
+    - pip
+    - wt-registry >=0.2.0,<0.3.0
+    - wt-task >=0.1.0,<0.2.0
+    - ecoscope-platform >=2.15.0,<3.0.0
     - ecoscope
-    - ecoscope-workflows-core
-    - ecoscope-workflows-ext-ecoscope
     - ecoscope-workflows-ext-custom
+    - ecoscope-workflows-ext-ste
     - geopandas
     - shapely
     - docxtpl
@@ -38,4 +41,4 @@ about:
 
 extra:
   recipe-maintainers:
-    - yun-wu
+    - tevin-temu

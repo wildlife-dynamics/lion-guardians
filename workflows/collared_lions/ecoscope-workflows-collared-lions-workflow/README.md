@@ -5,32 +5,29 @@
 
 ```yaml
 # fingerprint:
-artifacts_sha256_basic: 03b9b036d7d3e062d3eb7329a829bd0ff521a5ac1e37395bce8d9498fafed71b
-artifacts_sha256_strict: cc591d121a5ca4b282fc3efaade0dc1dfedf8ba6faeb2692a6773dfed45fd3e5
+artifacts_sha256_basic: 601c70a4b81da0922f2caa104813d1f2d0b6d0ebfe7e7cc864fac123f02a50dd
+artifacts_sha256_strict: bdf69ed1b404a33647251d3707f00288b0592b53618ce57be4b6045f14f9bca8
 installed_requirements:
 - channel: https://repo.prefix.dev/ecoscope-workflows/
-  name: ecoscope-workflows-core
-  version: {version: ==0.22.17}
-- channel: https://repo.prefix.dev/ecoscope-workflows/
-  name: ecoscope-workflows-ext-ecoscope
-  version: {version: ==0.22.17}
+  name: ecoscope-platform
+  version: {version: ==2.15.1}
 - channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   name: ecoscope-workflows-ext-custom
-  version: {version: ==0.0.39}
+  version: {version: ==0.1.0rc14}
 - channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   name: ecoscope-workflows-ext-ste
-  version: {version: ==0.0.18}
-- channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-  name: ecoscope-workflows-ext-mnc
-  version: {version: ==0.0.7}
-- channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-  name: ecoscope-workflows-ext-big-life
-  version: {version: ==0.0.8}
-- channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+  version: {version: ==0.0.0rc1}
+- channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
   name: ecoscope-workflows-ext-lion-guardians
-  version: {version: ==0.0.6}
-params_sha256: 44a3f9573e6237d27d10b46b43b09d70737257addd8a546e376b359c4a5ff42f
-spec_sha256: 9bb0748cf3ce48ddb8e9933179aeb7c88df9866401d64f75c1d53f3eaa3a9099
+  version: {version: ==0.0.8.dev0+g9810d3ac.d20260717}
+- channel: conda-forge
+  name: pydeck
+  version: {version: ==0.9.2}
+- channel: conda-forge
+  name: opentelemetry-sdk
+  version: {version: ==1.44.0}
+params_sha256: 02b628fd8a1052067aaf8e6288b9bb356532fff3f5dcc850dca7963f79262738
+spec_sha256: 057d0022318d1d1bb98ebcd20b8a9d8946e7f088630b1d511ab3c5ec5f053f47
 
 ```
 
