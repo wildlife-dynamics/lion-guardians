@@ -5,35 +5,29 @@
 
 ```yaml
 # fingerprint:
-artifacts_sha256_basic: 66e1fede0452190c362987897fff57d05a8e6b2643b903c25355daf744d303d7
-artifacts_sha256_strict: 2fab91c090f88c68f1fb45a3886dac82ed3334c236ddef04222fee778bbbba11
+artifacts_sha256_basic: ccc47d4a05c0197f790a95fdf1f2f92e24595b17d73a74540b8624b79830d8c8
+artifacts_sha256_strict: e92e225a26433085115b8b9290839d0739fc491f1c7dba3af92ea60f578bf291
 installed_requirements:
 - channel: https://repo.prefix.dev/ecoscope-workflows/
-  name: ecoscope-workflows-core
-  version: {version: ==0.22.17}
-- channel: https://repo.prefix.dev/ecoscope-workflows/
-  name: ecoscope-workflows-ext-ecoscope
-  version: {version: ==0.22.17}
+  name: ecoscope-platform
+  version: {version: ==2.15.1}
 - channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   name: ecoscope-workflows-ext-custom
-  version: {version: ==0.0.39}
+  version: {version: ==0.1.0rc14}
 - channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   name: ecoscope-workflows-ext-ste
-  version: {version: ==0.0.18}
-- channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-  name: ecoscope-workflows-ext-mnc
-  version: {version: ==0.0.7}
-- channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-  name: ecoscope-workflows-ext-icf
-  version: {version: ==0.0.0}
-- channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-  name: ecoscope-workflows-ext-big-life
-  version: {version: ==0.0.8}
-- channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+  version: {version: ==0.0.0rc1}
+- channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
   name: ecoscope-workflows-ext-lion-guardians
-  version: {version: ==0.0.6}
-params_sha256: 85262d2e1a1cce89d9c30e7dc7e159b709f92dccbdfe4b6e6ab2462dfb56e62c
-spec_sha256: e91fbe2a97c10fbe7c5539195cab32782dbb27c2f081d88518b613f6bfa935c2
+  version: {version: ==0.0.8.dev2+gd8391ad6d.d20260720}
+- channel: conda-forge
+  name: pydeck
+  version: {version: ==0.9.2}
+- channel: conda-forge
+  name: opentelemetry-sdk
+  version: {version: ==1.44.0}
+params_sha256: 7f3a14354d84234ef81d262accbc241db3b4a6f04d7e0900163d6494e2d9edb8
+spec_sha256: cca251765c1bdb08e5371619a3fba022c4c5cfac8dd7919ea9680efc5ac8c426
 
 ```
 

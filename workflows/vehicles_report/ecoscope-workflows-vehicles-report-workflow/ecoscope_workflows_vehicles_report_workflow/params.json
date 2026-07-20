@@ -73,7 +73,7 @@
         "data_source"
       ],
       "type": "object",
-      "title": "Data Source"
+      "title": "Connect to EarthRanger"
     },
     "subject_traj": {
       "additionalProperties": false,
@@ -105,15 +105,16 @@
       "additionalProperties": false,
       "properties": {
         "expansion_factor": {
-          "default": 1.05,
+          "default": 1.5,
           "title": "Expansion Factor",
           "type": "number",
-          "description": "Factor to expand the bounding box (e.g., 1.2 = 20% larger)"
+          "description": "Factor to expand the bounding box (e.g., 1.2 = 20% larger)",
+          "ecoscope:advanced": true
         }
       },
       "required": [],
       "type": "object",
-      "title": "zoom to envelope"
+      "title": ""
     }
   },
   "$defs": {

@@ -73,7 +73,7 @@
         "data_source"
       ],
       "type": "object",
-      "title": "Data Source"
+      "title": "Connect to EarthRanger"
     },
     "subject_traj": {
       "additionalProperties": false,
@@ -101,19 +101,27 @@
       "type": "object",
       "title": "Transform relocations to trajectories"
     },
-    "zoom_to_envelope": {
-      "additionalProperties": false,
-      "properties": {
-        "expansion_factor": {
-          "default": 1.05,
-          "title": "Expansion Factor",
-          "type": "number",
-          "description": "Factor to expand the bounding box (e.g., 1.2 = 20% larger)"
-        }
-      },
-      "required": [],
+    "Map Zoom & Extent": {
       "type": "object",
-      "title": "zoom to envelope"
+      "description": "Calculate the geographic extent of the movement tracks and determine an appropriate zoom level and center point for the map. This ensures that all tracks are visible and well-framed when the map is rendered.",
+      "ecoscope:task_group": true,
+      "properties": {
+        "zoom_to_envelope": {
+          "additionalProperties": false,
+          "properties": {
+            "expansion_factor": {
+              "default": 1.5,
+              "title": "Expansion Factor",
+              "type": "number",
+              "description": "Factor to expand the bounding box (e.g., 1.2 = 20% larger)",
+              "ecoscope:advanced": true
+            }
+          },
+          "required": [],
+          "type": "object",
+          "title": ""
+        }
+      }
     }
   },
   "$defs": {
@@ -239,7 +247,7 @@
       "time_range",
       "er_client_name",
       "subject_traj",
-      "zoom_to_envelope"
+      "Map Zoom & Extent"
     ]
   },
   "additionalProperties": false

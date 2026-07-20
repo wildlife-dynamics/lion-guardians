@@ -41,6 +41,7 @@ def create_vehicles_context(
     line_chart = _unwrap_skip(line_chart)
 
     # Read the CSV as a DataFrame (not converting to list)
+    vehicle_plate = None
     min_speed = None
     mean_speed = None
     max_speed = None
@@ -52,6 +53,8 @@ def create_vehicles_context(
 
             # Extract values from the last row
             if not vehicle_stats_df.empty:
+                if "subject_name" in vehicle_stats_df.columns:
+                    vehicle_plate = vehicle_stats_df["subject_name"].iloc[-1]
                 if "min_speed" in vehicle_stats_df.columns:
                     min_speed = round(vehicle_stats_df["min_speed"].iloc[-1], 2)
                 if "mean_speed" in vehicle_stats_df.columns:
@@ -67,6 +70,7 @@ def create_vehicles_context(
 
     # Build context with the required keys
     ctx = {
+        "vehicle_plate": vehicle_plate,
         "min_speed": min_speed,
         "mean_speed": mean_speed,
         "max_speed": max_speed,
