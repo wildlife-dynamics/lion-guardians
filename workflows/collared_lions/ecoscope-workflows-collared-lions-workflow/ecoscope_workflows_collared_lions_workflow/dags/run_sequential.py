@@ -256,11 +256,40 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             client=er_client_name,
             layers=[
                 {
-                    "query": {"featureset_name": "Boundaries"},
-                    "style": [],
+                    "query": {"feature_type": "Conservancies"},
+                    "style": [
+                        {
+                            "polygon": [
+                                {
+                                    "fill_color": ["#8fbc8b"],
+                                    "stroke_color": "#8fbc8b",
+                                    "fill_opacity": 0.75,
+                                    "stroke_width": 1.75,
+                                }
+                            ]
+                        }
+                    ],
                     "group_by": "type_name",
-                    "legend_title": "Boundaries",
-                }
+                    "legend_title": "",
+                },
+                {
+                    "query": {"feature_type": "Group Ranch Boundaries"},
+                    "style": [
+                        {
+                            "line": [
+                                {"color": ["#000000"], "opacity": 0.75, "width": 1.25}
+                            ]
+                        }
+                    ],
+                    "group_by": "type_name",
+                    "legend_title": "",
+                },
+                {
+                    "query": {"feature_type": "Major Towns"},
+                    "style": [{"point": [{"color": ["#E63946"], "size": 2.25}]}],
+                    "group_by": "type_name",
+                    "legend_title": "",
+                },
             ],
             **(params.get("select_geo_er") or {}),
         )
@@ -451,7 +480,18 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             ],
             unpack_depth=1,
         )
-        .partial(relocations=subject_reloc, **(params.get("subject_traj") or {}))
+        .partial(
+            relocations=subject_reloc,
+            trajectory_segment_filter={
+                "min_length_meters": 10,
+                "max_length_meters": 10000,
+                "min_time_secs": 10,
+                "max_time_secs": 21600,
+                "min_speed_kmhr": 1,
+                "max_speed_kmhr": 30,
+            },
+            **(params.get("subject_traj") or {}),
+        )
         .call()
     )
 
@@ -1019,8 +1059,8 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
         .partial(
             data_url=None,
             layer_style={
-                "get_color": [0, 0, 255],
-                "get_width": 1.55,
+                "get_color": [30, 144, 255],
+                "get_width": 1.25,
                 "width_scale": 1,
                 "width_min_pixels": 2,
                 "width_max_pixels": 8,
@@ -1033,7 +1073,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             },
             legend={
                 "title": "Subject Tracks",
-                "values": [{"label": "Tracks", "color": "#0000ff"}],
+                "values": [{"label": "Tracks", "color": "#1e90ff"}],
             },
             **(params.get("generate_track_layers") or {}),
         )
@@ -1185,7 +1225,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             ],
             unpack_depth=1,
         )
-        .partial(title="Subject tracks", **(params.get("trackmap_widget") or {}))
+        .partial(title="Subject Tracks", **(params.get("trackmap_widget") or {}))
         .map(argnames=["view", "data"], argvalues=track_html_url)
     )
 
@@ -1474,7 +1514,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             ],
             unpack_depth=1,
         )
-        .partial(grouper_name=groupers, **(params.get("build_collared_context") or {}))
+        .partial(**(params.get("build_collared_context") or {}))
         .mapvalues(
             argnames=["df", "total_distance", "home_range", "speed_map"],
             argvalues=group_context_values,

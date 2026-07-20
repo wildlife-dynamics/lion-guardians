@@ -95,10 +95,32 @@ workflow:
       client: ${{ workflow.er_client_name.return }}
       layers:
         - query:
-            featureset_name: "Boundaries"
-          style: []
+            feature_type: "Conservancies"
+          style:
+            - polygon:
+                - fill_color: ["#8fbc8b"] #"#3388FF"
+                  stroke_color: "#8fbc8b"
+                  fill_opacity: 0.75
+                  stroke_width: 1.75
           group_by: "type_name"
           legend_title: "Boundaries"
+
+        - query:
+            feature_type: "Group Ranch Boundaries"
+          style:
+            - line: 
+                - color: ["#000000"]
+                  opacity: 0.75
+                  width: 1.25
+                  
+          group_by: "type_name"
+          legend_title: ""
+
+        # - query:
+        #     featureset_name: "Boundaries"
+        #   style: []
+        #   group_by: "type_name"
+        #   legend_title: "Boundaries"
 
   - name: Build Study Area Map Layer
     id: spatial_features_layer
@@ -184,6 +206,13 @@ workflow:
     task: relocations_to_trajectory
     partial:
       relocations: ${{ workflow.subject_reloc.return }}
+      trajectory_segment_filter: 
+        min_length_meters: 10
+        max_length_meters: 10000
+        min_time_secs: 10
+        max_time_secs: 21600
+        min_speed_kmhr: 1
+        max_speed_kmhr: 30
 
   - name: Persist trajectories 
     id: persist_trajs
@@ -527,8 +556,8 @@ workflow:
     partial: 
       data_url: null
       layer_style:
-        get_color: [0, 0, 255]
-        get_width: 1.55
+        get_color: [30, 144, 255]
+        get_width: 1.25
         width_scale: 1 
         width_min_pixels: 2 
         width_max_pixels: 8 
@@ -542,7 +571,7 @@ workflow:
         title: Subject Tracks 
         values: 
           - label: Tracks 
-            color: "#0000ff"
+            color: "#1e90ff"
     mapvalues:
       argnames: geodataframe
       argvalues: ${{ workflow.split_subject_traj_groups.return }} 
@@ -633,7 +662,7 @@ workflow:
       conditions:
         - never
     partial:
-      title: Subject tracks
+      title: Subject Tracks
     map:
       argnames:
         - view
@@ -772,11 +801,9 @@ workflow:
         - ${{ workflow.collared_html_png.return }} # home range
         - ${{ workflow.track_html_png.return }} # speed map
 
-  - name: Create individual context 
+  - name: Create individual context
     id: build_collared_context
     task: ecoscope_workflows_ext_lion_guardians.tasks.reporting.create_collared_lions_context
-    partial: 
-      grouper_name: ${{ workflow.groupers.return }} # grouper name
     mapvalues:
       argnames:
         - df
