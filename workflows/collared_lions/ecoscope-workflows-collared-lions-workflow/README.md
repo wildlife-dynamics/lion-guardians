@@ -5,32 +5,29 @@
 
 ```yaml
 # fingerprint:
-artifacts_sha256_basic: 03b9b036d7d3e062d3eb7329a829bd0ff521a5ac1e37395bce8d9498fafed71b
-artifacts_sha256_strict: cc591d121a5ca4b282fc3efaade0dc1dfedf8ba6faeb2692a6773dfed45fd3e5
+artifacts_sha256_basic: bfa894938be656f29d2d43c694c818e6c99d8c0e75edf7c51672774133b96d9b
+artifacts_sha256_strict: 1b6d4d89d923967003e415e4440ee94f1a4742635a3a940fd54abefa950f1cd0
 installed_requirements:
 - channel: https://repo.prefix.dev/ecoscope-workflows/
-  name: ecoscope-workflows-core
-  version: {version: ==0.22.17}
-- channel: https://repo.prefix.dev/ecoscope-workflows/
-  name: ecoscope-workflows-ext-ecoscope
-  version: {version: ==0.22.17}
+  name: ecoscope-platform
+  version: {version: ==2.15.1}
 - channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   name: ecoscope-workflows-ext-custom
-  version: {version: ==0.0.39}
+  version: {version: ==0.1.0rc14}
 - channel: https://repo.prefix.dev/ecoscope-workflows-custom/
   name: ecoscope-workflows-ext-ste
-  version: {version: ==0.0.18}
-- channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-  name: ecoscope-workflows-ext-mnc
-  version: {version: ==0.0.7}
-- channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-  name: ecoscope-workflows-ext-big-life
-  version: {version: ==0.0.8}
-- channel: https://repo.prefix.dev/ecoscope-workflows-custom/
+  version: {version: ==0.0.0rc1}
+- channel: file:///tmp/ecoscope-workflows-custom/release/artifacts/
   name: ecoscope-workflows-ext-lion-guardians
-  version: {version: ==0.0.6}
-params_sha256: 44a3f9573e6237d27d10b46b43b09d70737257addd8a546e376b359c4a5ff42f
-spec_sha256: 9bb0748cf3ce48ddb8e9933179aeb7c88df9866401d64f75c1d53f3eaa3a9099
+  version: {version: ==0.0.8.dev3+gc9df14f74.d20260721}
+- channel: conda-forge
+  name: pydeck
+  version: {version: ==0.9.2}
+- channel: conda-forge
+  name: opentelemetry-sdk
+  version: {version: ==1.44.0}
+params_sha256: 7a97c32345140c32c13d944680362c0a9df137a7f573b176603de62b8cb4641c
+spec_sha256: 68c57e7772ebc9a807aed9a5c0e792b140094cc5e16175684082d61bb28638d8
 
 ```
 

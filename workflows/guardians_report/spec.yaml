@@ -1,61 +1,29 @@
 id: guardians_report
 requirements:
-  - name: ecoscope-workflows-core
-    version: "0.22.17.*"
-    channel: https://repo.prefix.dev/ecoscope-workflows/
-
-  - name: ecoscope-workflows-ext-ecoscope
-    version: "0.22.17.*"
+  - name: ecoscope-platform
+    version: ">=2.15.0, <2.16.0"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
-    version: "0.0.40.*"
+    version: "0.1.0rc14.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-ste
-    version: "0.0.18.*"
-    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-
-  - name: ecoscope-workflows-ext-mnc
-    version: "0.0.7.*"
-    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-
-  - name: ecoscope-workflows-ext-icf
-    version: "0.0.0.*"
-    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-
-  - name: ecoscope-workflows-ext-big-life
-    version: "0.0.8.*"
+    version: "0.0.0rc1.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-lion-guardians
     version: "*"
     channel: "file:///tmp/ecoscope-workflows-custom/release/artifacts/"
 
+  - name: pydeck
+    version: 0.9.2
+    channel: conda-forge
+
+  - name: opentelemetry-sdk
+    version: ">=1.20.0,<2.0.0"
+    channel: conda-forge
 rjsf-overrides: {}
-  # properties:
-  #   Trajectory Category.properties.set_patrol_traj_color_column.properties.var.oneOf:
-  #     - const: patrol_type
-  #       title: Patrol Type
-
-  #     - const: patrol_subject
-  #       title: Patrol Subject
-
-  #     - const: patrol_serial_number
-  #       title: Patrol Serial Number
-  #   Trajectory Category.properties.set_patrol_traj_color_column.properties.var.title: Category
-  #   Trajectory Category.properties.set_patrol_traj_color_column.properties.var.default: patrol_type
-  # $defs:
-  #   ValueGrouper.oneOf:
-  #     - const: patrol_type
-  #       title: Patrol Type
-
-  #     - const: patrol_serial_number
-  #       title: Patrol Serial Number
-
-  #     - const: patrol_subject
-  #       title: Patrol Subject
-
 task-instance-defaults:
   skipif:
     conditions:
@@ -104,35 +72,45 @@ workflow:
           max_zoom: 20
 
   # Download amboseli group ranches and the collared lions templates
-  - name: Download amboseli group ranches
-    id: persist_ambo_gpkg
-    task: fetch_and_persist_file
+  - name: Area of Interest from ER 
+    id: select_geo_er 
+    task: ecoscope_workflows_ext_ste.tasks.spatial_operations.get_spatial_features
     partial:
-      url: https://www.dropbox.com/scl/fi/fcy57d5x5y67gh0xje6rw/lg_group_ranch_boundaries.gpkg?rlkey=yte99xhkte7f1r7n9nemgy7p0&st=sxx1emc1&dl=0
-      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      overwrite_existing: false
-      retries: 3
-      unzip: false
+      client: ${{ workflow.er_client_name.return }}
+      layers:
+        - query:
+            feature_type: "Conservancies"
+          style:
+            - polygon:
+                - fill_color: ["#8fbc8b"] #"#3388FF"
+                  stroke_color: "#8fbc8b"
+                  fill_opacity: 0.75
+                  stroke_width: 1.75
+          group_by: "type_name"
+          legend_title: "Map Layers"
 
-  - name: Download hotspot areas gpkg
-    id: persist_hotspot_areas
-    task: fetch_and_persist_file
+        - query:
+            feature_type: "Group Ranch Boundaries"
+          style:
+            - polygon:
+                - fill_opacity: 0
+                  stroke_color: "#000000"
+                  stroke_width: 1.25
+
+          group_by: "type_name"
+          legend_title: ""
+
+        # - query:
+        #     featureset_name: "Boundaries"
+        #   style: []
+        #   group_by: "type_name"
+        #   legend_title: "Boundaries"
+
+  - name: Build Study Area Map Layer
+    id: spatial_features_layer
+    task: ecoscope_workflows_ext_ste.tasks.results.create_spatial_features_layer
     partial:
-      url: https://www.dropbox.com/scl/fi/nlozcti0oqhj6bzvsr46g/lg_conflict_hotspots.gpkg?rlkey=giwdizp1j6e24btgh48uxf5v0&st=jivblame&dl=0
-      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      overwrite_existing: false
-      retries: 3
-      unzip: false
-
-  # - name: Download protected areas gpkg
-  #   id: persist_protected_gpkg
-  #   task: fetch_and_persist_file
-  #   partial:
-  #     url: https://www.dropbox.com/scl/fi/i5yczgyln3zh1n8c4ppl5/lg_protected_areas.gpkg?rlkey=5ea21haq2tmsmx7g502p3qag5&st=zt6ztcku&dl=0
-  #     output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-  #     overwrite_existing: false
-  #     retries: 3
-  #     unzip: false
+      geodataframes: ${{ workflow.select_geo_er.return }}
 
   - name: Download guardians report cover page
     id: persist_cover_page
@@ -154,154 +132,7 @@ workflow:
       retries: 3
       unzip: false
 
-  - name: Load amboseli group ranches
-    id: load_ambo_group_ranches
-    task: load_df
-    partial:
-      file_path: ${{ workflow.persist_ambo_gpkg.return }}
-      layer: null
-      deserialize_json: false
-
-  - name: Load amboseli group ranches
-    id: load_hotspot_areas
-    task: load_df
-    partial:
-      file_path: ${{ workflow.persist_hotspot_areas.return }}
-      layer: null
-      deserialize_json: false
-
-  # - name: Load protected areas
-  #   id: load_protected_areas
-  #   task: load_df
-  #   partial:
-  #     file_path: ${{ workflow.persist_protected_gpkg.return }}
-  #     layer: null
-  #     deserialize_json: false
-
-  - name: Reproject gdf to 4326 for ambo layers
-    id: reproject_ambo_boundaries
-    task: reproject_gdf
-    partial:
-      gdf: ${{ workflow.load_ambo_group_ranches.return }}
-      target_crs: "EPSG:4326"
-
-  - name: Reproject gdf to 4326 for hotspot areas
-    id: reproject_hotspot_areas
-    task: reproject_gdf
-    partial:
-      gdf: ${{ workflow.load_hotspot_areas.return }}
-      target_crs: "EPSG:4326"
-
-  # - name: Reproject gdf to 4326 for protected areas
-  #   id: reproject_protected_areas
-  #   task: reproject_gdf
-  #   partial:
-  #     gdf: ${{ workflow.load_protected_areas.return }}
-  #     target_crs: "EPSG:4326"
-
-  - name: Annotate amboseli layers with geom type
-    id: annotate_ambo_layers
-    task: get_gdf_geom_type
-    partial:
-      gdf: ${{ workflow.reproject_ambo_boundaries.return }}
-
-  - name: Annotate hotspot layers with geom type
-    id: annotate_hotspot_layers
-    task: get_gdf_geom_type
-    partial:
-      gdf: ${{ workflow.reproject_hotspot_areas.return }}
-
-  # - name: Annotate protected areas with geom type
-  #   id: annotate_protected_layers
-  #   task: get_gdf_geom_type
-  #   partial:
-  #     gdf: ${{ workflow.reproject_protected_areas.return }}
-
-  - name: Create layer for amboseli group ranch
-    id: custom_amboseli_layer
-    task: create_deckgl_layer_from_gdf
-    partial:
-      gdf: ${{ workflow.annotate_ambo_layers.return }}
-      style:
-        get_line_color: [169, 169, 169]
-        get_fill_color: [169, 169, 169]
-        get_line_width: 1.25
-        opacity: 0.45
-        extruded: false
-        stroked: true
-        filled: false
-      legend:
-        title: Map layers
-        values:
-          - label: Group ranch boundaries
-            color: "#a9a9a9"
-
-  - name: Create layer for hotspot areas
-    id: custom_hotspot_layer
-    task: create_deckgl_layer_from_gdf
-    partial:
-      gdf: ${{ workflow.annotate_hotspot_layers.return }}
-      style:
-        get_line_color: [220, 20, 60]
-        get_fill_color: [220, 20, 60]
-        get_radius: 2.05
-        get_line_width: 1.25
-        opacity: 0.45
-        extruded: false
-        stroked: true
-        filled: true
-      legend:
-        title: ""
-        values:
-          - label: Hotspot areas
-            color: "#dc143c"
-
-  # - name: Create layer for protected areas
-  #   id: custom_protected_layer
-  #   task: create_deckgl_layer_from_gdf
-  #   partial:
-  #     gdf: ${{ workflow.annotate_protected_layers.return }}
-  #     style:
-  #       get_line_color: [77, 102, 0]
-  #       get_fill_color: [77, 102, 0]
-  #       get_line_width: 1.95
-  #       opacity: 0.35
-  #       extruded: false
-  #       stroked: true
-  #       filled: true
-  #     legend:
-  #       title: ""
-  #       values:
-  #         - label: National parks and reserves
-  #           color: "#4d6600"
-
-  - name: Create text layer for conflict hotspots
-    id: create_hotspot_text_layer
-    task: create_custom_text_layer
-    partial:
-      geodataframe: ${{ workflow.reproject_hotspot_areas.return }}
-      layer_style:
-        get_text: name
-        get_color: [20, 20, 20, 255]
-
-        get_size: 1000 #1500
-        size_units: meters
-        size_min_pixels: 40 #65
-        size_max_pixels: 75
-        size_scale: 1.25 #2.00
-
-        font_family: Arial
-        font_weight: normal
-        get_text_anchor: middle
-        get_alignment_baseline: center
-        billboard: true
-
-        background_padding: [4, 8]
-        pickable: true
-        auto_highlight: false
-      use_centroid: true
-      legend: null
-
+  # Retrieve done and only routine patrols
   - name: Set patrol and patrol events params
     id: er_patrol_and_events_params
     task: set_patrols_and_patrol_events_params
@@ -376,14 +207,6 @@ workflow:
       df: ${{ workflow.convert_events_to_user_timezone.return }}
       filename: events
 
-  # - title: Trajectory Category
-  #   type: task-group
-  #   description: Differentiate tracks by color using the selected category.
-  #   tasks:
-  #     - name: null
-  #       id: set_patrol_traj_color_column
-  #       task: set_string_var
-
   - name: Transform Observations to Relocations
     id: patrol_reloc
     task: process_relocations
@@ -411,9 +234,9 @@ workflow:
         - x: 1.000000
           y: 1.000000
 
-  - name: Filter patrols to only have daytime patrols
+  - name: Exclude nightime patrols
     id: filter_daytime_patrol
-    task: ecoscope_workflows_ext_lion_guardians.tasks.filter_daytime_patrols
+    task: ecoscope_workflows_ext_lion_guardians.tasks.io.filter_daytime_patrols
     partial:
       start_hour: 6
       end_hour: 19
@@ -466,15 +289,7 @@ workflow:
       df: ${{ workflow.traj_rename_grouper_columns.return }}
       filename: trajectories
 
-  # - name: Patrol Traj Colormap
-  #   id: traj_colormap
-  #   task: apply_color_map
-  #   partial:
-  #     df: ${{ workflow.traj_rename_grouper_columns.return }}
-  #     colormap: Paired
-  #     input_column_name: ${{ workflow.set_patrol_traj_color_column.return }}
-  #     output_column_name: patrol_traj_colormap
-
+  # Retain only ambo related events
   - name: Filter patrol events
     id: filter_patrol_events
     task: apply_reloc_coord_filter
@@ -515,8 +330,7 @@ workflow:
     id: patrol_traj_cols_to_string
     task: convert_column_values_to_string
     partial:
-      df: ${{ workflow.traj_rename_grouper_columns.return }} #
-      #${{ workflow.traj_colormap.return }}
+      df: ${{ workflow.traj_rename_grouper_columns.return }} 
       columns:
         - patrol_serial_number
         - patrol_type
@@ -590,44 +404,20 @@ workflow:
       argnames: df
       argvalues: ${{ workflow.split_pe_groups.return }}
 
-  - name: Exclude geom outliers from events
-    id: exclude_event_outliers
-    task: exclude_geom_outliers
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      z_threshold: 3
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.pe_rename_display_columns.return }}
-
-  - name: Remove event invalid points
-    id: remove_invalid_geoms
-    task: ecoscope_workflows_ext_custom.tasks.transformation.drop_null_geometry
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
-    partial:
-      geometry_column: geometry
-    mapvalues:
-      argnames: gdf
-      argvalues: ${{ workflow.exclude_event_outliers.return }}
-
   - name: Create map layers for each Patrols Events group
     id: patrol_events_map_layers
-    task: create_scatterplot_layer
+    task: ecoscope_workflows_ext_custom.tasks.results.create_scatterplot_layer
     skipif:
       conditions:
         - any_is_empty_df
         - any_dependency_skipped
         - all_geometry_are_none
     partial:
+      data_url: null
       layer_style:
         get_fill_color: event_type_colormap
-        get_radius: 5
+        get_line_color: [0, 0, 0, 200]
+        get_radius: 2.50
         opacity: 0.75
         stroked: true
       legend:
@@ -639,66 +429,55 @@ workflow:
 
     mapvalues:
       argnames: geodataframe
-      argvalues: ${{ workflow.remove_invalid_geoms.return }}
+      argvalues: ${{ workflow.pe_rename_display_columns.return }}
 
   - name: Combine styled layers with events
     id: merge_static_wevent_layers
-    task: combine_deckgl_map_layers
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_ste.tasks.spatial_operations.combine_deckgl_map_layers
     partial:
-      static_layers:
-        - ${{ workflow.custom_amboseli_layer.return }}
-        - ${{ workflow.custom_hotspot_layer.return }}
-        # - ${{ workflow.custom_protected_layer.return }}
-        - ${{ workflow.create_hotspot_text_layer.return }}
+      static_layers: ${{ workflow.spatial_features_layer.return }}
     mapvalues:
       argnames: grouped_layers
       argvalues: ${{ workflow.patrol_events_map_layers.return }}
 
-  # # should be used globally
-  - name: zoom to envelope events
-    id: envelope_events
-    task: envelope_gdf
-    partial:
-      expansion_factor: 1.05
-    mapvalues:
-      argnames: gdf
-      argvalues: ${{ workflow.pe_rename_display_columns.return }}
-
-  - name: Get image gdf zoom extent
-    id: gdf_events_image_extent
-    task: view_state_deck_gdf
-    partial:
-      pitch: 0
-      bearing: 0
-    mapvalues:
-      argnames: gdf
-      argvalues: ${{ workflow.pe_rename_display_columns.return }}
-
-  # should be used globally
-  - name: Zoom to gdf extent
-    id: zoom_events_gdf_extent
-    task: custom_view_state_from_gdf
-    partial:
-      max_zoom: 20
-    mapvalues:
-      argnames: gdf
-      argvalues: ${{ workflow.envelope_events.return }}
+  - title: Map Zoom & Extent
+    type: task-group
+    description: Calculate the geographic extent of the movement tracks and determine an appropriate zoom level and center point for the map. This ensures that all tracks are visible and well-framed when the map is rendered.
+    tasks:
+      - name: null
+        id: zoom_to_envelope 
+        task: ecoscope_workflows_ext_ste.tasks.spatial_operations.envelope_gdf       
+        mapvalues: 
+          argnames: gdf 
+          argvalues: ${{ workflow.pe_rename_display_columns.return }}
+  
+      - name: Zoom view to gdf extent
+        id: gdf_image_extent
+        task: ecoscope_workflows_ext_ste.tasks.spatial_operations.compute_view_state_from_gdf
+        partial:
+          pitch: 0
+          bearing: 0
+          max_zoom: 15
+        mapvalues:
+          argnames: gdf
+          argvalues: ${{ workflow.zoom_to_envelope.return }}
 
   - name: Combine event layers with view state
     id: zip_events_with_viewstate
-    task: zip_groupbykey
+    skipif:
+      conditions:
+        - any_dependency_skipped
+        - any_keyed_iterables_are_skips
+      unpack_depth: 1
+    task: groupbykey
     partial:
-      sequences:
+      iterables:
         - ${{ workflow.merge_static_wevent_layers.return }}
-        - ${{ workflow.zoom_events_gdf_extent.return }}
+        - ${{ workflow.gdf_image_extent.return }}
 
   - name: Draw events map
     id: draw_events
-    task: draw_map
+    task: ecoscope_workflows_ext_custom.tasks.results.draw_map 
     partial:
       tile_layers: ${{ workflow.base_map_defs.return }}
       static: false
@@ -723,30 +502,20 @@ workflow:
       argnames: text
       argvalues: ${{ workflow.draw_events.return }}
 
-  - name: Combine events path with zoom value
-    id: zip_events_value
-    task: zip_groupbykey
-    partial:
-      sequences:
-        - ${{ workflow.gdf_events_image_extent.return }}
-        - ${{ workflow.persist_events_html.return }}
-
   - name: Convert events html to png
     id: generate_events_png
-    task: adjust_map_zoom_and_screenshot
+    task: html_to_png
     partial:
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      screenshot_config:
+      config:
         full_page: false
         device_scale_factor: 2.0
         wait_for_timeout: 40000
         max_concurrent_pages: 1
 
     mapvalues:
-      argnames:
-        - view_state
-        - input_file
-      argvalues: ${{ workflow.zip_events_value.return }}
+      argnames: html_path
+      argvalues: ${{ workflow.persist_events_html.return }}
 
   # trajectory maps
   - name: Format speed values for display
@@ -775,7 +544,6 @@ workflow:
         - segment_start
         - extra__patrol_type__display
         - patrol_serial_number
-        # - patrol_traj_colormap
         - patrol_type
         - patrol_status
         - patrol_subject
@@ -792,24 +560,25 @@ workflow:
 
   - name: Create map layer for each Patrol Trajectories group
     id: patrol_traj_map_layers
-    task: create_path_layer
+    task: ecoscope_workflows_ext_custom.tasks.results.create_path_layer
     skipif:
       conditions:
         - any_is_empty_df
         - any_dependency_skipped
         - all_geometry_are_none
     partial:
+      data_url: null
       layer_style:
         get_color: [0, 139, 139]
-        get_width: 1.85
+        get_width: 2.25
         width_scale: 1
         width_min_pixels: 2
-        width_max_pixels: 6
+        width_max_pixels: 8
         width_units: pixels
         cap_rounded: true
         joint_rounded: true
         billboard: false
-        opacity: 0.55
+        opacity: 0.45
         stroked: true
 
       legend:
@@ -817,71 +586,36 @@ workflow:
         values: 
           - label: Foot patrols 
             color: "#008b8b"
-        # label_column: ${{ workflow.set_patrol_traj_color_column.return }}
-        # color_column: "#008b8b" #patrol_traj_colormap
-        # sort: ascending
-        # label_suffix: null
+
     mapvalues:
       argnames: geodataframe
       argvalues: ${{ workflow.patrol_traj_rename_columns.return }}
 
   - name: Combine styled layers with trajectories
     id: merge_static_traj_layers
-    task: combine_deckgl_map_layers
-    skipif:
-      conditions:
-        - any_is_empty_df
-        - any_dependency_skipped
+    task: ecoscope_workflows_ext_ste.tasks.spatial_operations.combine_deckgl_map_layers
     partial:
-      static_layers:
-        - ${{ workflow.custom_amboseli_layer.return }}
-        - ${{ workflow.custom_hotspot_layer.return }}
-        # - ${{ workflow.custom_protected_layer.return }}
-        - ${{ workflow.create_hotspot_text_layer.return }}
+      static_layers: ${{ workflow.spatial_features_layer.return }}
     mapvalues:
       argnames: grouped_layers
       argvalues: ${{ workflow.patrol_traj_map_layers.return }}
 
-  - name: zoom to envelope trajs
-    id: envelope_trajs
-    task: envelope_gdf
-    partial:
-      expansion_factor: 1.05
-    mapvalues:
-      argnames: gdf
-      argvalues: ${{ workflow.patrol_traj_rename_columns.return }}
-
-  - name: Get image gdf trajs zoom extent
-    id: gdf_trajs_image_extent
-    task: view_state_deck_gdf
-    partial:
-      pitch: 0
-      bearing: 0
-    mapvalues:
-      argnames: gdf
-      argvalues: ${{ workflow.pe_rename_display_columns.return }}
-
-  # should be used globally
-  - name: Zoom to gdf extent
-    id: zoom_trajs_gdf_extent
-    task: custom_view_state_from_gdf
-    partial:
-      max_zoom: 20
-    mapvalues:
-      argnames: gdf
-      argvalues: ${{ workflow.envelope_trajs.return }}
-
   - name: Combine trajectory layers with view state
     id: zip_trajs_with_viewstate
-    task: zip_groupbykey
+    skipif:
+      conditions:
+        - any_dependency_skipped
+        - any_keyed_iterables_are_skips
+      unpack_depth: 1
+    task: groupbykey
     partial:
-      sequences:
+      iterables:
         - ${{ workflow.merge_static_traj_layers.return }}
-        - ${{ workflow.zoom_trajs_gdf_extent.return }}
+        - ${{ workflow.gdf_image_extent.return }}
 
   - name: Draw Ecomaps for each combined Trajectory and Patrol Events group
     id: trajs_ecomap
-    task: draw_map
+    task: ecoscope_workflows_ext_custom.tasks.results.draw_map 
     partial:
       tile_layers: ${{ workflow.base_map_defs.return }}
       legend_style:
@@ -906,30 +640,20 @@ workflow:
       argnames: text
       argvalues: ${{ workflow.trajs_ecomap.return }}
 
-  - name: Combine trajectories path with zoom value
-    id: zip_trajs_value
-    task: zip_groupbykey
-    partial:
-      sequences:
-        - ${{ workflow.gdf_trajs_image_extent.return }}
-        - ${{ workflow.traj_ecomap_html_urls.return }}
-
   - name: Convert trajs html to png
     id: generate_trajs_png
-    task: adjust_map_zoom_and_screenshot
+    task: html_to_png
     partial:
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      screenshot_config:
+      config:
         full_page: false
         device_scale_factor: 2.0
         wait_for_timeout: 40000
         max_concurrent_pages: 1
 
     mapvalues:
-      argnames:
-        - view_state
-        - input_file
-      argvalues: ${{ workflow.zip_trajs_value.return }}
+      argnames: html_path
+      argvalues: ${{ workflow.traj_ecomap_html_urls.return }}
 
   - name: Create Map Widgets for patrol events
     id: events_map_widgets_single_views
@@ -1340,13 +1064,14 @@ workflow:
 
   - name: Create map layer from Time Density
     id: td_map_layer
-    task: create_geojson_layer
+    task: ecoscope_workflows_ext_custom.tasks.results.create_geojson_layer
     skipif:
       conditions:
         - any_is_empty_df
         - any_dependency_skipped
         - all_geometry_are_none
     partial:
+      data_url: null 
       layer_style:
         get_fill_color: percentile_colormap
         get_line_color: percentile_colormap
@@ -1372,57 +1097,29 @@ workflow:
 
   - name: Combine styled layers with ltd
     id: merged_time_density_layers
-    task: combine_deckgl_map_layers
+    task: ecoscope_workflows_ext_ste.tasks.spatial_operations.combine_deckgl_map_layers
     partial:
-      static_layers:
-        - ${{ workflow.custom_amboseli_layer.return }}
-        - ${{ workflow.custom_hotspot_layer.return }}
-        # - ${{ workflow.custom_protected_layer.return }}
-        - ${{ workflow.create_hotspot_text_layer.return }}
+      static_layers: ${{ workflow.spatial_features_layer.return }}
     mapvalues:
       argnames: grouped_layers
       argvalues: ${{ workflow.td_map_layer.return }}
 
-  - name: zoom to envelope ltd
-    id: envelope_ltd
-    task: envelope_gdf
-    partial:
-      expansion_factor: 1.05
-    mapvalues:
-      argnames: gdf
-      argvalues: ${{ workflow.patrol_td_rename_columns.return }}
-
-  - name: Get image gdf ltd zoom extent
-    id: gdf_ltd_image_extent
-    task: view_state_deck_gdf
-    partial:
-      pitch: 0
-      bearing: 0
-    mapvalues:
-      argnames: gdf
-      argvalues: ${{ workflow.patrol_td_rename_columns.return }}
-
-  # should be used globally
-  - name: Zoom to gdf extent
-    id: zoom_ltd_gdf_extent
-    task: custom_view_state_from_gdf
-    partial:
-      max_zoom: 20
-    mapvalues:
-      argnames: gdf
-      argvalues: ${{ workflow.envelope_ltd.return }}
-
   - name: Combine ltd layers with view state
     id: zip_ltd_with_viewstate
-    task: zip_groupbykey
+    skipif:
+      conditions:
+        - any_dependency_skipped
+        - any_keyed_iterables_are_skips
+      unpack_depth: 1
+    task: groupbykey
     partial:
-      sequences:
+      iterables:
         - ${{ workflow.merged_time_density_layers.return }}
-        - ${{ workflow.zoom_ltd_gdf_extent.return }}
+        - ${{ workflow.gdf_image_extent.return }}
 
   - name: Draw linear time density map
     id: td_ecomap
-    task: draw_map
+    task: ecoscope_workflows_ext_custom.tasks.results.draw_map 
     partial:
       tile_layers: ${{ workflow.base_map_defs.return }}
       legend_style:
@@ -1447,30 +1144,20 @@ workflow:
       argnames: text
       argvalues: ${{ workflow.td_ecomap.return }}
 
-  - name: Combine homerange ltd map path with zoom value
-    id: zip_ltd_value
-    task: zip_groupbykey
-    partial:
-      sequences:
-        - ${{ workflow.gdf_ltd_image_extent.return }}
-        - ${{ workflow.td_ecomap_html_url.return }}
-
   - name: Convert homerange ltd html to png
     id: generate_ltd_png
-    task: adjust_map_zoom_and_screenshot
+    task: html_to_png
     partial:
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      screenshot_config:
+      config:
         full_page: false
         device_scale_factor: 2.0
         wait_for_timeout: 40000
         max_concurrent_pages: 1
 
     mapvalues:
-      argnames:
-        - view_state
-        - input_file
-      argvalues: ${{ workflow.zip_ltd_value.return }}
+      argnames: html_path
+      argvalues: ${{ workflow.td_ecomap_html_url.return }}
 
   - name: Create time density map widget
     id: td_map_widget
@@ -1501,6 +1188,7 @@ workflow:
         - patrol_subject
       reset_index: true
       summary_params:
+
         - display_name: no_of_patrols
           aggregator: nunique
           column: extra__patrol_id
@@ -1516,6 +1204,7 @@ workflow:
           column: timespan_seconds
           original_unit: s
           new_unit: h
+
     mapvalues:
       argnames: df
       argvalues: ${{ workflow.split_patrol_traj_groups.return }}
@@ -1531,6 +1220,7 @@ workflow:
         - display_name: no_of_events
           aggregator: nunique
           column: id
+
     mapvalues:
       argnames: df
       argvalues: ${{ workflow.pe_rename_display_columns.return }}
@@ -1684,19 +1374,32 @@ workflow:
 
   - name: Pivot guardian events
     id: pivot_guardian_events
-    task: ecoscope_workflows_ext_mnc.tasks.pivot_df
+    task: pivot_dataframe
     skipif:
       conditions:
         - any_is_empty_df
         - any_dependency_skipped
     partial:
-      index_col: patrol_subject
-      columns_col: event_type_display
-      values_col: no_of_events
-      reset_idx: true
+      index: 
+        - patrol_subject
+      columns: 
+        - event_type_display
+      values: 
+        - no_of_events
+      fill_value: null
     mapvalues:
       argnames: df
       argvalues: ${{ workflow.summarize_events.return }}
+
+  - name: Drop no_of_events column prefix 
+    id: drop_events_prefix 
+    task: drop_column_prefix 
+    partial: 
+      prefix: "no_of_events_"
+      duplicate_strategy: "suffix"
+    mapvalues: 
+      argnames: df 
+      argvalues: ${{ workflow.pivot_guardian_events.return }}
 
   - name: Persist guardian patrol efforts pivot
     id: persist_pivot_patrol_efforts
@@ -1707,7 +1410,7 @@ workflow:
       filename: null
     mapvalues:
       argnames: df
-      argvalues: ${{ workflow.pivot_guardian_events.return }}
+      argvalues: ${{ workflow.drop_events_prefix.return }}
 
   - name: Persist guardian patrol efforts
     id: persist_gua_patrol_efforts
@@ -1748,41 +1451,46 @@ workflow:
       argnames: html_path
       argvalues: ${{ workflow.patrol_events_bar_chart_html_url.return }}
 
-  # - name: Get user name to use on template
-  #   id: get_user_name
-  #   task: get_current_user
-  #   partial:
-  #     client: ${{ workflow.er_client_name.return }}
-
-  # - name: Get user full name
-  #   id: get_fullname
-  #   task: get_user_full_name
-  #   partial:
-  #     user: ${{ workflow.get_user_name.return }}
+  - name: Download org log path
+    id: persist_logo
+    task: ecoscope_workflows_ext_ste.tasks.io.fetch_and_persist_file
+    partial:
+      url: https://www.dropbox.com/scl/fi/8oohb6i0kcj0q3qsud9l4/lion-guardians.png?rlkey=4kdqytux2qyftb5sgnaigyuyz&st=os6i6j6h&dl=0
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: false
+      retries: 3
+      unzip: false
 
   - name: Create context cover page
     id: context_cover_page
-    task: create_guardians_ctx_cover
+    task: prepare_cover_metadata
     partial:
+      org_logo_path: ${{ workflow.persist_logo.return }}
       report_period: ${{ workflow.time_range.return }}
       prepared_by: "Ecoscope"
+      extra_fields: null 
+      time_generated_format: "%Y-%m-%d %H:%M:%S"
 
   - name: Persist context page for guardians report
     id: persist_ctx_page
-    task: create_context_page_lg
+    task: create_context_page
     partial:
       template_path: ${{ workflow.persist_cover_page.return }}
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       context: ${{ workflow.context_cover_page.return }}
-      filename: context_page.docx
+      filename: cover_page.docx
 
   - name: Group context values together
     id: group_context_values
-    task: zip_groupbykey
+    skipif:
+      conditions:
+        - any_dependency_skipped
+        - any_keyed_iterables_are_skips
+      unpack_depth: 1
+    task: groupbykey
     partial:
-      sequences:
+      iterables:
         - ${{ workflow.generate_events_png.return }} # events map
-        #- ${{ workflow.generate_events_png.return }} # placeholder for trajs map as they are huge
         - ${{ workflow.generate_trajs_png.return }} # trajs map
         - ${{ workflow.generate_ltd_png.return }} # ltd map
 
@@ -1794,13 +1502,11 @@ workflow:
         - ${{ workflow.persist_guardian_events.return }} # subject events
         - ${{ workflow.persist_guardian_patrol.return }} # subject stats
         - ${{ workflow.persist_event_tefforts.return }} # subject events
-        - ${{ workflow.split_patrol_traj_groups.return }}
+       # - ${{ workflow.split_patrol_traj_groups.return }}
 
   - name: Create individual patrol context page
     id: individual_patrol_ctx_page
-    task: guardians_ctx
-    partial:
-      grouper_name: ${{ workflow.groupers.return }}
+    task: create_guardians_context
     mapvalues:
       argnames:
         - events_map
@@ -1813,31 +1519,36 @@ workflow:
         - patrol_subject_events_csv
         - patrol_subject_stats_csv
         - events_recorded_csv
-        - df
+        #- df
       argvalues: ${{ workflow.group_context_values.return }}
 
   - name: Create grouper word doc
     id: create_grouper_doc
-    task: generate_guardians_report
+    task: ecoscope_workflows_ext_lion_guardians.tasks.reporting.render_docx_page
     partial:
       template_path: ${{ workflow.persist_indv_subject_page.return }}
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: null
-      box_h_inches: 3.85 #6.48
-      box_w_inches: 6.48 #3.85
-      validate_images: true
+      box_h_cm: 9.779
+      box_w_cm: 16.4592
+      strict_images: true
     mapvalues:
       argnames: context
       argvalues: ${{ workflow.individual_patrol_ctx_page.return }}
 
   - name: Merge word docs
     id: merge_docx
-    task: merge_cl_files
+    skipif:
+      conditions:
+        - any_dependency_skipped
+      unpack_depth: 1
+    task: merge_docx_documents
     partial:
       cover_page_path: ${{ workflow.persist_ctx_page.return }}
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       context_page_items: ${{ workflow.create_grouper_doc.return }}
-      filename: null
+      filename: overall_report.docx
+      order_by: name
 
   - name: Create Dashboard with Patrol Map Widgets
     id: patrol_dashboard

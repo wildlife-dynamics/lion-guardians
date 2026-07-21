@@ -73,47 +73,29 @@
         "data_source"
       ],
       "type": "object",
-      "title": "Data Source"
+      "title": "Connect to EarthRanger"
     },
-    "subject_traj": {
-      "additionalProperties": false,
+    "Map Zoom & Extent": {
+      "type": "object",
+      "description": "Calculate the geographic extent of the movement tracks and determine an appropriate zoom level and center point for the map. This ensures that all tracks are visible and well-framed when the map is rendered.",
+      "ecoscope:task_group": true,
       "properties": {
-        "trajectory_segment_filter": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/TrajectorySegmentFilter"
+        "zoom_to_envelope": {
+          "additionalProperties": false,
+          "properties": {
+            "expansion_factor": {
+              "default": 1.5,
+              "title": "Expansion Factor",
+              "type": "number",
+              "description": "Factor to expand the bounding box (e.g., 1.2 = 20% larger)",
+              "ecoscope:advanced": true
             }
-          ],
-          "default": {
-            "min_length_meters": 0.001,
-            "max_length_meters": 100000,
-            "min_time_secs": 1,
-            "max_time_secs": 172800,
-            "min_speed_kmhr": 0.01,
-            "max_speed_kmhr": 500
           },
-          "title": " ",
-          "description": "Filter track data by setting limits on track segment length, duration, and speed. Segments outside these bounds are removed, reducing noise and to focus on meaningful movement patterns.",
-          "ecoscope:advanced": true
+          "required": [],
+          "type": "object",
+          "title": ""
         }
-      },
-      "required": [],
-      "type": "object",
-      "title": "Transform relocations to trajectories"
-    },
-    "zoom_to_envelope": {
-      "additionalProperties": false,
-      "properties": {
-        "expansion_factor": {
-          "default": 1.05,
-          "title": "Expansion Factor",
-          "type": "number",
-          "description": "Factor to expand the bounding box (e.g., 1.2 = 20% larger)"
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "zoom to envelope"
+      }
     }
   },
   "$defs": {
@@ -158,54 +140,6 @@
       "title": "EarthRangerConnection",
       "type": "object"
     },
-    "TrajectorySegmentFilter": {
-      "properties": {
-        "min_length_meters": {
-          "default": 0.001,
-          "ecoscope:advanced": true,
-          "minimum": 0.001,
-          "title": "Minimum Segment Length (Meters)",
-          "type": "number"
-        },
-        "max_length_meters": {
-          "default": 100000,
-          "ecoscope:advanced": true,
-          "exclusiveMinimum": 0.001,
-          "title": "Maximum Segment Length (Meters)",
-          "type": "number"
-        },
-        "min_time_secs": {
-          "default": 1,
-          "ecoscope:advanced": true,
-          "minimum": 1,
-          "title": "Minimum Segment Duration (Seconds)",
-          "type": "number"
-        },
-        "max_time_secs": {
-          "default": 172800,
-          "ecoscope:advanced": true,
-          "exclusiveMinimum": 1,
-          "title": "Maximum Segment Duration (Seconds)",
-          "type": "number"
-        },
-        "min_speed_kmhr": {
-          "default": 0.01,
-          "ecoscope:advanced": true,
-          "exclusiveMinimum": 0.001,
-          "title": "Minimum Segment Speed (Kilometers per Hour)",
-          "type": "number"
-        },
-        "max_speed_kmhr": {
-          "default": 500,
-          "ecoscope:advanced": true,
-          "exclusiveMinimum": 0.001,
-          "title": "Maximum Segment Speed (Kilometers per Hour)",
-          "type": "number"
-        }
-      },
-      "title": "TrajectorySegmentFilter",
-      "type": "object"
-    },
     "ValueGrouper": {
       "properties": {
         "index_name": {
@@ -238,8 +172,7 @@
       "workflow_details",
       "time_range",
       "er_client_name",
-      "subject_traj",
-      "zoom_to_envelope"
+      "Map Zoom & Extent"
     ]
   },
   "additionalProperties": false

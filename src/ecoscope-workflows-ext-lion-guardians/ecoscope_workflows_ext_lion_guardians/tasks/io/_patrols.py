@@ -1,9 +1,9 @@
 from typing import cast
-from ecoscope_workflows_core.decorators import task
-from ecoscope_workflows_ext_ecoscope.tasks.io._earthranger import PatrolObservationsGDF
+from wt_registry import register
+from ecoscope.platform.tasks.io._earthranger import PatrolObservationsGDF
 
 
-@task
+@register()
 def filter_daytime_patrols(
     df: PatrolObservationsGDF,
     start_hour: int = 6,

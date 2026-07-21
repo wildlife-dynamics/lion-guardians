@@ -75,6 +75,21 @@
       "type": "object",
       "title": "Connect to EarthRanger"
     },
+    "zoom_to_envelope": {
+      "additionalProperties": false,
+      "properties": {
+        "expansion_factor": {
+          "default": 1.5,
+          "title": "Expansion Factor",
+          "type": "number",
+          "description": "Factor to expand the bounding box (e.g., 1.2 = 20% larger)",
+          "ecoscope:advanced": true
+        }
+      },
+      "required": [],
+      "type": "object",
+      "title": ""
+    },
     "patrol_events_bar_chart": {
       "additionalProperties": false,
       "properties": {
@@ -159,6 +174,7 @@
       "workflow_details",
       "time_range",
       "er_client_name",
+      "zoom_to_envelope",
       "patrol_events_bar_chart"
     ]
   },

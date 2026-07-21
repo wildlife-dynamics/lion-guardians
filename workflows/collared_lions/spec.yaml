@@ -1,33 +1,28 @@
 id: collared_lions
 requirements:
-  - name: ecoscope-workflows-core
-    version: "0.22.17.*"
-    channel: https://repo.prefix.dev/ecoscope-workflows/
-
-  - name: ecoscope-workflows-ext-ecoscope
-    version: "0.22.17.*"
+  - name: ecoscope-platform
+    version: ">=2.15.0, <2.16.0"
     channel: https://repo.prefix.dev/ecoscope-workflows/
 
   - name: ecoscope-workflows-ext-custom
-    version: "0.0.39.*"
+    version: "0.1.0rc14.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-ste
-    version: "0.0.18.*"
-    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-
-  - name: ecoscope-workflows-ext-mnc
-    version: "0.0.7.*"
-    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-  
-  - name: ecoscope-workflows-ext-big-life
-    version: "0.0.8.*"
+    version: "0.0.0rc1.*"
     channel: https://repo.prefix.dev/ecoscope-workflows-custom/
 
   - name: ecoscope-workflows-ext-lion-guardians
-    version: "0.0.6.*"
-    channel: https://repo.prefix.dev/ecoscope-workflows-custom/
-  
+    version: "*"
+    channel: "file:///tmp/ecoscope-workflows-custom/release/artifacts/"
+
+  - name: pydeck
+    version: 0.9.2
+    channel: conda-forge
+
+  - name: opentelemetry-sdk
+    version: ">=1.20.0,<2.0.0"
+    channel: conda-forge
 
 rjsf-overrides:
   $defs:
@@ -54,17 +49,26 @@ workflow:
     task: set_workflow_details
 
   #Enter time range 
-  - name: Define time range
+  - name: Define Time Range
     id: time_range
     task: set_time_range
+
+  - name: Extract Timezone Selection
+    id: get_timezone
+    task: get_timezone_from_time_range
+    partial:
+      time_range: ${{ workflow.time_range.return }}
 
   #Set groupers
   - name: Set Groupers
     id: groupers
     task: set_groupers
+    partial: 
+      groupers: 
+        - index_name: subject_name 
 
   #connect to ER 
-  - name: Data Source
+  - name: Connect to EarthRanger 
     id: er_client_name
     task: set_er_connection
 
@@ -77,46 +81,57 @@ workflow:
         - url: >-
             https://server.arcgisonline.com/arcgis/rest/services/Elevation/World_Hillshade/MapServer/tile/{z}/{y}/{x}
           opacity: 1
-          max_zoom: 20
+          max_zoom: 15
+
         - url: >-
             https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}
           opacity: 0.15
-          max_zoom: 20
+          max_zoom: 15
 
-  # Download amboseli group ranches and the collared lions templates
-  - name: Download amboseli group ranches
-    id: persist_ambo_gpkg
-    task: fetch_and_persist_file
+  - name: Area of Interest from ER 
+    id: select_geo_er 
+    task: ecoscope_workflows_ext_ste.tasks.spatial_operations.get_spatial_features
     partial:
-      url: https://www.dropbox.com/scl/fi/fcy57d5x5y67gh0xje6rw/lg_group_ranch_boundaries.gpkg?rlkey=yte99xhkte7f1r7n9nemgy7p0&st=sxx1emc1&dl=0
-      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      overwrite_existing: false
-      retries: 3
-      unzip: false
-  
-  - name: Download hotspot areas gpkg 
-    id: persist_hotspot_areas
-    task: fetch_and_persist_file
-    partial: 
-      url: https://www.dropbox.com/scl/fi/nlozcti0oqhj6bzvsr46g/lg_conflict_hotspots.gpkg?rlkey=giwdizp1j6e24btgh48uxf5v0&st=jivblame&dl=0
-      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      overwrite_existing: false
-      retries: 3
-      unzip: false
+      client: ${{ workflow.er_client_name.return }}
+      layers:
+        - query:
+            feature_type: "Conservancies"
+          style:
+            - polygon:
+                - fill_color: ["#8fbc8b"] #"#3388FF"
+                  stroke_color: "#8fbc8b"
+                  fill_opacity: 0.75
+                  stroke_width: 1.75
+          group_by: "type_name"
+          legend_title: "Map Layers"
 
-  - name: Download protected areas gpkg 
-    id: persist_protected_gpkg 
-    task: fetch_and_persist_file
-    partial:  
-      url: https://www.dropbox.com/scl/fi/i5yczgyln3zh1n8c4ppl5/lg_protected_areas.gpkg?rlkey=5ea21haq2tmsmx7g502p3qag5&st=zt6ztcku&dl=0
-      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      overwrite_existing: false
-      retries: 3
-      unzip: false
+        - query:
+            feature_type: "Group Ranch Boundaries"
+          style:
+            - polygon:
+                - fill_opacity: 0
+                  stroke_color: "#000000"
+                  stroke_width: 1.25
 
-  - name: Download collared lions cover page 
+          group_by: "type_name"
+          legend_title: ""
+
+        # - query:
+        #     featureset_name: "Boundaries"
+        #   style: []
+        #   group_by: "type_name"
+        #   legend_title: "Boundaries"
+
+
+  - name: Build Study Area Map Layer
+    id: spatial_features_layer
+    task: ecoscope_workflows_ext_ste.tasks.results.create_spatial_features_layer
+    partial:
+      geodataframes: ${{ workflow.select_geo_er.return }}
+
+  - name: Download cover page 
     id: persist_cover_page
-    task: fetch_and_persist_file
+    task: ecoscope_workflows_ext_ste.tasks.io.fetch_and_persist_file
     partial:
       url: https://www.dropbox.com/scl/fi/kyjd9ii9nul1osbkezl5w/collared_lions_cover_page.docx?rlkey=4nl68thyqzd0n49wnr1770u0x&st=fnpsvt9i&dl=0
       output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
@@ -124,163 +139,15 @@ workflow:
       retries: 3
       unzip: false
 
-  - name: Download collared subject page
+  - name: Download collared page
     id: persist_indv_subject_page
-    task: fetch_and_persist_file
+    task: ecoscope_workflows_ext_ste.tasks.io.fetch_and_persist_file
     partial:
       url: https://www.dropbox.com/scl/fi/v69q5ja7whtb033adq829/collared_lion_subject_template.docx?rlkey=zaf9iknc61zukii4xzwwwuu6o&st=1gj1vbk3&dl=0
       output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       overwrite_existing: false
       retries: 3
       unzip: false
-
-  - name: Load amboseli group ranches 
-    id: load_ambo_group_ranches 
-    task: load_df 
-    partial: 
-      file_path: ${{ workflow.persist_ambo_gpkg.return }}
-      layer: null
-      deserialize_json: false 
-
-  - name: Load amboseli group ranches 
-    id: load_hotspot_areas
-    task: load_df 
-    partial: 
-      file_path: ${{ workflow.persist_hotspot_areas.return }}
-      layer: null
-      deserialize_json: false 
-
-  - name: Load protected areas
-    id: load_protected_areas
-    task: load_df 
-    partial: 
-      file_path: ${{ workflow.persist_protected_gpkg.return }}
-      layer: null
-      deserialize_json: false 
-
-  - name: Reproject gdf to 4326 for ambo layers
-    id: reproject_ambo_boundaries 
-    task: reproject_gdf
-    partial: 
-      gdf: ${{ workflow.load_ambo_group_ranches.return }}
-      target_crs: "EPSG:4326"
-
-  - name: Reproject gdf to 4326 for hotspot areas
-    id: reproject_hotspot_areas
-    task: reproject_gdf
-    partial: 
-      gdf: ${{ workflow.load_hotspot_areas.return }}
-      target_crs: "EPSG:4326"
-
-  - name: Reproject gdf to 4326 for protected areas
-    id: reproject_protected_areas
-    task: reproject_gdf
-    partial: 
-      gdf: ${{ workflow.load_protected_areas.return }}
-      target_crs: "EPSG:4326"
-
-  - name: Annotate amboseli layers with geom type 
-    id: annotate_ambo_layers
-    task: get_gdf_geom_type
-    partial:  
-      gdf: ${{ workflow.reproject_ambo_boundaries.return }}
-
-  - name: Annotate hotspot layers with geom type 
-    id: annotate_hotspot_layers
-    task: get_gdf_geom_type
-    partial:  
-      gdf: ${{ workflow.reproject_hotspot_areas.return }}
-
-  - name: Annotate protected areas with geom type 
-    id: annotate_protected_layers
-    task: get_gdf_geom_type
-    partial:  
-      gdf: ${{ workflow.reproject_protected_areas.return }}
-
-  - name: Create layer for amboseli group ranch 
-    id: custom_amboseli_layer 
-    task: create_deckgl_layer_from_gdf
-    partial: 
-      gdf: ${{ workflow.annotate_ambo_layers.return }}
-      style: 
-        get_line_color: [169, 169, 169]
-        get_fill_color: [169, 169, 169]
-        get_line_width: 4.50
-        opacity: 0.55
-        extruded: false
-        stroked: true
-        filled: false
-      legend: 
-        title: Map layers 
-        values:
-          - label: Group ranch boundaries 
-            color: "#a9a9a9"
-
-  - name: Create layer for hotspot areas 
-    id: custom_hotspot_layer 
-    task: create_deckgl_layer_from_gdf
-    partial: 
-      gdf: ${{ workflow.annotate_hotspot_layers.return }}
-      style: 
-        get_line_color: [220, 20, 60]
-        get_fill_color: [220, 20, 60]
-        get_radius: 2.55 
-        get_line_width: 1.95
-        opacity: 0.75
-        extruded: false
-        stroked: true
-        filled: true
-      legend: 
-        title: ""
-        values:
-          - label: Hotspot areas
-            color: "#dc143c"
-
-  - name: Create layer for protected areas 
-    id: custom_protected_layer 
-    task: create_deckgl_layer_from_gdf
-    partial: 
-      gdf: ${{ workflow.annotate_protected_layers.return }}
-      style: 
-        get_line_color: [77, 102, 0]
-        get_fill_color: [77, 102, 0]
-        get_line_width: 1.95
-        opacity: 0.35
-        extruded: false
-        stroked: true
-        filled: true
-      legend: 
-        title: ""
-        values:
-          - label: National parks and reserves 
-            color: "#4d6600"
-
-  - name: Create text layer for conflict hotspots 
-    id: create_hotspot_text_layer 
-    task: create_custom_text_layer
-    partial: 
-      geodataframe: ${{ workflow.reproject_hotspot_areas.return }}
-      layer_style: 
-        get_text: name 
-        get_color: [20,20,20,255]
-        
-        get_size: 1000 #1500
-        size_units: meters 
-        size_min_pixels: 40 #65 
-        size_max_pixels: 75
-        size_scale: 1.25 #2.00
-
-        font_family: Arial
-        font_weight: normal 
-        get_text_anchor: middle 
-        get_alignment_baseline: center
-        billboard: true 
-
-        background_padding: [4,8]
-        pickable: true 
-        auto_highlight: false 
-      use_centroid: true 
-      legend: null 
 
   #Get subject group observations
   - name: Get Subject Group observations from EarthRanger
@@ -294,12 +161,21 @@ workflow:
       include_subjectsource_details: false
       filter: clean
   
+  - name: Convert relocs to timezone
+    id: convert_relocs_timezone
+    task: convert_values_to_timezone
+    partial:
+      df: ${{ workflow.subject_obs.return }}
+      timezone: ${{ workflow.get_timezone.return }}
+      columns:
+        - fixtime
+
   #Process relocations 
   - name: Transform observations to relocations
     id: subject_reloc
     task: process_relocations
     partial:
-      observations: ${{ workflow.subject_obs.return }}
+      observations: ${{ workflow.convert_relocs_timezone.return }}
       relocs_columns:
         - groupby_col
         - fixtime
@@ -331,6 +207,13 @@ workflow:
     task: relocations_to_trajectory
     partial:
       relocations: ${{ workflow.subject_reloc.return }}
+      trajectory_segment_filter: 
+        min_length_meters: 10
+        max_length_meters: 10000
+        min_time_secs: 10
+        max_time_secs: 21600
+        min_speed_kmhr: 1
+        max_speed_kmhr: 30
 
   - name: Persist trajectories 
     id: persist_trajs
@@ -388,7 +271,70 @@ workflow:
     partial:
       df: ${{ workflow.rename_traj_cols.return }}
       groupers: ${{ workflow.groupers.return }}
+
+  - title: Get subject name and use them to persist files with it 
+    type: task-group
+    description: Choose a grouper to extract subject names for file naming. This will help in organizing the output files based on individual subjects. 
+    tasks:
+      - name: Get first subject name for filenames
+        id: unique_subject_name
+        task: column_first_unique_value
+        partial:
+          column_name: subject_name
+        mapvalues:
+          argnames: df
+          argvalues: ${{ workflow.split_subject_traj_groups.return }}
+
+      - name: Safe-string subject name for filenames
+        id: safe_subject_name
+        task: ecoscope_workflows_ext_ste.tasks.transformation.safe_string
+        mapvalues:
+          argnames: value
+          argvalues: ${{ workflow.unique_subject_name.return }}
+
+      - name: Build tracks filename 
+        id: tracks_filename 
+        task: prefix_string_var
+        partial: 
+          var: _tracks.html 
+        mapvalues:
+          argnames: prefix 
+          argvalues: ${{ workflow.safe_subject_name.return }}
+
+      - name: Build homerange filename 
+        id: hr_filename 
+        task: prefix_string_var
+        partial: 
+          var: _homerange.html 
+        mapvalues:
+          argnames: prefix 
+          argvalues: ${{ workflow.safe_subject_name.return }}
+
+  - title: Map Zoom & Extent
+    type: task-group
+    description: Calculate the geographic extent of the movement tracks and determine an appropriate zoom level and center point for the map. This ensures that all tracks are visible and well-framed when the map is rendered.
+    tasks:
+      - name: null
+        id: zoom_to_envelope 
+        task: ecoscope_workflows_ext_ste.tasks.spatial_operations.envelope_gdf
+        # partial:
+        #   expansion_factor: 1.05
+        mapvalues: 
+          argnames: gdf 
+          argvalues:  ${{ workflow.split_subject_traj_groups.return }}
   
+      - name: Zoom view to gdf extent
+        id: gdf_image_extent
+        task: ecoscope_workflows_ext_ste.tasks.spatial_operations.compute_view_state_from_gdf
+        partial:
+          pitch: 0
+          bearing: 0
+          max_zoom: 15
+        mapvalues:
+          argnames: gdf
+          argvalues: ${{ workflow.zoom_to_envelope.return }}
+
+
   # Calculate Time Density
   - title: Time density map
     type: task-group
@@ -429,17 +375,25 @@ workflow:
       # create polygon layer
       - name: Create map layer from time density
         id: td_map_layer
-        task: create_geojson_layer
-        skipif:
-          conditions:
-            - any_is_empty_df
-            - any_dependency_skipped
+        task: ecoscope_workflows_ext_custom.tasks.results.create_geojson_layer
         partial:
+          data_url: null 
           layer_style:
+            filled: true 
+            stroked: true 
+            extruded: false 
+            wireframe: false 
             get_fill_color: percentile_colormap
-            opacity: 0.55
+            get_line_color: percentile_colormap 
+            opacity: 0.45
             get_line_width: 1.55
-            stroked: true
+            get_elevation: 0 
+            get_point_radius: 1 
+            line_width_units: pixels 
+            line_width_scale: 1 
+            line_width_min_pixels: 1 
+            line_width_max_pixels: 5 
+
           legend:
             title: Home Range Percentiles
             label_column: percentile
@@ -451,59 +405,31 @@ workflow:
           argvalues: ${{ workflow.td_colormap.return }}
       
         # Combine layers ie static and grouped
-      - name: Combine map layers
-        id: combine_custom_map_layers
-        task: combine_deckgl_map_layers
+      - name: Combine er map layers with home range layers
+        id: combine_hr_map_layers
+        task: ecoscope_workflows_ext_ste.tasks.spatial_operations.combine_deckgl_map_layers
         partial:
-          static_layers: 
-            - ${{ workflow.custom_amboseli_layer.return }}
-            - ${{ workflow.custom_hotspot_layer.return }}
-            - ${{ workflow.custom_protected_layer.return }}
-            - ${{ workflow.create_hotspot_text_layer.return }}
+          static_layers: ${{ workflow.spatial_features_layer.return }}
         mapvalues:
           argnames: grouped_layers
           argvalues: ${{ workflow.td_map_layer.return }}
 
-      # Dynamically zoom map to layer of interest
-      - name: zoom to envelope
-        id: zoom_to_envelope
-        task: envelope_gdf
-        mapvalues:
-          argnames: gdf
-          argvalues: ${{ workflow.td_colormap.return }}
-
-      - name: Zoom to gdf extent for image 
-        id: gdf_image_extent 
-        task: view_state_deck_gdf
+      - name: Combine home range layers with view state
+        id: zip_hr_with_viewstate
+        skipif:
+          conditions:
+            - any_dependency_skipped
+            - any_keyed_iterables_are_skips
+          unpack_depth: 1
+        task: groupbykey
         partial:
-          pitch: 0 
-          bearing: 0 
-        mapvalues:
-          argnames: gdf 
-          argvalues: ${{ workflow.td_colormap.return }}
-
-      # should be used globally 
-      - name: Zoom to gdf extent 
-        id: zoom_speed_gdf_extent
-        task: custom_view_state_from_gdf
-        partial: 
-          max_zoom: 20
-        mapvalues:
-          argnames: gdf
-          argvalues: ${{ workflow.zoom_to_envelope.return }}
-      
-        # Zip up tasks to pass them on the same mapvalues
-      - name: Zip layers and viewstate
-        id: zip_layers_view
-        task: zip_groupbykey
-        partial:
-          sequences:
-            - ${{ workflow.combine_custom_map_layers.return }}
-            - ${{ workflow.zoom_speed_gdf_extent.return }}
+          iterables:
+            - ${{ workflow.combine_hr_map_layers.return }}
+            - ${{ workflow.gdf_image_extent.return }}
 
       - name: Draw ecomap from time density
         id: td_ecomap
-        task: draw_map
+        task: ecoscope_workflows_ext_custom.tasks.results.draw_map
         partial:
           tile_layers: ${{ workflow.base_map_defs.return }}
           static: false
@@ -516,18 +442,33 @@ workflow:
           argnames:
             - geo_layers
             - view_state
-          argvalues: ${{ workflow.zip_layers_view.return }}
+          argvalues: ${{ workflow.zip_hr_with_viewstate.return }}
 
       #Persist ecomaps   
+      - name: Combine homerange filename with text
+        id: hr_text
+        skipif:
+          conditions:
+            - any_dependency_skipped
+            - any_keyed_iterables_are_skips
+          unpack_depth: 1
+        task: groupbykey
+        partial:
+          iterables:
+            - ${{ workflow.hr_filename.return }}
+            - ${{ workflow.td_ecomap.return }}
+
       - name: Persist ecomap as text
         id: td_ecomap_html_url
         task: persist_text
         partial:
           root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-          filename_suffix: homerange
+          filename_suffix: null
         mapvalues:
-          argnames: text
-          argvalues: ${{ workflow.td_ecomap.return }}
+          argnames: 
+            - filename 
+            - text
+          argvalues: ${{ workflow.hr_text.return }}
 
       - name: Create time density map widget
         id: td_map_widget
@@ -583,17 +524,6 @@ workflow:
       argnames: df
       argvalues: ${{ workflow.split_subject_traj_groups.return }}
 
-  - name: Add total row on summary table
-    id: add_total_events_row
-    task: add_totals_row
-    partial:
-      label_col:
-        - subject_name
-      label: Total
-    mapvalues:
-      argnames: df
-      argvalues: ${{ workflow.summary_table.return }}
-
   - name: Persist summary table
     id: persist_summary_table
     task: persist_df 
@@ -603,41 +533,32 @@ workflow:
       filename: null
     mapvalues:
       argnames: df
-      argvalues: ${{ workflow.add_total_events_row.return }}
-
-  - name: Combine homerange path with zoom value 
-    id: zip_value
-    task: zip_groupbykey 
-    partial: 
-      sequences: 
-        - ${{ workflow.gdf_image_extent.return }}
-        - ${{ workflow.td_ecomap_html_url.return }}
+      argvalues: ${{ workflow.summary_table.return }}
 
   # convert html to png 
   - name: Convert collared subject html to png
     id: collared_html_png 
-    task: adjust_map_zoom_and_screenshot
+    task: html_to_png
     partial:
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      screenshot_config:
+      config:
         full_page: false
         device_scale_factor: 2.0
         wait_for_timeout: 40000
         max_concurrent_pages: 1
     mapvalues:
-      argnames: 
-        - view_state
-        - input_file
-      argvalues: ${{ workflow.zip_value.return }}
+      argnames: html_path
+      argvalues: ${{ workflow.td_ecomap_html_url.return }}
 
   # Subject tracks
   - name: Generate track layers 
     id: generate_track_layers 
-    task: create_path_layer 
+    task: ecoscope_workflows_ext_custom.tasks.results.create_path_layer
     partial: 
+      data_url: null
       layer_style:
-        get_color: [0, 0, 255]
-        get_width: 1.55
+        get_color: [30, 144, 255]
+        get_width: 1.25
         width_scale: 1 
         width_min_pixels: 2 
         width_max_pixels: 8 
@@ -645,13 +566,13 @@ workflow:
         cap_rounded: true 
         joint_rounded: true
         billboard: false
-        opacity: 0.55
+        opacity: 0.45
         stroked: true 
       legend:
-        title: Subject tracks 
+        title: Subject Tracks 
         values: 
           - label: Tracks 
-            color: "#0000ff"
+            color: "#1e90ff"
     mapvalues:
       argnames: geodataframe
       argvalues: ${{ workflow.split_subject_traj_groups.return }} 
@@ -659,29 +580,29 @@ workflow:
     # Combine layers ie static and grouped
   - name: Combine map layers
     id: combine_track_layers
-    task: combine_deckgl_map_layers
+    task: ecoscope_workflows_ext_ste.tasks.spatial_operations.combine_deckgl_map_layers
     partial:
-      static_layers: 
-
-        - ${{ workflow.custom_amboseli_layer.return }}
-        - ${{ workflow.custom_hotspot_layer.return }}
-        - ${{ workflow.custom_protected_layer.return }}
-        - ${{ workflow.create_hotspot_text_layer.return }}
+      static_layers: ${{ workflow.spatial_features_layer.return }}
     mapvalues:
       argnames: grouped_layers
       argvalues: ${{ workflow.generate_track_layers.return }}
 
-  - name: Zip layers and viewstate
-    id: zip_track_layers_view
-    task: zip_groupbykey
+  - name: Combine movement track layers with view state
+    id: zip_tracks_viewstate
+    skipif:
+      conditions:
+        - any_dependency_skipped
+        - any_keyed_iterables_are_skips
+      unpack_depth: 1
+    task: groupbykey
     partial:
-      sequences:
+      iterables:
         - ${{ workflow.combine_track_layers.return }}
-        - ${{ workflow.zoom_speed_gdf_extent.return }}
+        - ${{ workflow.gdf_image_extent.return }}
 
   - name: Draw track map
     id: draw_track_map
-    task: draw_map
+    task: ecoscope_workflows_ext_custom.tasks.results.draw_map
     partial:
       tile_layers: ${{ workflow.base_map_defs.return }}
       static: false
@@ -693,7 +614,20 @@ workflow:
       argnames:
         - geo_layers
         - view_state
-      argvalues: ${{ workflow.zip_track_layers_view.return }}
+      argvalues: ${{ workflow.zip_tracks_viewstate.return }}
+
+  - name: Combine movement tracks filename with text
+    id: movement_text
+    skipif:
+      conditions:
+        - any_dependency_skipped
+        - any_keyed_iterables_are_skips
+      unpack_depth: 1
+    task: groupbykey
+    partial:
+      iterables:
+        - ${{ workflow.tracks_filename.return }}
+        - ${{ workflow.draw_track_map.return }}
 
   - name: Persist tracks as text
     id: track_html_url
@@ -702,33 +636,25 @@ workflow:
       root_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename_suffix: tracks
     mapvalues:
-      argnames: text
-      argvalues: ${{ workflow.draw_track_map.return }}
-
-  - name: Combine tracks html path with zoom value 
-    id: zip_track_value
-    task: zip_groupbykey 
-    partial: 
-      sequences: 
-        - ${{ workflow.gdf_image_extent.return }}
-        - ${{ workflow.track_html_url.return }}
+      argnames: 
+        - filename
+        - text
+      argvalues: ${{ workflow.movement_text.return }}
 
   # convert html to png 
   - name: Convert track html to png
     id: track_html_png 
-    task: adjust_map_zoom_and_screenshot
+    task: html_to_png
     partial:
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
-      screenshot_config:
+      config:
         full_page: false
         device_scale_factor: 2.0
         wait_for_timeout: 40000
         max_concurrent_pages: 1
     mapvalues:
-      argnames: 
-        - view_state
-        - input_file
-      argvalues: ${{ workflow.zip_track_value.return }}
+      argnames: html_path
+      argvalues: ${{ workflow.track_html_url.return }}
 
   - name: Create trackmap widget
     id: trackmap_widget
@@ -737,7 +663,7 @@ workflow:
       conditions:
         - never
     partial:
-      title: Subject tracks
+      title: Subject Tracks
     map:
       argnames:
         - view
@@ -762,7 +688,7 @@ workflow:
 
   - name: Round off mean speed to 2 decimal_places
     id: round_mean_speed
-    task: round_off_values
+    task: ecoscope_workflows_ext_ste.tasks.transformation.round_off_values
     partial:
       dp: 2
     mapvalues:
@@ -780,7 +706,7 @@ workflow:
 
   - name: Round off min speed to 2 decimal_places
     id: round_min_speed
-    task: round_off_values
+    task: ecoscope_workflows_ext_ste.tasks.transformation.round_off_values
     partial:
       dp: 2
     mapvalues:
@@ -798,7 +724,7 @@ workflow:
 
   - name: Round off max speed to 2 decimal_places
     id: round_max_speed
-    task: round_off_values
+    task: ecoscope_workflows_ext_ste.tasks.transformation.round_off_values
     partial:
       dp: 2
     mapvalues:
@@ -816,67 +742,69 @@ workflow:
 
   - name: Round off total distance to 2 decimal_places
     id: round_total_distance
-    task: round_off_values
+    task: ecoscope_workflows_ext_ste.tasks.transformation.round_off_values
     partial:
       dp: 2
     mapvalues:
       argnames: value
       argvalues: ${{ workflow.total_distance_covered.return }}
 
-  - name: Unique subjects on trajs 
+  - name: Get unique subject names from trajectories
     id: unique_subjects
     task: dataframe_column_nunique
     partial:
-      df: ${{ workflow.traj_add_temporal_index.return }}
-      column_name: groupby_col
+      df: ${{ workflow.rename_traj_cols.return }}
+      column_name: subject_name
 
-  - name: Get user name to use on template 
-    id: get_user_name 
-    task: get_current_user
-    partial: 
-      client: ${{ workflow.er_client_name.return }}
-  
-  - name: Get user full name 
-    id: get_fullname 
-    task: get_user_full_name 
-    partial: 
-      user: ${{ workflow.get_user_name.return }}
-
-
-  - name: Create cover template context 
-    id: create_cover_tpl_context
-    task: create_cl_ctx_cover
+  - name: Download org log path
+    id: persist_logo
+    task: ecoscope_workflows_ext_ste.tasks.io.fetch_and_persist_file
     partial:
-      count: ${{ workflow.unique_subjects.return }}
-      report_period: ${{ workflow.time_range.return }}
-      prepared_by: ${{ workflow.get_fullname.return }} #"Ecoscope"
+      url: https://www.dropbox.com/scl/fi/8oohb6i0kcj0q3qsud9l4/lion-guardians.png?rlkey=4kdqytux2qyftb5sgnaigyuyz&st=os6i6j6h&dl=0
+      output_path: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
+      overwrite_existing: false
+      retries: 3
+      unzip: false
 
-  - name: Persist cover page context
-    id: persist_cover_context 
-    task: create_context_page_lg
+  - name: Create cover page context
+    id: create_cover_tpl_context
+    task: prepare_cover_metadata
+    partial:
+      org_logo_path: ${{ workflow.persist_logo.return }}
+      report_period: ${{ workflow.time_range.return }}
+      prepared_by: "Ecoscope"
+      extra_fields:
+        count: ${{ workflow.unique_subjects.return }}
+      time_generated_format: "%Y-%m-%d %H:%M:%S"
+
+  - name: Persist cover page 
+    id: persist_collar_cover_page
+    task: create_context_page
     partial:
       template_path: ${{ workflow.persist_cover_page.return }}
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       context: ${{ workflow.create_cover_tpl_context.return }}
-      filename: lg_cover_page.docx
+      filename: cover_page.docx
 
   # Create collared lions context 
-  - name: Group grouper context values together 
+  - name: Group collared lions context values 
     id: group_context_values 
-    task: zip_groupbykey
+    skipif:
+      conditions:
+        - any_dependency_skipped
+        - any_keyed_iterables_are_skips
+      unpack_depth: 1
+    task: groupbykey
     partial: 
-      sequences:
+      iterables:
         - ${{ workflow.split_subject_traj_groups.return }} # df
         - ${{ workflow.round_total_distance.return }} # total distance
         - ${{ workflow.collared_html_png.return }} # home range
         - ${{ workflow.track_html_png.return }} # speed map
 
-
-  - name: Create individual grouper context 
-    id: indv_cl_ctx
-    task: create_collared_lions_grouper_ctx 
-    partial: 
-      grouper_name: ${{ workflow.groupers.return }} # grouper name
+  - name: Create individual context
+    id: build_collared_context
+    task: ecoscope_workflows_ext_lion_guardians.tasks.reporting.create_collared_lions_context
     mapvalues:
       argnames:
         - df
@@ -887,26 +815,31 @@ workflow:
 
   - name: Create grouper word doc
     id: create_grouper_doc
-    task: create_grouper_page
+    task: ecoscope_workflows_ext_lion_guardians.tasks.reporting.render_docx_page
     partial:  
       template_path: ${{ workflow.persist_indv_subject_page.return }}
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       filename: null
-      validate_images: true
+      strict_images: true
       box_h_cm: 6.5
       box_w_cm: 11.11
     mapvalues:
       argnames: context 
-      argvalues: ${{ workflow.indv_cl_ctx.return }}
+      argvalues: ${{ workflow.build_collared_context.return }}
 
-  - name: Merge word docs
-    id: merge_docx
-    task: merge_cl_files 
+  - name: Merge cover page and individual collared documents
+    id: merge_collared_docs
+    skipif:
+      conditions:
+        - any_dependency_skipped
+      unpack_depth: 1
+    task: merge_docx_documents
     partial: 
-      cover_page_path: ${{ workflow.persist_cover_context.return }}
+      cover_page_path: ${{ workflow.persist_collar_cover_page.return }}
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}
       context_page_items: ${{ workflow.create_grouper_doc.return }}
-      filename: null
+      filename: overall_report.docx
+      order_by: name
 
   - name: Create single value widgets for total mean speed per group
     id: total_mean_speed_widgets

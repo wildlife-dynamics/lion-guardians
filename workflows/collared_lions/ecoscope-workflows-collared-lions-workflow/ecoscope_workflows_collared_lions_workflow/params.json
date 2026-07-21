@@ -58,35 +58,7 @@
       ],
       "type": "object",
       "description": "Choose the period of time to analyze.",
-      "title": "Define time range"
-    },
-    "groupers": {
-      "additionalProperties": false,
-      "properties": {
-        "groupers": {
-          "default": null,
-          "items": {
-            "anyOf": [
-              {
-                "$ref": "#/$defs/ValueGrouper"
-              },
-              {
-                "$ref": "#/$defs/TemporalGrouper"
-              },
-              {
-                "$ref": "#/$defs/SpatialGrouper"
-              }
-            ],
-            "title": "Group by"
-          },
-          "title": " ",
-          "type": "array",
-          "description": "            Specify how the data should be grouped to create the views for your dashboard.\n            This field is optional; if left blank, all the data will appear in a single view.\n            "
-        }
-      },
-      "type": "object",
-      "required": [],
-      "title": "Set Groupers"
+      "title": "Define Time Range"
     },
     "er_client_name": {
       "additionalProperties": false,
@@ -101,7 +73,7 @@
         "data_source"
       ],
       "type": "object",
-      "title": "Data Source"
+      "title": "Connect to EarthRanger"
     },
     "subject_obs": {
       "additionalProperties": false,
@@ -118,31 +90,20 @@
       "type": "object",
       "title": "Get Subject Group observations from EarthRanger"
     },
-    "subject_traj": {
+    "zoom_to_envelope": {
       "additionalProperties": false,
       "properties": {
-        "trajectory_segment_filter": {
-          "allOf": [
-            {
-              "$ref": "#/$defs/TrajectorySegmentFilter"
-            }
-          ],
-          "default": {
-            "min_length_meters": 0.001,
-            "max_length_meters": 100000,
-            "min_time_secs": 1,
-            "max_time_secs": 172800,
-            "min_speed_kmhr": 0.01,
-            "max_speed_kmhr": 500
-          },
-          "title": " ",
-          "description": "Filter track data by setting limits on track segment length, duration, and speed. Segments outside these bounds are removed, reducing noise and to focus on meaningful movement patterns.",
+        "expansion_factor": {
+          "default": 1.5,
+          "title": "Expansion Factor",
+          "type": "number",
+          "description": "Factor to expand the bounding box (e.g., 1.2 = 20% larger)",
           "ecoscope:advanced": true
         }
       },
       "required": [],
       "type": "object",
-      "title": "Transform relocations to trajectories"
+      "title": ""
     },
     "td": {
       "additionalProperties": false,
@@ -180,20 +141,6 @@
       "required": [],
       "type": "object",
       "title": ""
-    },
-    "zoom_to_envelope": {
-      "additionalProperties": false,
-      "properties": {
-        "expansion_factor": {
-          "default": 1.05,
-          "title": "Expansion Factor",
-          "type": "number",
-          "description": "Factor to expand the bounding box (e.g., 1.2 = 20% larger)"
-        }
-      },
-      "required": [],
-      "type": "object",
-      "title": "zoom to envelope"
     }
   },
   "$defs": {
@@ -225,80 +172,6 @@
       "title": "TimezoneInfo",
       "type": "object"
     },
-    "SpatialGrouper": {
-      "properties": {
-        "spatial_index_name": {
-          "title": "Spatial Regions",
-          "type": "string"
-        }
-      },
-      "required": [
-        "spatial_index_name"
-      ],
-      "title": "Spatial",
-      "type": "object"
-    },
-    "TemporalGrouper": {
-      "properties": {
-        "temporal_index": {
-          "oneOf": [
-            {
-              "const": "%Y",
-              "title": "Year (example: 2024)"
-            },
-            {
-              "const": "%B",
-              "title": "Month (example: September)"
-            },
-            {
-              "const": "%Y-%m",
-              "title": "Year and Month (example: 2023-01)"
-            },
-            {
-              "const": "%j",
-              "title": "Day of the year as a number (example: 365)"
-            },
-            {
-              "const": "%d",
-              "title": "Day of the month as a number (example: 31)"
-            },
-            {
-              "const": "%A",
-              "title": "Day of the week (example: Sunday)"
-            },
-            {
-              "const": "%H",
-              "title": "Hour (24-hour clock) as number (example: 22)"
-            },
-            {
-              "const": "%Y-%m-%d",
-              "title": "Date (example: 2025-01-31)"
-            }
-          ],
-          "title": "Time",
-          "type": "string"
-        }
-      },
-      "required": [
-        "temporal_index"
-      ],
-      "title": "Time",
-      "type": "object"
-    },
-    "ValueGrouper": {
-      "properties": {
-        "index_name": {
-          "oneOf": [],
-          "title": "Category",
-          "type": "string"
-        }
-      },
-      "required": [
-        "index_name"
-      ],
-      "title": "Category",
-      "type": "object"
-    },
     "EarthRangerConnection": {
       "properties": {
         "name": {
@@ -310,54 +183,6 @@
         "name"
       ],
       "title": "EarthRangerConnection",
-      "type": "object"
-    },
-    "TrajectorySegmentFilter": {
-      "properties": {
-        "min_length_meters": {
-          "default": 0.001,
-          "ecoscope:advanced": true,
-          "minimum": 0.001,
-          "title": "Minimum Segment Length (Meters)",
-          "type": "number"
-        },
-        "max_length_meters": {
-          "default": 100000,
-          "ecoscope:advanced": true,
-          "exclusiveMinimum": 0.001,
-          "title": "Maximum Segment Length (Meters)",
-          "type": "number"
-        },
-        "min_time_secs": {
-          "default": 1,
-          "ecoscope:advanced": true,
-          "minimum": 1,
-          "title": "Minimum Segment Duration (Seconds)",
-          "type": "number"
-        },
-        "max_time_secs": {
-          "default": 172800,
-          "ecoscope:advanced": true,
-          "exclusiveMinimum": 1,
-          "title": "Maximum Segment Duration (Seconds)",
-          "type": "number"
-        },
-        "min_speed_kmhr": {
-          "default": 0.01,
-          "ecoscope:advanced": true,
-          "exclusiveMinimum": 0.001,
-          "title": "Minimum Segment Speed (Kilometers per Hour)",
-          "type": "number"
-        },
-        "max_speed_kmhr": {
-          "default": 500,
-          "ecoscope:advanced": true,
-          "exclusiveMinimum": 0.001,
-          "title": "Maximum Segment Speed (Kilometers per Hour)",
-          "type": "number"
-        }
-      },
-      "title": "TrajectorySegmentFilter",
       "type": "object"
     },
     "AutoScaleGridCellSize": {
@@ -428,12 +253,10 @@
     "ui:order": [
       "workflow_details",
       "time_range",
-      "groupers",
       "er_client_name",
       "subject_obs",
-      "subject_traj",
-      "td",
-      "zoom_to_envelope"
+      "zoom_to_envelope",
+      "td"
     ]
   },
   "additionalProperties": false
