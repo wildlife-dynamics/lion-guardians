@@ -76,7 +76,7 @@ from ecoscope_workflows_ext_lion_guardians.tasks.reporting import (
     create_vehicles_context as create_vehicles_context,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks.reporting import (
-    render_vehicles_page as render_vehicles_page,
+    render_docx_page as render_docx_page,
 )
 from ecoscope_workflows_ext_ste.tasks.io import (
     fetch_and_persist_file as fetch_and_persist_file,
@@ -276,8 +276,12 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
                     "query": {"feature_type": "Group Ranch Boundaries"},
                     "style": [
                         {
-                            "line": [
-                                {"color": ["#000000"], "opacity": 0.75, "width": 1.25}
+                            "polygon": [
+                                {
+                                    "fill_opacity": 0,
+                                    "stroke_color": "#000000",
+                                    "stroke_width": 1.25,
+                                }
                             ]
                         }
                     ],
@@ -427,7 +431,18 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
             ],
             unpack_depth=1,
         )
-        .partial(relocations=subject_reloc, **(params.get("subject_traj") or {}))
+        .partial(
+            relocations=subject_reloc,
+            trajectory_segment_filter={
+                "min_length_meters": 3,
+                "max_length_meters": 100000,
+                "min_time_secs": 1,
+                "max_time_secs": 21600,
+                "min_speed_kmhr": 3,
+                "max_speed_kmhr": 150,
+            },
+            **(params.get("subject_traj") or {}),
+        )
         .call()
     )
 
@@ -1767,7 +1782,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     create_grouper_doc = (
-        task(render_vehicles_page)
+        task(render_docx_page)
         .validate()
         .set_task_instance_id("create_grouper_doc")
         .handle_errors()

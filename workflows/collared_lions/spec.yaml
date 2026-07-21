@@ -103,16 +103,16 @@ workflow:
                   fill_opacity: 0.75
                   stroke_width: 1.75
           group_by: "type_name"
-          legend_title: "Boundaries"
+          legend_title: "Map Layers"
 
         - query:
             feature_type: "Group Ranch Boundaries"
           style:
-            - line: 
-                - color: ["#000000"]
-                  opacity: 0.75
-                  width: 1.25
-                  
+            - polygon:
+                - fill_opacity: 0
+                  stroke_color: "#000000"
+                  stroke_width: 1.25
+
           group_by: "type_name"
           legend_title: ""
 
@@ -121,6 +121,7 @@ workflow:
         #   style: []
         #   group_by: "type_name"
         #   legend_title: "Boundaries"
+
 
   - name: Build Study Area Map Layer
     id: spatial_features_layer
@@ -814,7 +815,7 @@ workflow:
 
   - name: Create grouper word doc
     id: create_grouper_doc
-    task: ecoscope_workflows_ext_lion_guardians.tasks.reporting.render_collared_lions_page
+    task: ecoscope_workflows_ext_lion_guardians.tasks.reporting.render_docx_page
     partial:  
       template_path: ${{ workflow.persist_indv_subject_page.return }}
       output_dir: ${{ env.ECOSCOPE_WORKFLOWS_RESULTS }}

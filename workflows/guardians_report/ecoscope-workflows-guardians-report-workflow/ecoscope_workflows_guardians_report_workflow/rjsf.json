@@ -75,6 +75,28 @@
       "type": "object",
       "title": "Connect to EarthRanger"
     },
+    "Map Zoom & Extent": {
+      "type": "object",
+      "description": "Calculate the geographic extent of the movement tracks and determine an appropriate zoom level and center point for the map. This ensures that all tracks are visible and well-framed when the map is rendered.",
+      "ecoscope:task_group": true,
+      "properties": {
+        "zoom_to_envelope": {
+          "additionalProperties": false,
+          "properties": {
+            "expansion_factor": {
+              "default": 1.5,
+              "title": "Expansion Factor",
+              "type": "number",
+              "description": "Factor to expand the bounding box (e.g., 1.2 = 20% larger)",
+              "ecoscope:advanced": true
+            }
+          },
+          "required": [],
+          "type": "object",
+          "title": ""
+        }
+      }
+    },
     "patrol_events_bar_chart": {
       "additionalProperties": false,
       "properties": {
@@ -159,6 +181,7 @@
       "workflow_details",
       "time_range",
       "er_client_name",
+      "Map Zoom & Extent",
       "patrol_events_bar_chart"
     ]
   },

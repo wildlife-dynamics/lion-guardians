@@ -31,7 +31,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/arrow-1.4.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/astroplan-0.10.1-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/astropy-base-8.0.1-py312h4f23490_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.7.13.0.54.2-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.7.20.15.31.18-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/asttokens-3.0.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/async-lru-2.3.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/at-spi2-atk-2.38.0-h0630a04_3.tar.bz2
@@ -171,7 +171,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/httptools-0.8.0-py312h4c3975b_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/httpx-0.28.1-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/hyperframe-6.1.0-pyhd8ed1ab_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/icu-78.3-h33c6efd_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/icu-78.3-h33c6efd_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/idna-3.18-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/igraph-1.0.1-hfe3e89f_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/imagecodecs-2026.6.26-py312hbffa5f7_2.conda
@@ -311,7 +311,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/mapclassify-2.10.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/markdown-it-py-4.2.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/markupsafe-3.0.3-py312h8a5da7c_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/linux-64/matplotlib-base-3.11.0-py312hc1765e9_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/linux-64/matplotlib-base-3.11.1-py312hc1765e9_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/matplotlib-inline-0.2.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mdurl-0.1.2-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/minizip-4.2.2-hb71707f_0.conda
@@ -519,7 +519,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-1.3.2-h25fd6f3_2.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zlib-ng-2.3.3-hceb46e0_1.conda
       - conda: https://conda.anaconda.org/conda-forge/linux-64/zstd-1.5.7-hb78ec9c_6.conda
-      - conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.8.dev2+gd8391ad6d.d20260720-pyh4616a5c_0.conda
+      - conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.8.dev3+gc9df14f74.d20260721-pyh4616a5c_0.conda
       osx-arm64:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/_openmp_mutex-4.5-7_kmp_llvm.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/_python_abi3_support-1.0-hd8ed1ab_3.conda
@@ -543,7 +543,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/arrow-1.4.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/astroplan-0.10.1-pyhd8ed1ab_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/astropy-base-8.0.1-py312hf57c059_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.7.13.0.54.2-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.7.20.15.31.18-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/asttokens-3.0.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/async-lru-2.3.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/atk-1.0-2.38.0-hd03087b_2.conda
@@ -801,7 +801,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/mapclassify-2.10.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/markdown-it-py-4.2.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/markupsafe-3.0.3-py312h04c11ed_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/matplotlib-base-3.11.0-py312h3b4889c_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/osx-arm64/matplotlib-base-3.11.1-py312h3b4889c_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/matplotlib-inline-0.2.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mdurl-0.1.2-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/minizip-4.2.2-hdb7fadc_0.conda
@@ -994,7 +994,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-1.3.2-h8088a28_2.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zlib-ng-2.3.3-hed4e4f5_1.conda
       - conda: https://conda.anaconda.org/conda-forge/osx-arm64/zstd-1.5.7-hbf9d68e_6.conda
-      - conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.8.dev2+gd8391ad6d.d20260720-pyh4616a5c_0.conda
+      - conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.8.dev3+gc9df14f74.d20260721-pyh4616a5c_0.conda
       win-64:
       - conda: https://conda.anaconda.org/conda-forge/win-64/_libavif_api-1.4.2-h11686cb_3.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/_openmp_mutex-4.5-20_gnu.conda
@@ -1016,7 +1016,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/arrow-1.4.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/astroplan-0.10.1-pyhd8ed1ab_2.conda
       - conda: https://repo.prefix.dev/ecoscope-workflows/win-64/astropy-base-7.2.0-strip_manifest_h196c9fc_0.conda
-      - conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.7.13.0.54.2-pyhd8ed1ab_0.conda
+      - conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.7.20.15.31.18-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/asttokens-3.0.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/async-lru-2.3.0-pyhcf101f3_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/attrs-26.1.0-pyhcf101f3_0.conda
@@ -1264,7 +1264,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/noarch/mapclassify-2.10.0-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/markdown-it-py-4.2.0-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/markupsafe-3.0.3-py312h05f76fc_1.conda
-      - conda: https://conda.anaconda.org/conda-forge/win-64/matplotlib-base-3.11.0-py312hcbcab24_1.conda
+      - conda: https://conda.anaconda.org/conda-forge/win-64/matplotlib-base-3.11.1-py312hcbcab24_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/matplotlib-inline-0.2.2-pyhd8ed1ab_0.conda
       - conda: https://conda.anaconda.org/conda-forge/noarch/mdurl-0.1.2-pyhd8ed1ab_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/minizip-4.2.2-h0ffbb96_0.conda
@@ -1467,7 +1467,7 @@ environments:
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-1.3.2-hfd05255_2.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zlib-ng-2.3.3-h0261ad2_1.conda
       - conda: https://conda.anaconda.org/conda-forge/win-64/zstd-1.5.7-h534d264_6.conda
-      - conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.8.dev2+gd8391ad6d.d20260720-pyh4616a5c_0.conda
+      - conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.8.dev3+gc9df14f74.d20260721-pyh4616a5c_0.conda
   default:
     channels:
     - url: file:///tmp/ecoscope-workflows-custom/release/artifacts/
@@ -2564,15 +2564,14 @@ packages:
   license: BSD-3-Clause
   size: 9492005
   timestamp: 1782221486962
-- conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.7.13.0.54.2-pyhd8ed1ab_0.conda
-  sha256: 08d5957a1f1beb2947aa43eb35f4e2e95cb8a27d37c547f8e4355e623261b702
-  md5: eef686ffae1ad2e9d3854836325a5cb8
+- conda: https://conda.anaconda.org/conda-forge/noarch/astropy-iers-data-0.2026.7.20.15.31.18-pyhd8ed1ab_0.conda
+  sha256: 419fa0736709dcff0718d3ff8035dac17ed9e72f17398076d74151013acd03b7
+  md5: f028f0c3f6842bcc29b089d4299a669b
   depends:
   - python >=3.10
   license: BSD-3-Clause
-  license_family: BSD
-  size: 1256176
-  timestamp: 1783916956560
+  size: 1262558
+  timestamp: 1784570640168
 - conda: https://conda.anaconda.org/conda-forge/noarch/asttokens-3.0.2-pyhd8ed1ab_0.conda
   sha256: fbbd8ce60cbd5c16f3fe559eb644551f94285caff30985ea961ff851c1cf25ac
   md5: 89d495168582cb00428dad699d149624
@@ -4611,10 +4610,10 @@ packages:
   license: BSD-3-Clause
   size: 251601
   timestamp: 1782337197629
-- conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.8.dev2+gd8391ad6d.d20260720-pyh4616a5c_0.conda
+- conda: /tmp/ecoscope-workflows-custom/release/artifacts/noarch/ecoscope-workflows-ext-lion-guardians-0.0.8.dev3+gc9df14f74.d20260721-pyh4616a5c_0.conda
   subdir: noarch
-  sha256: 47dd86c4a82bf2eddad76432ec1033f09145f35330c67d10443eede58b6c44e3
-  md5: e64121393fffebf0fadf444d7c8e9502
+  sha256: aaab9fea538390ce2e2a92d30649fd71ccc68ce2815a609b20a80908a110469d
+  md5: f6fbe5c3e79043d93919db2000efb657
   depends:
   - python
   - pip
@@ -4631,8 +4630,8 @@ packages:
   - numpy
   channel: file:///tmp/ecoscope-workflows-custom/release/artifacts
   license: BSD-3-Clause
-  size: 86126
-  timestamp: 1784555035195
+  size: 86307
+  timestamp: 1784606026904
 - conda: https://repo.prefix.dev/ecoscope-workflows-custom/noarch/ecoscope-workflows-ext-ste-0.0.0rc1-pyh4616a5c_0.conda
   sha256: 7b7a249fbf6c96bfa2d55d0a53ce843fddbcd1493611ae70dda577e132940a6e
   md5: 539ed4bab420b9a5f930a0148cffea16
@@ -6265,6 +6264,16 @@ packages:
   license_family: MIT
   size: 12723451
   timestamp: 1773822285671
+- conda: https://conda.anaconda.org/conda-forge/linux-64/icu-78.3-h33c6efd_1.conda
+  sha256: c054e32ac4c14426006edf9d01981dc564559b4065af7c13c26be904e1babf04
+  md5: 3c7763347873f07adfd87e8001b5b1d1
+  depends:
+  - __glibc >=2.17,<3.0.a0
+  - libgcc >=14
+  - libstdcxx >=14
+  license: MIT
+  size: 12709032
+  timestamp: 1784588496729
 - conda: https://conda.anaconda.org/conda-forge/osx-arm64/icu-78.3-hef89b57_0.conda
   sha256: 3a7907a17e9937d3a46dfd41cffaf815abad59a569440d1e25177c15fd0684e5
   md5: f1182c91c0de31a7abd40cedf6a5ebef
@@ -10850,14 +10859,14 @@ packages:
   license_family: BSD
   size: 30022
   timestamp: 1772445159549
-- conda: https://conda.anaconda.org/conda-forge/linux-64/matplotlib-base-3.11.0-py312hc1765e9_1.conda
-  sha256: d983b4ea15841f1fde4ccba4370485e89e696a447fcf5e90a1f75c8487699c68
-  md5: 1d06d24525cf2e373310c1131acf12f8
+- conda: https://conda.anaconda.org/conda-forge/linux-64/matplotlib-base-3.11.1-py312hc1765e9_0.conda
+  sha256: 5bb0ba854ec2beafc369c168106d926f64351ed2af8a5c26b40833e364f55bb0
+  md5: 51fec2672c6ea2e1bfcc82e1d9569069
   depends:
   - __glibc >=2.17,<3.0.a0
   - contourpy >=1.0.1
   - cycler >=0.10
-  - fonttools >=4.22.0
+  - fonttools >=4.28.2
   - freetype
   - kiwisolver >=1.3.1
   - libfreetype >=2.14.3
@@ -10865,11 +10874,11 @@ packages:
   - libgcc >=14
   - libraqm >=0.10.5,<0.11.0a0
   - libstdcxx >=14
-  - numpy >=1.23
+  - numpy >=1.25
   - numpy >=1.25,<3
   - packaging >=20.0
-  - pillow >=8
-  - pyparsing >=2.3.1
+  - pillow >=9
+  - pyparsing >=3
   - python >=3.12,<3.13.0a0
   - python-dateutil >=2.7
   - python_abi 3.12.* *_cp312
@@ -10877,52 +10886,52 @@ packages:
   - tk >=8.6.13,<8.7.0a0
   license: PSF-2.0
   license_family: PSF
-  size: 8877024
-  timestamp: 1782829532714
-- conda: https://conda.anaconda.org/conda-forge/osx-arm64/matplotlib-base-3.11.0-py312h3b4889c_1.conda
-  sha256: 6d3eefa4d7c1d8e0bb58dc88fb0a91cc1691d940f9842a22477b465a75e5ce69
-  md5: 892a539f6837bb1b1086f40eaae5a63e
+  size: 8948803
+  timestamp: 1784581750074
+- conda: https://conda.anaconda.org/conda-forge/osx-arm64/matplotlib-base-3.11.1-py312h3b4889c_0.conda
+  sha256: 7b0c6d095167f7238a8b6eabad89aba0d0d2a5c1b5d424e7a2576f037498d39c
+  md5: 46946323f48faa026e45ac4c805691dc
   depends:
   - __osx >=11.0
   - contourpy >=1.0.1
   - cycler >=0.10
-  - fonttools >=4.22.0
+  - fonttools >=4.28.2
   - freetype
   - kiwisolver >=1.3.1
   - libcxx >=19
   - libfreetype >=2.14.3
   - libfreetype6 >=2.14.3
   - libraqm >=0.10.5,<0.11.0a0
-  - numpy >=1.23
+  - numpy >=1.25
   - numpy >=1.25,<3
   - packaging >=20.0
-  - pillow >=8
-  - pyparsing >=2.3.1
+  - pillow >=9
+  - pyparsing >=3
   - python >=3.12,<3.13.0a0
   - python-dateutil >=2.7
   - python_abi 3.12.* *_cp312
   - qhull >=2020.2,<2020.3.0a0
   license: PSF-2.0
   license_family: PSF
-  size: 8650165
-  timestamp: 1782829632549
-- conda: https://conda.anaconda.org/conda-forge/win-64/matplotlib-base-3.11.0-py312hcbcab24_1.conda
-  sha256: 10e4c3e9d56daa97503e8ef5e478d1ed1031f06c72febcf915839ef55a064804
-  md5: fb202688665dd29a61750aa34161fee4
+  size: 8813121
+  timestamp: 1784581843589
+- conda: https://conda.anaconda.org/conda-forge/win-64/matplotlib-base-3.11.1-py312hcbcab24_0.conda
+  sha256: 513a4b2f6be0206232456281edc99aace5f23241f44f9ab0c7f88fa3ff51b87e
+  md5: 7614a1bb44b844e106c57692afe316f9
   depends:
   - contourpy >=1.0.1
   - cycler >=0.10
-  - fonttools >=4.22.0
+  - fonttools >=4.28.2
   - freetype
   - kiwisolver >=1.3.1
   - libfreetype >=2.14.3
   - libfreetype6 >=2.14.3
   - libraqm >=0.10.5,<0.11.0a0
-  - numpy >=1.23
+  - numpy >=1.25
   - numpy >=1.25,<3
   - packaging >=20.0
-  - pillow >=8
-  - pyparsing >=2.3.1
+  - pillow >=9
+  - pyparsing >=3
   - python >=3.12,<3.13.0a0
   - python-dateutil >=2.7
   - python_abi 3.12.* *_cp312
@@ -10932,8 +10941,8 @@ packages:
   - vc14_runtime >=14.44.35208
   license: PSF-2.0
   license_family: PSF
-  size: 8621787
-  timestamp: 1782829733178
+  size: 8730816
+  timestamp: 1784581987658
 - conda: https://conda.anaconda.org/conda-forge/noarch/matplotlib-inline-0.2.2-pyhd8ed1ab_0.conda
   sha256: 35b43d7343f74452307fd018a1cca92b8f68961ff8e2ab6a81ce0a703c9a3764
   md5: 9acc1c385be401d533ff70ef5b50dae6

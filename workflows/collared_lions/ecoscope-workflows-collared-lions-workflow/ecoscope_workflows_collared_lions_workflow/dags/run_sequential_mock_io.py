@@ -100,7 +100,7 @@ from ecoscope_workflows_ext_lion_guardians.tasks.reporting import (
     create_collared_lions_context as create_collared_lions_context,
 )
 from ecoscope_workflows_ext_lion_guardians.tasks.reporting import (
-    render_collared_lions_page as render_collared_lions_page,
+    render_docx_page as render_docx_page,
 )
 from ecoscope_workflows_ext_ste.tasks.reporting import (
     create_context_page as create_context_page,
@@ -284,23 +284,21 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
                         }
                     ],
                     "group_by": "type_name",
-                    "legend_title": "",
+                    "legend_title": "Boundaries",
                 },
                 {
                     "query": {"feature_type": "Group Ranch Boundaries"},
                     "style": [
                         {
-                            "line": [
-                                {"color": ["#000000"], "opacity": 0.75, "width": 1.25}
+                            "polygon": [
+                                {
+                                    "fill_opacity": 0,
+                                    "stroke_color": "#000000",
+                                    "stroke_width": 1.25,
+                                }
                             ]
                         }
                     ],
-                    "group_by": "type_name",
-                    "legend_title": "",
-                },
-                {
-                    "query": {"feature_type": "Major Towns"},
-                    "style": [{"point": [{"color": ["#E63946"], "size": 2.25}]}],
                     "group_by": "type_name",
                     "legend_title": "",
                 },
@@ -1536,7 +1534,7 @@ def main(params: dict[str, Any], validate_params_schema: bool = True):
     )
 
     create_grouper_doc = (
-        task(render_collared_lions_page)
+        task(render_docx_page)
         .validate()
         .set_task_instance_id("create_grouper_doc")
         .handle_errors()
