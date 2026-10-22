@@ -62,8 +62,8 @@ py-rattler = ">=0.15.0,<0.16"
 ruff = "*"
 tomli-w = "*"
 
-ecoscope-workflows-ext-custom = "0.1.0rc14.*"
-ecoscope-workflows-ext-ste = "0.0.0rc1.*"
+ecoscope-workflows-ext-custom = "0.1.4.*"
+ecoscope-workflows-ext-ste = "0.0.23.*"
 
 docxtpl="*"
 playwright="*"
