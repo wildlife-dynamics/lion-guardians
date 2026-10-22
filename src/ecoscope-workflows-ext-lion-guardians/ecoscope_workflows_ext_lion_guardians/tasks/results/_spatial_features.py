@@ -9,7 +9,7 @@ from ecoscope.platform.annotations import AnyGeoDataFrame
 from ecoscope.platform.tasks.results._pydeck import (
     GeoJSONLayerStyle,
     IconLayerStyle,
-    LayerDefinition,
+    PydeckLayerDefinition,
     LegendSegment,
     LegendValue,
     _color_tuple_to_css,
@@ -25,7 +25,7 @@ def create_spatial_features_layer(
             exclude=True,
         ),
     ],
-) -> Annotated[list[LayerDefinition], Field()]:
+) -> Annotated[list[PydeckLayerDefinition], Field()]:
     """Create GeoJsonLayer and IconLayer definitions from a styled spatial features GeoDataFrame."""
 
     class UnifiedLegend:
@@ -104,9 +104,9 @@ def create_spatial_features_layer(
             self.gdf = gdf
             self.legend = legend
 
-        def __call__(self) -> LayerDefinition:
+        def __call__(self) -> PydeckLayerDefinition:
             present = self._COLS & set(self.gdf.columns)
-            return LayerDefinition(
+            return PydeckLayerDefinition(
                 layer_type="GeoJsonLayer",
                 layer_style=GeoJSONLayerStyle(**{c: c for c in present}),
                 legend=self.legend,
@@ -120,11 +120,11 @@ def create_spatial_features_layer(
             self.gdf = gdf
             self.legend = legend
 
-        def __call__(self) -> LayerDefinition:
+        def __call__(self) -> PydeckLayerDefinition:
             has_custom = "icon_color" in self.gdf.columns
             gdf = self.gdf.copy()
             gdf["_icon_data"] = self._icon_data(gdf, has_custom)  # type: ignore[assignment]
-            return LayerDefinition(
+            return PydeckLayerDefinition(
                 layer_type="IconLayer",
                 layer_style=IconLayerStyle(
                     get_icon="_icon_data",
@@ -161,7 +161,7 @@ def create_spatial_features_layer(
         icon_gdf, other_gdf = gpd.GeoDataFrame(), gdf
 
     legend = UnifiedLegend(gdf)()
-    layers: list[LayerDefinition] = []
+    layers: list[PydeckLayerDefinition] = []
 
     if not other_gdf.empty:
         layers.append(GeoJsonLayer(other_gdf, legend)())
