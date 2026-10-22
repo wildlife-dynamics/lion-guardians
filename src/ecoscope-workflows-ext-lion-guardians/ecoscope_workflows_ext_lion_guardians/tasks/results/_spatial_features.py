@@ -6,7 +6,7 @@ from pydantic import Field
 from typing import Annotated
 from wt_registry import register
 from ecoscope.platform.annotations import AnyGeoDataFrame
-from ecoscope_workflows_ext_custom.tasks.results._map import (
+from ecoscope.platform.tasks.results._pydeck import (
     GeoJSONLayerStyle,
     IconLayerStyle,
     LayerDefinition,
