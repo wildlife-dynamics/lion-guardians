@@ -24,7 +24,7 @@ graphviz = "*"
 [feature.compile.dependencies]
 ecoscope-workflows-ext-lion-guardians = "*"
 
-ecoscope-workflows-ext-ste ="0.0.25.*"
+ecoscope-workflows-ext-ste ="0.0.26.*"
 ecoscope-workflows-ext-custom = "0.1.4.*"
 graphviz = "*"
 wt-compiler = "==0.8.0"
