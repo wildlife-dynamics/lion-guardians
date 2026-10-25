@@ -1,4 +1,5 @@
 import pandas as pd
+from ecoscope_workflows_ext_custom.storage import as_readable
 from wt_registry import register
 from wt_task.skip import SkipSentinel
 from typing import Dict
@@ -40,7 +41,7 @@ def create_vehicles_context(
 
     if summary_table:
         try:
-            vehicle_stats_df = pd.read_csv(summary_table)
+            vehicle_stats_df = pd.read_csv(as_readable(summary_table))
 
             # Extract values from the last row
             if not vehicle_stats_df.empty:

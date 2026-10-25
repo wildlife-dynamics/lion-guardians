@@ -1,4 +1,5 @@
 import pandas as pd
+from ecoscope_workflows_ext_custom.storage import as_readable
 from wt_registry import register
 from wt_task.skip import SkipSentinel
 from typing import Optional, Dict, Any
@@ -22,7 +23,7 @@ def create_guardians_context(
         if value is None:
             return None
         if isinstance(value, str):
-            return pd.read_csv(value)
+            return pd.read_csv(as_readable(value))
         return value
 
     events_map = _unwrap_skip(events_map)
