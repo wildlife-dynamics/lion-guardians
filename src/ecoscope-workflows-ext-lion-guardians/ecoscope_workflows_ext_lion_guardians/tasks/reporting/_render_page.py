@@ -1,9 +1,8 @@
-import os
 from pathlib import Path
 from docxtpl import DocxTemplate
 from wt_registry import register
 from typing import Any, Dict, Optional
-from ecoscope_workflows_ext_custom.tasks.io._path_utils import remove_file_scheme
+from ecoscope_workflows_ext_custom.storage import as_readable, exists, normalize_uri, save_document
 from ecoscope_workflows_ext_ste.tasks.reporting._mapbook_context import (
     DEFAULT_IMAGE_EXTENSIONS,
     build_docx_context,
@@ -28,39 +27,35 @@ def render_docx_page(
 
     strict_images=False (default): missing/unreadable images are logged and
     rendered as blank slots. strict_images=True: they raise instead.
-    """
-    template_path = remove_file_scheme(template_path)
-    output_dir = remove_file_scheme(output_dir)
 
+    Paths may be local, ``file://`` or GCS paths, so this works on desktop and on
+    ecoscope-web.
+    """
     if not template_path.strip():
-        raise ValueError("template_path is empty after normalization")
+        raise ValueError("template_path is empty")
     if not output_dir.strip():
-        raise ValueError("output_dir is empty after normalization")
-    if not os.path.exists(template_path):
+        raise ValueError("output_dir is empty")
+    if not exists(template_path):
         raise FileNotFoundError(f"Template file not found: {template_path}")
     if context is None:
         raise ValueError("context cannot be None — pass an empty dict {} if no images are needed.")
 
-    os.makedirs(output_dir, exist_ok=True)
-
     if not filename:
         filename = _default_filename(context)
-    output_path = Path(output_dir) / filename
 
     # --- image validation: warn by default, raise only in strict mode ---
     for field_name, value in context.items():
         if not isinstance(value, str) or not value:
             continue
-        normalized = remove_file_scheme(value)
-        if Path(normalized).suffix.lower() in DEFAULT_IMAGE_EXTENSIONS:
-            if not os.path.exists(normalized):
-                msg = f"{field_name}: image not found: {normalized}"
+        if Path(normalize_uri(value)).suffix.lower() in DEFAULT_IMAGE_EXTENSIONS:
+            if not exists(value):
+                msg = f"{field_name}: image not found: {value}"
                 if strict_images:
                     raise FileNotFoundError(msg)
                 print(msg)
 
     try:
-        tpl = DocxTemplate(template_path)
+        tpl = DocxTemplate(as_readable(template_path))
     except Exception as e:
         raise ValueError(f"Failed to load template {template_path}: {e}") from e
 
@@ -72,10 +67,11 @@ def render_docx_page(
     )
 
     try:
-        tpl.render(rendered_context)
-        tpl.save(output_path)
+        # Escape the values, so text from event data can't alter the document's XML.
+        tpl.render(rendered_context, autoescape=True)
+        output_path = save_document(tpl, output_dir, filename)
     except Exception as e:
-        raise ValueError(f"Failed to render or save {output_path}: {e}") from e
+        raise ValueError(f"Failed to render or save {filename}: {e}") from e
 
     print(f"Rendered page: {output_path}")
-    return str(output_path)
+    return output_path
