@@ -4,6 +4,7 @@ import io
 
 import docx
 import pandas as pd
+from PIL import Image
 import pytest
 from cloudpathlib.local import LocalGSClient, LocalGSPath
 from ecoscope_workflows_ext_custom.storage import read_bytes, write_bytes
@@ -41,6 +42,20 @@ def test_render_docx_page_on_gcs(fake_gcs):
 
     assert out.endswith("page.docx")
     assert _text(out) == "Name: Lion"
+
+
+def test_render_docx_page_embeds_gcs_image(fake_gcs):
+    buf = io.BytesIO()
+    Image.new("RGB", (40, 20), "red").save(buf, format="PNG")
+    image = write_bytes(buf.getvalue(), ROOT, "map.png")
+    template = write_bytes(_template("{{ map }}"), ROOT, "template.docx")
+
+    out = render_docx_page(
+        template_path=template, output_dir=ROOT, context={"map": image}, filename="page.docx", strict_images=True
+    )
+
+    doc = docx.Document(io.BytesIO(read_bytes(out)))
+    assert len(doc.element.body.xpath(".//pic:pic")) == 1
 
 
 def test_render_docx_page_escapes_values(tmp_path):
